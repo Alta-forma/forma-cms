@@ -1,0 +1,16 @@
+{
+  "name": "formax-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cursor MCP server for Forma Agent API",
+  "bin": {
+    "formax-mcp": "./server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}

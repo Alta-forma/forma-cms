@@ -1,0 +1,94 @@
+<?php
+if (!defined('ROOT_DIR')) {
+    define('ROOT_DIR', dirname(__DIR__, 2));
+    require_once ROOT_DIR . '/lib/bootstrap.php';
+}
+Auth::requireAdmin(false);
+
+function h(?string $s): string {
+    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+}
+
+function fx_toast_oob(string $message = 'Saved'): string {
+    return '<div id="fx-toast" class="toast show" data-show="1" hx-swap-oob="true">' . h($message) . '</div>';
+}
+
+/** Toggle switch row: label + optional hint on the left, switch on the right. */
+function fx_switch(string $name, bool $checked, string $label, string $hint = ''): string {
+    $id = 'sw-' . preg_replace('/[^a-z0-9_-]/i', '-', $name);
+    return '<div class="switch-row">'
+        . '<div class="sw-text"><strong>' . h($label) . '</strong>'
+        . ($hint !== '' ? '<span class="hint">' . h($hint) . '</span>' : '')
+        . '</div>'
+        . '<label class="fx-switch" for="' . h($id) . '">'
+        . '<input type="checkbox" id="' . h($id) . '" name="' . h($name) . '" value="1"' . ($checked ? ' checked' : '') . '>'
+        . '<span class="track"></span>'
+        . '</label></div>';
+}
+
+/** Panel header with gradient icon badge. */
+function fx_panel_header(string $icon, string $title, string $sub = ''): string {
+    return '<div class="settings-panel-header">'
+        . '<div class="icon-badge"><i class="fas fa-' . h($icon) . '"></i></div>'
+        . '<div><h2>' . h($title) . '</h2>'
+        . ($sub !== '' ? '<p>' . h($sub) . '</p>' : '')
+        . '</div></div>';
+}
+
+/** Copyable feed/URL pill. */
+function fx_url_pill(string $url): string {
+    return '<div class="feed-url-row"><span>' . h($url) . '</span>'
+        . '<button type="button" title="Copy" onclick="navigator.clipboard.writeText(' . h(json_encode($url)) . ').then(()=>{this.innerHTML=\'<i class=&quot;fas fa-check&quot;></i>\';setTimeout(()=>this.innerHTML=\'<i class=&quot;fas fa-copy&quot;></i>\',1200)})"><i class="fas fa-copy"></i></button></div>';
+}
+
+/**
+ * Text path field with Browse (existing uploads) + Upload.
+ *
+ * @param array{
+ *   label?:string, hint?:string, placeholder?:string, accept?:string,
+ *   mode?:string, attrs?:string, preview?:bool, id?:string
+ * } $opts
+ *   accept: image|audio|any (default image)
+ *   mode: path (/uploads/file) | basename (file only) — default path
+ */
+function fx_media_field(string $name, string $value, array $opts = []): string {
+    $label = (string)($opts['label'] ?? '');
+    $hint = (string)($opts['hint'] ?? '');
+    $placeholder = (string)($opts['placeholder'] ?? '/uploads/…');
+    $accept = (string)($opts['accept'] ?? 'image');
+    if (!in_array($accept, ['image', 'audio', 'any'], true)) {
+        $accept = 'image';
+    }
+    $mode = (($opts['mode'] ?? 'path') === 'basename') ? 'basename' : 'path';
+    $attrs = (string)($opts['attrs'] ?? '');
+    $preview = array_key_exists('preview', $opts) ? (bool)$opts['preview'] : ($accept === 'image');
+    $id = (string)($opts['id'] ?? ('mf-' . preg_replace('/[^a-z0-9_-]/i', '-', $name)));
+
+    $acceptAttr = match ($accept) {
+        'image' => 'image/*,.ico,.svg',
+        'audio' => 'audio/*,.mp3,.m4a,.wav,.ogg',
+        default => '*/*',
+    };
+
+    $html = '<div class="fx-media-field" data-media-accept="' . h($accept) . '" data-media-mode="' . h($mode) . '">';
+    if ($label !== '') {
+        $html .= '<label for="' . h($id) . '">' . $label . '</label>';
+    }
+    $html .= '<div class="fx-media-row">'
+        . ($preview ? '<div class="fx-media-thumb" data-media-thumb aria-hidden="true"></div>' : '')
+        . '<input type="text" id="' . h($id) . '" name="' . h($name) . '" value="' . h($value) . '"'
+        . ' placeholder="' . h($placeholder) . '" data-media-input'
+        . ($attrs !== '' ? ' ' . $attrs : '') . '>'
+        . '<div class="fx-media-actions">'
+        . '<button type="button" class="fx-media-btn" data-media-browse title="Choose from Uploads">'
+        . '<i class="fas fa-folder-open"></i><span>Browse</span></button>'
+        . '<button type="button" class="fx-media-btn primary" data-media-upload title="Upload and use">'
+        . '<i class="fas fa-upload"></i><span>Upload</span></button>'
+        . '<input type="file" data-media-file accept="' . h($acceptAttr) . '" hidden>'
+        . '</div></div>';
+    if ($hint !== '') {
+        $html .= '<span class="hint">' . $hint . '</span>';
+    }
+    $html .= '</div>';
+    return $html;
+}

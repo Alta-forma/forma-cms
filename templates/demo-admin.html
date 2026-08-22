@@ -1,0 +1,1187 @@
+<!--META
+slug: /demo
+title: Forma Admin Demo
+seo_title: Try the Forma admin — interactive demo
+seo_description: Click through a Forma admin walkthrough — pages, blog, SEO, settings — no login. Changes aren’t saved.
+og_title: Try the Forma admin
+og_description: Interactive demo of Forma’s dark admin. Tour the UI, then install your own.
+og_image: https://preview.alta-forma.com/forma-cms/assets/images/og-forma.png
+featured_image: https://preview.alta-forma.com/forma-cms/assets/images/og-forma.png
+canonical: https://forma-cms.me/demo
+robots: index,follow
+twitter_card: summary_large_image
+schema_type: WebPage
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forma Admin Demo</title>
+<meta name="description" content="Click through a Forma admin walkthrough — pages, blog, SEO, settings — no login. Changes aren’t saved.">
+<link rel="canonical" href="https://forma-cms.me/demo">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwcHgiIGhlaWdodD0iMjgwcHgiIHZpZXdCb3g9IjAgMCA0MDAgMjgwIj48ZyBzdHJva2U9Im5vbmUiIGZpbGw9IiNmY2JlMzQiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZD0iTTAsMCBMNDAwLDAgTDMyMCw4MCBMMCw4MCBMMCwwIFoiPjwvcGF0aD48cGF0aCBkPSJNMCwxMDAgTDMwMCwxMDAgTDIyMCwxODAgTDAsMTgwIEwwLDEwMCBaIj48L3BhdGg+PHBhdGggZD0iTTAsMjAwIEw4MCwyMDAgTDAsMjgwIEwwLDIwMCBaIj48L3BhdGg+PC9nPjwvc3ZnPg==">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #fcbe34;
+  --primary-end: #e6a912;
+  --bg: #1e1e1e;
+  --bg-end: #252526;
+  --footer-bg: #2d2d2d;
+  --text: #d4d4d4;
+  --text-muted: #888;
+  --border: #3e3e42;
+  --hover-bg: rgba(255,255,255,.1);
+  --error: #f44336;
+  --font-brand: "Chakra Petch", system-ui, sans-serif;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; }
+a { color: var(--primary); }
+
+/* Demo chip */
+.demo-chip {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .35rem .75rem;
+  border-radius: 999px;
+  background: rgba(252,190,52,.14);
+  border: 1px solid rgba(252,190,52,.4);
+  color: var(--primary);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-family: var(--font-brand);
+}
+.demo-chip i { font-size: .8rem; }
+
+/* Admin shell */
+.app-header {
+  height: 56px;
+  background: var(--bg-end);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 20px;
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1000;
+}
+.app-header nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+.brand-mini {
+  display: none;
+  align-items: center;
+  gap: .45rem;
+  color: var(--primary);
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  flex: none;
+}
+.brand-mini svg { width: 1.2rem; color: var(--primary); }
+.button-group {
+  display: inline-flex;
+  overflow-x: auto;
+  padding: 4px;
+  max-width: calc(100vw - 90px);
+  background: rgba(0,0,0,.2);
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  align-items: center;
+  height: 36px;
+  scrollbar-width: none;
+}
+.button-group::-webkit-scrollbar { display: none; }
+.button-group button {
+  padding: 8px 14px;
+  min-width: 110px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: .88rem;
+  white-space: nowrap;
+  position: relative;
+  transition: background .2s, color .2s;
+  margin: 0;
+}
+.button-group button:first-child { border-radius: 20px 0 0 20px; padding-left: 18px; }
+.button-group button:last-child { border-radius: 0 20px 20px 0; padding-right: 18px; }
+.button-group button:hover { background: var(--hover-bg); }
+.button-group button.active {
+  background: var(--primary);
+  color: #121212;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+  font-weight: 600;
+}
+.button-group button:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: var(--border);
+}
+.button-group button.active::after,
+.button-group button.active + button::after { display: none; }
+#app-close-btn {
+  width: 36px; height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  text-decoration: none;
+}
+#app-close-btn:hover { background: var(--hover-bg); color: #fff; }
+
+.main-container {
+  position: fixed;
+  top: 56px;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  overflow: hidden;
+}
+.section-container {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+.section-container.is-active { display: flex; }
+
+.file-list {
+  width: 260px;
+  flex: none;
+  border-right: 1px solid var(--border);
+  background: var(--bg-end);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.file-list-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.file-list-head h2 {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #fff;
+}
+.file-list-content { overflow: auto; flex: 1; padding: 8px; }
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: .9rem;
+  transition: background .15s;
+  user-select: none;
+}
+.file-item:hover { background: var(--hover-bg); }
+.file-item.active {
+  background: rgba(252,190,52,.14);
+  color: #fff;
+}
+.file-item.active i { color: var(--primary); }
+.file-item i { color: var(--text-muted); width: 1.1rem; text-align: center; }
+.status-pill {
+  margin-left: auto;
+  font-size: .68rem;
+  padding: .15rem .4rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.editor-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 22px 80px;
+}
+.editor-empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem;
+}
+.editor-empty i { font-size: 2rem; margin-bottom: .75rem; color: var(--primary); opacity: .7; }
+.editor-title {
+  margin: 0 0 1.25rem;
+  font-size: 1.35rem;
+  color: #fff;
+  font-weight: 600;
+}
+.field { margin-bottom: 1rem; }
+.field label {
+  display: block;
+  margin-bottom: .4rem;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+.field input, .field textarea, .field select {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: .65rem .75rem;
+}
+.field input:focus, .field textarea:focus {
+  outline: 2px solid rgba(252,190,52,.45);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+.field textarea.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: .88rem;
+  line-height: 1.5;
+  min-height: 220px;
+  resize: vertical;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 720px) {
+  .field-row { grid-template-columns: 1fr; }
+  .file-list { width: 200px; }
+  .button-group button { min-width: auto; padding: 8px 10px; }
+  .button-group button span { display: none; }
+  .brand-mini { display: inline-flex; }
+}
+.seo-box {
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0,0,0,.18);
+}
+.seo-box h3 {
+  margin: 0 0 .85rem;
+  font-size: .95rem;
+  color: #fff;
+}
+.serp-preview {
+  padding: .85rem;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;
+  margin-bottom: .85rem;
+}
+.serp-preview .s-title { color: #1a0dab; font-size: 1.05rem; margin-bottom: .15rem; }
+.serp-preview .s-url { color: #006621; font-size: .8rem; margin-bottom: .25rem; }
+.serp-preview .s-desc { color: #545454; font-size: .85rem; line-height: 1.35; }
+
+.app-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--footer-bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 20px;
+  z-index: 10;
+  gap: 8px;
+}
+.btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 4px;
+  padding: .55rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: .9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn:hover { background: var(--hover-bg); }
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #121212;
+}
+.btn-primary:hover { background: var(--primary-end); color: #121212; }
+.btn-ghost { color: var(--text-muted); }
+
+.toast {
+  position: fixed;
+  bottom: 72px;
+  right: 20px;
+  background: var(--primary);
+  color: #121212;
+  padding: .6rem 1rem;
+  border-radius: 4px;
+  font-weight: 600;
+  z-index: 2000;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .2s, transform .25s var(--ease-out);
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: none; }
+
+/* Settings */
+.settings-layout { display: flex; width: 100%; height: 100%; }
+.settings-nav {
+  width: 220px;
+  flex: none;
+  border-right: 1px solid var(--border);
+  background: var(--bg-end);
+  padding: 8px;
+  overflow: auto;
+}
+.settings-main { flex: 1; overflow: auto; padding: 22px; padding-bottom: 80px; }
+.health-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin: 0 0 1.25rem;
+}
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .4rem .7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: .8rem;
+  background: rgba(0,0,0,.2);
+}
+.health-pill.ok { border-color: rgba(76,175,80,.5); color: #81c784; }
+.health-pill.warn { border-color: rgba(252,190,52,.45); color: var(--primary); }
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.mini-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(0,0,0,.15);
+}
+.mini-card h4 { margin: 0 0 .4rem; color: #fff; font-size: .95rem; }
+.mini-card p { margin: 0; color: var(--text-muted); font-size: .85rem; line-height: 1.4; }
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.switch {
+  width: 42px; height: 24px;
+  background: var(--border);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  border: 0;
+  flex: none;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  background: #d4d4d4;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.switch.on { background: var(--primary); }
+.switch.on::after { transform: translateX(18px); background: #121212; }
+
+/* Uploads / snippets / podcast placeholders */
+.panel-pad { padding: 22px; width: 100%; overflow: auto; }
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .75rem;
+}
+.media-tile {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(252,190,52,.12), rgba(255,255,255,.03));
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: .8rem;
+  text-align: center;
+  padding: .5rem;
+}
+.media-tile i { display: block; font-size: 1.4rem; color: var(--primary); margin-bottom: .35rem; }
+
+/* Modals & tour */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: rgba(0,0,0,.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+}
+.modal-backdrop.is-open { opacity: 1; pointer-events: auto; }
+.modal {
+  width: min(440px, 100%);
+  background: var(--bg-end);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem 1.5rem 1.35rem;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  transform: translateY(12px) scale(.98);
+  transition: transform .35s var(--ease-out);
+}
+.modal-backdrop.is-open .modal { transform: none; }
+.modal-mark {
+  width: 2.4rem;
+  color: var(--primary);
+  margin-bottom: .85rem;
+}
+.modal h2 {
+  margin: 0 0 .65rem;
+  font-family: var(--font-brand);
+  font-size: 1.45rem;
+  letter-spacing: -.02em;
+  color: #fff;
+}
+.modal p {
+  margin: 0 0 1.25rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-size: .95rem;
+}
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+  justify-content: flex-end;
+}
+.modal-actions .btn { flex: none; }
+
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  pointer-events: none;
+  display: none;
+}
+.tour-overlay.is-active { display: block; }
+.tour-hole {
+  position: absolute;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.62), 0 0 0 2px var(--primary), 0 0 24px rgba(252,190,52,.35);
+  transition: top .3s var(--ease-out), left .3s var(--ease-out), width .3s var(--ease-out), height .3s var(--ease-out);
+  pointer-events: none;
+}
+.tour-tip {
+  position: absolute;
+  z-index: 4001;
+  width: min(320px, calc(100vw - 2rem));
+  background: var(--bg-end);
+  border: 1px solid rgba(252,190,52,.45);
+  border-radius: 10px;
+  padding: 1rem 1.05rem;
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  pointer-events: auto;
+  transition: top .3s var(--ease-out), left .3s var(--ease-out);
+}
+.tour-tip .step-meta {
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  font-family: var(--font-brand);
+  margin-bottom: .4rem;
+}
+.tour-tip h3 {
+  margin: 0 0 .4rem;
+  font-size: 1.05rem;
+  color: #fff;
+}
+.tour-tip p {
+  margin: 0 0 .9rem;
+  font-size: .88rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.tour-tip .tip-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+}
+body.tour-lock [data-tour-target] { pointer-events: none; }
+body.tour-lock [data-tour-target].tour-hot {
+  pointer-events: auto;
+  position: relative;
+  z-index: 4002;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="demo-chip" aria-hidden="true"><i class="fas fa-flask"></i> Demo site · changes aren’t saved</div>
+
+  <header class="app-header">
+    <nav>
+      <a class="brand-mini" href="/" title="Forma home">
+        <svg viewBox="0 0 400 280" aria-hidden="true"><g fill="currentColor" fill-rule="evenodd"><path d="M0,0 L400,0 L320,80 L0,80 Z"/><path d="M0,100 L300,100 L220,180 L0,180 Z"/><path d="M0,200 L80,200 L0,280 Z"/></g></svg>
+        Forma
+      </a>
+      <div class="button-group" id="sectionNav" role="tablist" aria-label="Admin sections">
+        <button type="button" data-section="pages" data-tour-target="nav-pages" class="active"><i class="fas fa-file-alt"></i> <span>Pages</span></button>
+        <button type="button" data-section="blog" data-tour-target="nav-blog"><i class="fas fa-blog"></i> <span>Blog</span></button>
+        <button type="button" data-section="podcast" data-tour-target="nav-podcast"><i class="fas fa-podcast"></i> <span>Podcast</span></button>
+        <button type="button" data-section="uploads" data-tour-target="nav-uploads"><i class="fas fa-upload"></i> <span>Uploads</span></button>
+        <button type="button" data-section="snippets" data-tour-target="nav-snippets"><i class="fas fa-code"></i> <span>Snippets</span></button>
+        <button type="button" data-section="settings" data-tour-target="nav-settings"><i class="fas fa-cog"></i> <span>Settings</span></button>
+      </div>
+      <a href="/" id="app-close-btn" title="Back to Forma site" aria-label="Close demo"><i class="fas fa-xmark"></i></a>
+    </nav>
+  </header>
+
+  <div class="main-container" id="main">
+    <!-- Pages -->
+    <section class="section-container is-active" data-panel="pages">
+      <aside class="file-list">
+        <div class="file-list-head"><h2>Pages</h2></div>
+        <div class="file-list-content" id="pagesList">
+          <div class="file-item active" data-file="home"><i class="fas fa-house"></i> home</div>
+          <div class="file-item" data-file="about"><i class="fas fa-file-alt"></i> about</div>
+          <div class="file-item" data-file="services"><i class="fas fa-file-alt"></i> services</div>
+          <div class="file-item" data-file="contact"><i class="fas fa-file-alt"></i> contact</div>
+        </div>
+      </aside>
+      <div class="editor-pane">
+        <div class="editor-body" id="pagesEditor"></div>
+        <footer class="app-footer">
+          <button type="button" class="btn btn-ghost" data-action="preview">Preview</button>
+          <button type="button" class="btn btn-primary" data-action="save-page"><i class="fas fa-save"></i> Save</button>
+        </footer>
+      </div>
+    </section>
+
+    <!-- Blog -->
+    <section class="section-container" data-panel="blog">
+      <aside class="file-list">
+        <div class="file-list-head"><h2>Blog</h2></div>
+        <div class="file-list-content" id="blogList">
+          <div class="file-item" data-post="launch-notes" data-tour-target="blog-post"><i class="fas fa-newspaper"></i> Launch notes<span class="status-pill">live</span></div>
+          <div class="file-item" data-post="studio-weekend"><i class="fas fa-newspaper"></i> Studio weekend<span class="status-pill">live</span></div>
+          <div class="file-item" data-post="client-handoff"><i class="fas fa-newspaper"></i> Client handoff<span class="status-pill">draft</span></div>
+        </div>
+      </aside>
+      <div class="editor-pane">
+        <div class="editor-body" id="blogEditor">
+          <div class="editor-empty">
+            <div>
+              <i class="fas fa-blog"></i>
+              <p>Select a post to edit Markdown, SEO, and the featured image.</p>
+            </div>
+          </div>
+        </div>
+        <footer class="app-footer">
+          <button type="button" class="btn btn-ghost" data-action="preview">Preview</button>
+          <button type="button" class="btn btn-primary" data-tour-target="save-post" data-action="save-post"><i class="fas fa-save"></i> Save</button>
+        </footer>
+      </div>
+    </section>
+
+    <!-- Podcast -->
+    <section class="section-container" data-panel="podcast">
+      <div class="panel-pad">
+        <h2 class="editor-title">Podcast</h2>
+        <p style="color:var(--text-muted);max-width:36rem;margin:0 0 1.25rem">Episodes, artwork, and a feed that doesn’t need a plugin zoo. This demo skips the audio upload — the real admin handles it.</p>
+        <div class="card-grid">
+          <div class="mini-card"><h4>Show settings</h4><p>Title, author, category, artwork URL.</p></div>
+          <div class="mini-card"><h4>Episodes</h4><p>Audio URL, publish date, show notes in Markdown.</p></div>
+          <div class="mini-card"><h4>Feed</h4><p>RSS generated for Apple Podcasts and friends.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Uploads -->
+    <section class="section-container" data-panel="uploads">
+      <div class="panel-pad">
+        <h2 class="editor-title">Uploads</h2>
+        <p style="color:var(--text-muted);margin:0 0 1rem">Media for Acme Studio (demo files).</p>
+        <div class="media-grid">
+          <div class="media-tile"><i class="fas fa-image"></i>hero.jpg</div>
+          <div class="media-tile"><i class="fas fa-image"></i>og-card.png</div>
+          <div class="media-tile"><i class="fas fa-image"></i>logo.svg</div>
+          <div class="media-tile"><i class="fas fa-file-audio"></i>ep-01.mp3</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Snippets -->
+    <section class="section-container" data-panel="snippets">
+      <aside class="file-list">
+        <div class="file-list-head"><h2>Snippets</h2></div>
+        <div class="file-list-content">
+          <div class="file-item active"><i class="fas fa-code"></i> site-header</div>
+          <div class="file-item"><i class="fas fa-code"></i> site-footer</div>
+          <div class="file-item"><i class="fas fa-code"></i> site-head</div>
+        </div>
+      </aside>
+      <div class="editor-pane">
+        <div class="editor-body">
+          <h2 class="editor-title">site-header</h2>
+          <div class="field">
+            <label>Shortcode</label>
+            <input type="text" value="site-header" readonly>
+          </div>
+          <div class="field">
+            <label>Content</label>
+            <textarea class="code" readonly>&lt;header class="site-nav"&gt;…&lt;/header&gt;
+Use [[site-header]] in pages and Twig templates.</textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="section-container" data-panel="settings">
+      <div class="settings-layout">
+        <aside class="settings-nav">
+          <div class="file-item active" data-settings="seo" data-tour-target="settings-seo"><i class="fas fa-search"></i> SEO</div>
+          <div class="file-item" data-settings="agents"><i class="fas fa-robot"></i> Agents</div>
+          <div class="file-item" data-settings="general"><i class="fas fa-sliders"></i> General</div>
+          <div class="file-item" data-settings="account"><i class="fas fa-user"></i> Account</div>
+        </aside>
+        <div class="settings-main" id="settingsMain" data-tour-target="settings-panel"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status">Saved</div>
+
+  <!-- Intro / finish modals -->
+  <div class="modal-backdrop is-open" id="introModal" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="modal">
+      <svg class="modal-mark" viewBox="0 0 400 280" aria-hidden="true"><g fill="currentColor" fill-rule="evenodd"><path d="M0,0 L400,0 L320,80 L0,80 Z"/><path d="M0,100 L300,100 L220,180 L0,180 Z"/><path d="M0,200 L80,200 L0,280 Z"/></g></svg>
+      <h2 id="introTitle">This is a Forma admin demo</h2>
+      <p>Click through the real admin shape — pages, blog, SEO, settings — without logging in. Nothing you change here is saved to a live site.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="skipTour">Skip &amp; explore</button>
+        <button type="button" class="btn btn-primary" id="startTour">Start tour</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="doneModal" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <svg class="modal-mark" viewBox="0 0 400 280" aria-hidden="true"><g fill="currentColor" fill-rule="evenodd"><path d="M0,0 L400,0 L320,80 L0,80 Z"/><path d="M0,100 L300,100 L220,180 L0,180 Z"/><path d="M0,200 L80,200 L0,280 Z"/></g></svg>
+      <h2 id="doneTitle">You’ve got the shape of Forma</h2>
+      <p>Dark admin, Markdown posts, built-in SEO, agent-ready settings. Install your own instance and keep the whole site in one SQLite file.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="keepExploring">Keep exploring</button>
+        <a class="btn" href="/docs">Docs</a>
+        <a class="btn btn-primary" href="/#install">Get Forma</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-overlay" id="tourOverlay" aria-hidden="true">
+    <div class="tour-hole" id="tourHole"></div>
+  </div>
+  <div class="tour-tip" id="tourTip" hidden>
+    <div class="step-meta" id="tipMeta">Step 1 of 4</div>
+    <h3 id="tipTitle">Title</h3>
+    <p id="tipBody">Body</p>
+    <div class="tip-actions">
+      <button type="button" class="btn btn-ghost" id="tipSkip">Skip tour</button>
+      <span style="color:var(--text-muted);font-size:.8rem" id="tipHint">Click the highlighted control</span>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var pages = {
+    home: {
+      title: "home",
+      slug: "/",
+      body: "<!DOCTYPE html>\n<html>\n<body>\n  <h1>Acme Studio</h1>\n  <p>We design portable brands.</p>\n</body>\n</html>"
+    },
+    about: {
+      title: "about",
+      slug: "/about",
+      body: "<h1>About Acme</h1>\n<p>A two-person studio that ships sites you can own.</p>"
+    },
+    services: {
+      title: "services",
+      slug: "/services",
+      body: "<h1>Services</h1>\n<ul><li>Brand sites</li><li>CMS setup</li><li>Handoff docs</li></ul>"
+    },
+    contact: {
+      title: "contact",
+      slug: "/contact",
+      body: "<h1>Contact</h1>\n<p>hello@acme.studio</p>"
+    }
+  };
+
+  var posts = {
+    "launch-notes": {
+      title: "Launch notes",
+      slug: "launch-notes",
+      description: "What shipped with Acme Studio’s new site — and what we left out on purpose.",
+      body: "## Ship the site, not the stack\n\nWe rebuilt on Forma so the client owns a SQLite file, not a plugin graveyard.\n\n- Pages in HTML for the marketing surface\n- Blog in Markdown for the journal\n- SEO fields filled before launch\n",
+      seoDescription: "What shipped with Acme Studio’s new site — and what we left out on purpose.",
+      featured: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
+    },
+    "studio-weekend": {
+      title: "Studio weekend",
+      slug: "studio-weekend",
+      description: "A short note on quiet shipping days.",
+      body: "## Friday quiet\n\nNo standups. Just the work.\n",
+      seoDescription: "A short note on quiet shipping days.",
+      featured: ""
+    },
+    "client-handoff": {
+      title: "Client handoff",
+      slug: "client-handoff",
+      description: "Draft: checklist before we hand over the keys.",
+      body: "## Handoff checklist\n\n- [ ] Change admin password\n- [ ] Export site package\n- [ ] Walk through /admin\n",
+      seoDescription: "Checklist before we hand over the keys.",
+      featured: ""
+    }
+  };
+
+  var state = {
+    section: "pages",
+    page: "home",
+    post: null,
+    settings: "seo",
+    tour: false,
+    step: -1
+  };
+
+  var el = {
+    intro: document.getElementById("introModal"),
+    done: document.getElementById("doneModal"),
+    toast: document.getElementById("toast"),
+    pagesEditor: document.getElementById("pagesEditor"),
+    blogEditor: document.getElementById("blogEditor"),
+    settingsMain: document.getElementById("settingsMain"),
+    overlay: document.getElementById("tourOverlay"),
+    hole: document.getElementById("tourHole"),
+    tip: document.getElementById("tourTip"),
+    tipMeta: document.getElementById("tipMeta"),
+    tipTitle: document.getElementById("tipTitle"),
+    tipBody: document.getElementById("tipBody"),
+    tipHint: document.getElementById("tipHint")
+  };
+
+  function showToast(msg) {
+    el.toast.textContent = msg || "Saved";
+    el.toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { el.toast.classList.remove("show"); }, 2200);
+  }
+
+  function setSection(name) {
+    state.section = name;
+    document.querySelectorAll("#sectionNav button").forEach(function (b) {
+      b.classList.toggle("active", b.dataset.section === name);
+    });
+    document.querySelectorAll("[data-panel]").forEach(function (p) {
+      p.classList.toggle("is-active", p.dataset.panel === name);
+    });
+    if (name === "settings") renderSettings();
+    if (state.tour) positionTour();
+  }
+
+  function renderPage(id) {
+    state.page = id;
+    var p = pages[id];
+    document.querySelectorAll("#pagesList .file-item").forEach(function (item) {
+      item.classList.toggle("active", item.dataset.file === id);
+    });
+    el.pagesEditor.innerHTML =
+      '<h2 class="editor-title">' + p.title + '</h2>' +
+      '<div class="field-row"><div class="field"><label>Filename</label><input value="' + p.title + '" readonly></div>' +
+      '<div class="field"><label>Slug</label><input value="' + p.slug + '"></div></div>' +
+      '<div class="field"><label>Content (HTML)</label><textarea class="code">' + escapeHtml(p.body) + '</textarea></div>';
+  }
+
+  function renderPost(id) {
+    state.post = id;
+    var p = posts[id];
+    document.querySelectorAll("#blogList .file-item").forEach(function (item) {
+      item.classList.toggle("active", item.dataset.post === id);
+    });
+    el.blogEditor.innerHTML =
+      '<h2 class="editor-title">' + escapeHtml(p.title) + '</h2>' +
+      '<div class="field-row"><div class="field"><label>Title</label><input id="postTitle" value="' + escapeAttr(p.title) + '"></div>' +
+      '<div class="field"><label>Slug</label><input value="' + escapeAttr(p.slug) + '"></div></div>' +
+      '<div class="field"><label>Body (Markdown)</label><textarea class="code" id="postBody">' + escapeHtml(p.body) + '</textarea></div>' +
+      '<div class="seo-box" data-tour-target="seo-box">' +
+        '<h3><i class="fas fa-search" style="color:var(--primary);margin-right:.35rem"></i> SEO</h3>' +
+        '<div class="serp-preview"><div class="s-title" id="serpTitle">' + escapeHtml(p.title) + ' | Acme Studio</div>' +
+        '<div class="s-url">https://acme.studio/blog/' + escapeHtml(p.slug) + '</div>' +
+        '<div class="s-desc" id="serpDesc">' + escapeHtml(p.seoDescription) + '</div></div>' +
+        '<div class="field"><label>SEO description</label><input id="seoDesc" data-tour-target="seo-desc" value="' + escapeAttr(p.seoDescription) + '"></div>' +
+        '<div class="field"><label>Featured image URL</label><input id="featImg" data-tour-target="feat-img" value="' + escapeAttr(p.featured) + '" placeholder="https://…"></div>' +
+      '</div>';
+
+    var seoInput = document.getElementById("seoDesc");
+    var featInput = document.getElementById("featImg");
+    if (seoInput) {
+      seoInput.addEventListener("input", function () {
+        document.getElementById("serpDesc").textContent = seoInput.value;
+        posts[id].seoDescription = seoInput.value;
+        if (state.tour && state.step === 2) maybeAdvanceSeo();
+      });
+    }
+    if (featInput) {
+      featInput.addEventListener("input", function () {
+        posts[id].featured = featInput.value;
+        if (state.tour && state.step === 2) maybeAdvanceSeo();
+      });
+    }
+    if (state.tour) positionTour();
+  }
+
+  function maybeAdvanceSeo() {
+    var seo = document.getElementById("seoDesc");
+    var feat = document.getElementById("featImg");
+    if (!seo || !feat) return;
+    if (seo.value.trim().length > 20 && feat.value.trim().length > 8) {
+      completeStep(2);
+    }
+  }
+
+  function renderSettings() {
+    document.querySelectorAll(".settings-nav .file-item").forEach(function (item) {
+      item.classList.toggle("active", item.dataset.settings === state.settings);
+    });
+    if (state.settings === "seo") {
+      el.settingsMain.innerHTML =
+        '<h2 class="editor-title">SEO</h2>' +
+        '<div class="health-strip">' +
+          '<span class="health-pill ok"><i class="fas fa-check"></i> Sitemap on</span>' +
+          '<span class="health-pill ok"><i class="fas fa-check"></i> Robots auto</span>' +
+          '<span class="health-pill warn"><i class="fas fa-exclamation"></i> Add default OG image</span>' +
+          '<span class="health-pill ok"><i class="fas fa-check"></i> Health 92</span>' +
+        '</div>' +
+        '<div class="field"><label>Default OG image</label><input placeholder="/uploads/og.png"></div>' +
+        '<div class="field"><label>Title separator</label><input value="|"></div>' +
+        '<p style="color:var(--text-muted);font-size:.9rem;margin:1rem 0 0">Per-page SEO lives on each editor. Sitewide defaults fill the gaps.</p>';
+    } else if (state.settings === "agents") {
+      el.settingsMain.innerHTML =
+        '<h2 class="editor-title">Agents</h2>' +
+        '<div class="switch-row"><div><strong style="color:#fff">Agent API</strong><p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.85rem">Let Cursor edit content over HTTPS with scoped tokens.</p></div><button type="button" class="switch on" aria-label="Agent API on"></button></div>' +
+        '<div class="switch-row"><div><strong style="color:#fff">Audit log</strong><p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.85rem">Every agent write leaves a trail.</p></div><button type="button" class="switch on" aria-label="Audit on"></button></div>' +
+        '<div class="mini-card" style="margin-top:1.25rem"><h4>Demo token</h4><p><code style="color:var(--primary)">fx_demo_••••••••</code> — not a real key. Create yours in a live install.</p></div>';
+    } else if (state.settings === "general") {
+      el.settingsMain.innerHTML =
+        '<h2 class="editor-title">General</h2>' +
+        '<div class="field"><label>Site title</label><input value="Acme Studio"></div>' +
+        '<div class="field"><label>Site URL</label><input value="https://acme.studio"></div>' +
+        '<div class="field"><label>Timezone</label><input value="America/Chicago"></div>';
+    } else {
+      el.settingsMain.innerHTML =
+        '<h2 class="editor-title">Account</h2>' +
+        '<div class="field"><label>Username</label><input value="admin" readonly></div>' +
+        '<p style="color:var(--text-muted)">Change the password on first boot of a real install.</p>';
+    }
+    el.settingsMain.querySelectorAll(".switch").forEach(function (sw) {
+      sw.addEventListener("click", function () { sw.classList.toggle("on"); showToast("Updated (demo)"); });
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function escapeAttr(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  }
+
+  /* -------- Tour -------- */
+  var steps = [
+    {
+      target: "nav-blog",
+      title: "Open Blog",
+      body: "The top bar is the whole CMS: Pages, Blog, Podcast, Uploads, Snippets, Settings. Click Blog.",
+      hint: "Click Blog in the nav"
+    },
+    {
+      target: "blog-post",
+      title: "Open a post",
+      body: "Posts are Markdown-first. Pick Launch notes to open the editor.",
+      hint: "Click Launch notes"
+    },
+    {
+      target: "seo-desc",
+      title: "Tune SEO",
+      body: "Edit the SEO description and add a featured image URL. The SERP preview updates as you type — then we’ll save.",
+      hint: "Edit description + image, then Save",
+      altTargets: ["feat-img", "save-post", "seo-box"]
+    },
+    {
+      target: "nav-settings",
+      title: "Peek Settings",
+      body: "Sitewide SEO health, Agent API, backups — where you’d look. Click Settings.",
+      hint: "Click Settings in the nav"
+    }
+  ];
+
+  function startTour() {
+    el.intro.classList.remove("is-open");
+    state.tour = true;
+    state.step = 0;
+    document.body.classList.add("tour-lock");
+    el.overlay.classList.add("is-active");
+    el.tip.hidden = false;
+    showStep(0);
+  }
+
+  function endTour(showDone) {
+    state.tour = false;
+    state.step = -1;
+    document.body.classList.remove("tour-lock");
+    el.overlay.classList.remove("is-active");
+    el.tip.hidden = true;
+    document.querySelectorAll(".tour-hot").forEach(function (n) { n.classList.remove("tour-hot"); });
+    if (showDone) {
+      el.done.classList.add("is-open");
+    }
+  }
+
+  function showStep(i) {
+    state.step = i;
+    var step = steps[i];
+    el.tipMeta.textContent = "Step " + (i + 1) + " of " + steps.length;
+    el.tipTitle.textContent = step.title;
+    el.tipBody.textContent = step.body;
+    el.tipHint.textContent = step.hint;
+    positionTour();
+  }
+
+  function completeStep(i) {
+    if (!state.tour || state.step !== i) return;
+    if (i === 2) showToast("Saved");
+    if (i + 1 >= steps.length) {
+      setTimeout(function () { endTour(true); }, reduce ? 0 : 350);
+      return;
+    }
+    showStep(i + 1);
+  }
+
+  function positionTour() {
+    if (!state.tour || state.step < 0) return;
+    var step = steps[state.step];
+    document.querySelectorAll(".tour-hot").forEach(function (n) { n.classList.remove("tour-hot"); });
+
+    var target = document.querySelector('[data-tour-target="' + step.target + '"]');
+    if (!target && step.altTargets) {
+      for (var a = 0; a < step.altTargets.length; a++) {
+        target = document.querySelector('[data-tour-target="' + step.altTargets[a] + '"]');
+        if (target) break;
+      }
+    }
+    if (!target) {
+      el.hole.style.display = "none";
+      return;
+    }
+    el.hole.style.display = "block";
+    target.classList.add("tour-hot");
+    if (step.altTargets) {
+      step.altTargets.forEach(function (name) {
+        var n = document.querySelector('[data-tour-target="' + name + '"]');
+        if (n) n.classList.add("tour-hot");
+      });
+    }
+    target.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+
+    var pad = 6;
+    var r = target.getBoundingClientRect();
+    // Expand hole to include alt hot targets on step 2
+    if (step.altTargets) {
+      step.altTargets.forEach(function (name) {
+        var n = document.querySelector('[data-tour-target="' + name + '"]');
+        if (!n) return;
+        var rr = n.getBoundingClientRect();
+        var left = Math.min(r.left, rr.left);
+        var top = Math.min(r.top, rr.top);
+        var right = Math.max(r.right, rr.right);
+        var bottom = Math.max(r.bottom, rr.bottom);
+        r = { left: left, top: top, right: right, bottom: bottom, width: right - left, height: bottom - top };
+      });
+      // Prefer seo-box as the hole if present
+      var box = document.querySelector('[data-tour-target="seo-box"]');
+      var saveBtn = document.querySelector('[data-tour-target="save-post"]');
+      if (box && saveBtn) {
+        var b = box.getBoundingClientRect();
+        var s = saveBtn.getBoundingClientRect();
+        var left = Math.min(b.left, s.left);
+        var top = Math.min(b.top, s.top);
+        var right = Math.max(b.right, s.right);
+        var bottom = Math.max(b.bottom, s.bottom);
+        r = { left: left, top: top, width: right - left, height: bottom - top, right: right, bottom: bottom };
+      }
+    }
+
+    el.hole.style.top = (r.top - pad) + "px";
+    el.hole.style.left = (r.left - pad) + "px";
+    el.hole.style.width = (r.width + pad * 2) + "px";
+    el.hole.style.height = (r.height + pad * 2) + "px";
+
+    var tipW = el.tip.offsetWidth || 300;
+    var tipH = el.tip.offsetHeight || 160;
+    var left = r.left;
+    var top = r.bottom + 14;
+    if (top + tipH > window.innerHeight - 12) top = Math.max(12, r.top - tipH - 14);
+    if (left + tipW > window.innerWidth - 12) left = window.innerWidth - tipW - 12;
+    if (left < 12) left = 12;
+    el.tip.style.top = top + "px";
+    el.tip.style.left = left + "px";
+  }
+
+  /* -------- Events -------- */
+  document.getElementById("startTour").addEventListener("click", startTour);
+  document.getElementById("skipTour").addEventListener("click", function () {
+    el.intro.classList.remove("is-open");
+    endTour(false);
+  });
+  document.getElementById("tipSkip").addEventListener("click", function () { endTour(false); });
+  document.getElementById("keepExploring").addEventListener("click", function () {
+    el.done.classList.remove("is-open");
+  });
+
+  document.querySelectorAll("#sectionNav button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var name = btn.dataset.section;
+      setSection(name);
+      if (state.tour && state.step === 0 && name === "blog") completeStep(0);
+      if (state.tour && state.step === 3 && name === "settings") {
+        completeStep(3);
+      }
+    });
+  });
+
+  document.querySelectorAll("#pagesList .file-item").forEach(function (item) {
+    item.addEventListener("click", function () { renderPage(item.dataset.file); });
+  });
+
+  document.querySelectorAll("#blogList .file-item").forEach(function (item) {
+    item.addEventListener("click", function () {
+      renderPost(item.dataset.post);
+      if (state.tour && state.step === 1 && item.dataset.post === "launch-notes") {
+        completeStep(1);
+      }
+    });
+  });
+
+  document.querySelectorAll(".settings-nav .file-item").forEach(function (item) {
+    item.addEventListener("click", function () {
+      state.settings = item.dataset.settings;
+      renderSettings();
+      if (state.tour) positionTour();
+    });
+  });
+
+  document.getElementById("main").addEventListener("click", function (e) {
+    var savePost = e.target.closest('[data-action="save-post"]');
+    var savePage = e.target.closest('[data-action="save-page"]');
+    var preview = e.target.closest('[data-action="preview"]');
+    if (savePost) {
+      if (state.post) {
+        var t = document.getElementById("postTitle");
+        if (t) posts[state.post].title = t.value;
+      }
+      showToast("Saved");
+      if (state.tour && state.step === 2) completeStep(2);
+    }
+    if (savePage) showToast("Saved");
+    if (preview) showToast("Preview opened (demo)");
+  });
+
+  window.addEventListener("resize", function () { if (state.tour) positionTour(); });
+  window.addEventListener("scroll", function () { if (state.tour) positionTour(); }, true);
+
+  // Boot
+  renderPage("home");
+  renderSettings();
+})();
+</script>
+</body>
+</html>

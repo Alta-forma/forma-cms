@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — {{ site.title }}</title>
+<link rel="alternate" type="application/rss+xml" title="{{ site.title }} Blog RSS" href="/feed.xml">
+<link rel="alternate" type="application/feed+json" title="{{ site.title }} Blog JSON Feed" href="/feed.json">
+[[site-head]]
+<style>
+:root{
+  --gold-soft:rgba(252,190,52,.14);--gold-glow:rgba(252,190,52,.45);
+  --glass:rgba(255,255,255,.045);--glass-strong:rgba(255,255,255,.08);
+  --ease:cubic-bezier(.25,.1,.25,1);--ease-out:cubic-bezier(.16,1,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+body.forma-blog{overflow-x:hidden}
+body.forma-blog::before{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+img,svg{display:block;max-width:100%}
+.wrap{width:min(1100px,calc(100% - 2.75rem));margin-inline:auto}
+.scroll-progress{position:fixed;top:0;left:0;height:2px;width:0;z-index:60;background:linear-gradient(90deg,var(--gold),#fff3c4);box-shadow:0 0 16px var(--gold-glow);pointer-events:none}
+
+.journal-hero{position:relative;padding:calc(var(--nav-h) + 4.5rem) 0 2.75rem;overflow:hidden}
+.journal-hero::before{content:"";position:absolute;inset:-20% -10% auto;height:70%;background:radial-gradient(ellipse at 30% 20%,rgba(252,190,52,.16),transparent 55%),radial-gradient(ellipse at 80% 0%,rgba(255,255,255,.06),transparent 45%);pointer-events:none}
+.journal-kicker{font-family:var(--font-brand);font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin:0 0 .85rem}
+.journal-title{font-family:var(--font-brand);font-weight:700;font-size:clamp(2.6rem,6vw,4.4rem);line-height:.95;letter-spacing:-.03em;margin:0 0 1rem;max-width:14ch}
+.journal-lede{max-width:36rem;color:var(--muted);font-size:1.08rem;margin:0 0 1.5rem}
+.hero-meta{display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;align-items:center;color:var(--muted);font-size:.9rem;margin-bottom:1.25rem}
+.feed-pills{display:flex;flex-wrap:wrap;gap:.55rem}
+.feed-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border-radius:999px;border:1px solid var(--stroke);background:rgba(255,255,255,.04);color:var(--text)!important;font-size:.82rem;font-weight:600}
+.feed-pill:hover{border-color:var(--stroke-gold);background:rgba(252,190,52,.1);color:var(--gold)!important}
+.feed-pill i{color:var(--gold);font-size:.85em}
+
+.blog-toolbar{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin:0 0 1.75rem;padding:1rem 0;border-bottom:1px solid var(--stroke);position:sticky;top:var(--nav-h);z-index:20;background:linear-gradient(180deg,rgba(10,10,11,.96),rgba(10,10,11,.9) 70%,rgba(10,10,11,0));backdrop-filter:blur(10px)}
+.blog-search{position:relative;flex:1;min-width:min(100%,18rem);max-width:28rem}
+.blog-search i{position:absolute;left:.95rem;top:50%;transform:translateY(-50%);color:var(--gold);pointer-events:none;font-size:.9rem}
+.blog-search input{
+  width:100%;padding:.85rem 1rem .85rem 2.55rem;border-radius:.9rem;border:1px solid var(--stroke);
+  background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:.95rem;outline:none;
+}
+.blog-search input::placeholder{color:var(--muted)}
+.blog-search input:focus{border-color:var(--stroke-gold);box-shadow:0 0 0 3px rgba(252,190,52,.12)}
+.blog-toolbar-meta{color:var(--muted);font-size:.88rem;white-space:nowrap}
+.blog-toolbar-meta strong{color:var(--text);font-weight:600}
+
+.chip{display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .65rem;border-radius:999px;border:1px solid var(--stroke);background:rgba(0,0,0,.35);color:var(--gold);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-brand);width:max-content;margin-bottom:.85rem}
+.meta-row{display:flex;flex-wrap:wrap;gap:.5rem .9rem;color:var(--muted);font-size:.85rem}
+
+.post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.15rem;margin-bottom:1.5rem}
+@media(max-width:900px){.post-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.post-grid{grid-template-columns:1fr}}
+.post-card{display:flex;flex-direction:column;border-radius:1.2rem;overflow:hidden;border:1px solid var(--stroke);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));transition:transform .4s var(--ease-out),border-color .25s var(--ease),box-shadow .4s var(--ease);color:inherit}
+.post-card:hover{transform:translateY(-5px);border-color:var(--stroke-gold);box-shadow:0 18px 40px rgba(0,0,0,.35);color:inherit}
+.post-card.is-hidden{display:none}
+.post-card .cover{aspect-ratio:16/10;background:linear-gradient(145deg,rgba(252,190,52,.18),rgba(255,255,255,.03));position:relative;overflow:hidden}
+.post-card .cover img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease-out)}
+.post-card:hover .cover img{transform:scale(1.06)}
+.post-card .cover.fallback{display:grid;place-items:center}
+.post-card .cover.fallback span{font-family:var(--font-brand);font-size:2rem;color:var(--gold);opacity:.75}
+.post-card .pad{padding:1.15rem 1.2rem 1.25rem;display:flex;flex-direction:column;flex:1}
+.post-card h2{margin:0 0 .55rem;font-family:var(--font-brand);font-size:1.15rem;line-height:1.2;color:#fff;font-weight:700}
+.post-card p{margin:0 0 1rem;color:var(--muted);font-size:.9rem;flex:1}
+
+.pager{display:flex;flex-wrap:wrap;gap:.65rem;align-items:center;justify-content:center;margin:1rem 0 3rem}
+.pager button{
+  min-width:2.5rem;padding:.55rem .85rem;border-radius:.7rem;border:1px solid var(--stroke);
+  background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:.88rem;cursor:pointer;
+}
+.pager button:hover:not(:disabled){border-color:var(--stroke-gold);color:var(--gold)}
+.pager button.is-active{background:rgba(252,190,52,.14);border-color:var(--stroke-gold);color:var(--gold);font-weight:600}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+.pager-status{color:var(--muted);font-size:.85rem;width:100%;text-align:center}
+
+.empty,.no-results{padding:3rem 1.5rem;text-align:center;color:var(--muted);border:1px dashed var(--stroke);border-radius:1.2rem;margin-bottom:3rem}
+.no-results[hidden]{display:none}
+
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out)}
+.reveal.is-in{opacity:1;transform:none}
+.reveal-d1{transition-delay:.06s}.reveal-d2{transition-delay:.12s}.reveal-d3{transition-delay:.18s}
+</style>
+<noscript><style>.reveal{opacity:1!important;transform:none!important}</style></noscript>
+</head>
+<body class="forma-chrome forma-blog">
+{% if covers is not defined %}{% set covers = {} %}{% endif %}
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+  [[site-header]]
+
+  <section class="journal-hero">
+    <div class="wrap">
+      <p class="journal-kicker reveal">Forma Blog</p>
+      <h1 class="journal-title reveal reveal-d1">Notes on portable CMS craft.</h1>
+      <p class="journal-lede reveal reveal-d2">
+        SQLite, agents, SEO without plugin theater, and the small decisions that keep a site shippable.
+      </p>
+      <div class="hero-meta reveal reveal-d3">
+        <span id="totalCount">{{ posts|length }} post{% if posts|length != 1 %}s{% endif %}</span>
+        <span>Newest first</span>
+      </div>
+      <div class="feed-pills reveal reveal-d3">
+        <a class="feed-pill" href="/feed.xml"><i class="fas fa-rss" aria-hidden="true"></i> RSS</a>
+        <a class="feed-pill" href="/feed.json"><i class="fas fa-code" aria-hidden="true"></i> JSON Feed</a>
+      </div>
+    </div>
+  </section>
+
+  <main class="wrap">
+    {% if posts %}
+      <div class="blog-toolbar reveal">
+        <form class="blog-search" role="search" id="blogSearchForm" action="/blog" method="get">
+          <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+          <label class="visually-hidden" for="blogSearch" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Search posts</label>
+          <input type="search" id="blogSearch" name="q" placeholder="Search posts…" autocomplete="off" enterkeyhint="search">
+        </form>
+        <div class="blog-toolbar-meta">
+          Showing <strong id="visibleCount">{{ posts|length }}</strong> of {{ posts|length }}
+        </div>
+      </div>
+
+      <div class="post-grid" id="postGrid">
+        {% for post in posts %}
+          {% set img = post.image|default(post.featured_image|default(covers[post.slug]|default(''))) %}
+          {% if img == '' and post.seo is defined and post.seo %}
+            {% set img = post.seo.featured_image|default(post.seo.og_image|default('')) %}
+          {% endif %}
+          {% set cats = post.categories is iterable ? post.categories|join(' ') : '' %}
+          {% set tags = post.tags is iterable ? post.tags|join(' ') : '' %}
+          <a class="post-card reveal"
+             href="/blog/{{ post.slug }}"
+             data-title="{{ post.title|e('html_attr') }}"
+             data-description="{{ post.description|e('html_attr') }}"
+             data-categories="{{ cats|e('html_attr') }}"
+             data-tags="{{ tags|e('html_attr') }}"
+             data-author="{{ post.author|e('html_attr') }}">
+            {% if img %}
+            <div class="cover"><img src="{{ img }}" alt="" loading="lazy"></div>
+            {% else %}
+            <div class="cover fallback"><span>{{ post.title|slice(0, 1) }}</span></div>
+            {% endif %}
+            <div class="pad">
+              {% if post.categories %}<span class="chip">{{ post.categories[0] }}</span>{% endif %}
+              <h2>{{ post.title }}</h2>
+              {% if post.description %}<p>{{ post.description }}</p>{% endif %}
+              <div class="meta-row">
+                <span>{{ post.date_label|default(post.date) }}</span>
+                {% if post.author %}<span>{{ post.author }}</span>{% endif %}
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+
+      <p class="no-results" id="noResults" hidden>No posts match that search. Try another word, or <a href="/blog" id="clearSearch">clear search</a>.</p>
+
+      <nav class="pager" id="pager" aria-label="Blog pages" hidden>
+        <button type="button" id="prevPage" aria-label="Previous page">←</button>
+        <div id="pageButtons"></div>
+        <button type="button" id="nextPage" aria-label="Next page">→</button>
+        <div class="pager-status" id="pagerStatus"></div>
+      </nav>
+    {% else %}
+      <p class="empty">No posts yet. Write the first one in Admin → Blog.</p>
+    {% endif %}
+  </main>
+
+  [[site-footer]]
+
+  <script>
+  (function(){
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var progress = document.getElementById("scrollProgress");
+    function onScroll(){
+      var y = window.scrollY || 0;
+      var doc = document.documentElement;
+      var max = Math.max(1, doc.scrollHeight - window.innerHeight);
+      if (progress) progress.style.width = ((y / max) * 100).toFixed(2) + "%";
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    function revealAll(){
+      document.querySelectorAll(".reveal").forEach(function(el){ el.classList.add("is-in"); });
+    }
+    if (!reduce && "IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
+        });
+      }, { threshold: 0.08, rootMargin: "0px 0px -4% 0px" });
+      document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+      setTimeout(revealAll, 1200);
+    } else {
+      revealAll();
+    }
+
+    var PER_PAGE = 9;
+    var grid = document.getElementById("postGrid");
+    var cards = grid ? Array.prototype.slice.call(grid.querySelectorAll(".post-card")) : [];
+    var search = document.getElementById("blogSearch");
+    var form = document.getElementById("blogSearchForm");
+    var visibleCount = document.getElementById("visibleCount");
+    var noResults = document.getElementById("noResults");
+    var pager = document.getElementById("pager");
+    var pageButtons = document.getElementById("pageButtons");
+    var prevBtn = document.getElementById("prevPage");
+    var nextBtn = document.getElementById("nextPage");
+    var pagerStatus = document.getElementById("pagerStatus");
+    var clearSearch = document.getElementById("clearSearch");
+    var page = 1;
+
+    function haystack(card){
+      return [
+        card.getAttribute("data-title") || "",
+        card.getAttribute("data-description") || "",
+        card.getAttribute("data-categories") || "",
+        card.getAttribute("data-tags") || "",
+        card.getAttribute("data-author") || ""
+      ].join(" ").toLowerCase();
+    }
+
+    function matchedCards(){
+      var q = (search && search.value || "").trim().toLowerCase();
+      if (!q) return cards.slice();
+      return cards.filter(function(card){ return haystack(card).indexOf(q) !== -1; });
+    }
+
+    function render(){
+      var matched = matchedCards();
+      var pages = Math.max(1, Math.ceil(matched.length / PER_PAGE));
+      if (page > pages) page = pages;
+      if (page < 1) page = 1;
+      var start = (page - 1) * PER_PAGE;
+      var end = start + PER_PAGE;
+      var showSet = {};
+      matched.slice(start, end).forEach(function(card){ showSet[card.href] = true; });
+
+      cards.forEach(function(card){
+        var onPage = !!showSet[card.href];
+        card.classList.toggle("is-hidden", !onPage);
+        if (onPage) card.classList.add("is-in");
+      });
+
+      if (visibleCount) visibleCount.textContent = String(matched.length);
+      if (noResults) noResults.hidden = matched.length > 0;
+
+      var needPager = matched.length > PER_PAGE;
+      if (pager) pager.hidden = !needPager;
+      if (!needPager || !pageButtons) return;
+
+      pageButtons.innerHTML = "";
+      for (var i = 1; i <= pages; i++) {
+        (function(n){
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = String(n);
+          b.className = n === page ? "is-active" : "";
+          b.setAttribute("aria-label", "Page " + n);
+          if (n === page) b.setAttribute("aria-current", "page");
+          b.addEventListener("click", function(){ page = n; render(); window.scrollTo({ top: grid.offsetTop - 80, behavior: "smooth" }); });
+          pageButtons.appendChild(b);
+        })(i);
+      }
+      if (prevBtn) {
+        prevBtn.disabled = page <= 1;
+        prevBtn.onclick = function(){ if (page > 1) { page--; render(); } };
+      }
+      if (nextBtn) {
+        nextBtn.disabled = page >= pages;
+        nextBtn.onclick = function(){ if (page < pages) { page++; render(); } };
+      }
+      if (pagerStatus) pagerStatus.textContent = "Page " + page + " of " + pages;
+    }
+
+    if (search) {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("q")) search.value = params.get("q");
+      search.addEventListener("input", function(){ page = 1; render(); });
+      if (form) form.addEventListener("submit", function(e){
+        e.preventDefault();
+        page = 1;
+        render();
+        var url = new URL(window.location.href);
+        var q = search.value.trim();
+        if (q) url.searchParams.set("q", q); else url.searchParams.delete("q");
+        history.replaceState(null, "", url.pathname + url.search);
+      });
+    }
+    if (clearSearch) clearSearch.addEventListener("click", function(e){
+      e.preventDefault();
+      if (search) search.value = "";
+      page = 1;
+      render();
+      history.replaceState(null, "", "/blog");
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>

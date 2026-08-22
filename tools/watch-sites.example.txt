@@ -1,0 +1,4 @@
+# One public Forma origin per line. Used by: php tools/watch-php.php --file tools/watch-sites.txt
+# Copy to watch-sites.txt (not committed) on the Mac that runs the cron/LaunchAgent.
+https://alta-forma.com
+https://forma-cms.me

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ post.title }} — {{ site.title }}</title>
+<link rel="alternate" type="application/rss+xml" title="{{ site.title }} Blog RSS" href="/feed.xml">
+<link rel="alternate" type="application/feed+json" title="{{ site.title }} Blog JSON Feed" href="/feed.json">
+[[site-head]]
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold-soft:rgba(252,190,52,.14);--gold-glow:rgba(252,190,52,.45);
+  --font-serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --ease:cubic-bezier(.25,.1,.25,1);--ease-out:cubic-bezier(.16,1,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+body.forma-blog{overflow-x:hidden}
+body.forma-blog::before{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+img,svg{display:block;max-width:100%}
+.wrap{width:min(1100px,calc(100% - 2.75rem));margin-inline:auto}
+.scroll-progress{position:fixed;top:0;left:0;height:2px;width:0;z-index:60;background:linear-gradient(90deg,var(--gold),#fff3c4);box-shadow:0 0 16px var(--gold-glow);pointer-events:none}
+
+.cover{position:relative;min-height:min(72vh,38rem);display:flex;align-items:flex-end;padding:calc(var(--nav-h) + 2.5rem) 0 3rem;overflow:hidden;isolation:isolate}
+.cover-media{position:absolute;inset:0;z-index:0}
+.cover-media img{width:100%;height:100%;object-fit:cover;transform:scale(1.04)}
+.cover-media::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,5,.35) 0%,rgba(5,5,5,.55) 35%,rgba(10,10,11,.92) 72%,var(--bg) 100%)}
+.cover-fallback{position:absolute;inset:0;z-index:0;background:
+  radial-gradient(ellipse at 20% 10%,rgba(252,190,52,.22),transparent 50%),
+  radial-gradient(ellipse at 90% 30%,rgba(255,255,255,.06),transparent 40%),
+  linear-gradient(160deg,#121214,#070708 70%)}
+.cover-fallback::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,var(--bg))}
+.cover .wrap{position:relative;z-index:1;width:min(760px,calc(100% - 2.75rem))}
+.crumb{display:inline-flex;align-items:center;gap:.45rem;color:var(--muted);font-size:.88rem;margin-bottom:1.1rem}
+.crumb a{color:var(--muted);border-bottom:1px solid transparent}
+.crumb a:hover{color:var(--gold);border-bottom-color:var(--stroke-gold)}
+.chip{display:inline-flex;padding:.28rem .65rem;border-radius:999px;border:1px solid var(--stroke);background:rgba(0,0,0,.35);color:var(--gold);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-brand);margin-bottom:.9rem}
+.cover h1{margin:0 0 1rem;font-family:var(--font-brand);font-weight:700;font-size:clamp(2.1rem,5.2vw,3.55rem);line-height:1.02;letter-spacing:-.03em;max-width:16ch;color:#fff}
+.deck{margin:0 0 1.25rem;color:rgba(245,245,247,.8);font-size:1.12rem;max-width:36rem}
+.byline{display:flex;flex-wrap:wrap;gap:.55rem 1.1rem;color:var(--muted);font-size:.92rem}
+
+.article-shell{padding:0 0 2rem}
+.article-shell .wrap{width:min(680px,calc(100% - 2.75rem))}
+.content{font-family:var(--font-serif);font-size:1.125rem;line-height:1.75;color:rgba(245,245,247,.9)}
+.content > *:first-child{margin-top:0}
+.content h2,.content h3{font-family:var(--font-brand);letter-spacing:-.02em;line-height:1.15;color:#fff;margin:2.4rem 0 .9rem}
+.content h2{font-size:1.65rem}.content h3{font-size:1.3rem}
+.content p{margin:0 0 1.25rem}
+.content a{border-bottom:1px solid var(--stroke-gold)}
+.content strong{color:#fff;font-weight:600}
+.content ul,.content ol{margin:0 0 1.35rem;padding-left:1.3rem}
+.content li{margin:.35rem 0}
+.content blockquote{margin:1.75rem 0;padding:1rem 0 1rem 1.2rem;border-left:2px solid var(--gold);color:rgba(245,245,247,.78);font-style:italic}
+.content code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:.88em;background:rgba(255,255,255,.06);padding:.12em .4em;border-radius:.35rem}
+.content pre{overflow:auto;padding:1rem 1.1rem;border-radius:.9rem;border:1px solid var(--stroke);background:#0f0f12;margin:0 0 1.4rem}
+.content pre code{background:none;padding:0}
+.content img{border-radius:.9rem;margin:1.5rem 0;border:1px solid var(--stroke)}
+.content hr{border:0;border-top:1px solid var(--stroke);margin:2.25rem 0}
+
+.foot-cta{margin-top:2.75rem;padding-top:1.75rem;border-top:1px solid var(--stroke);display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;align-items:center}
+.foot-cta a.back{display:inline-flex;align-items:center;gap:.4rem;font-weight:600}
+.foot-cta .next-hint{color:var(--muted);font-size:.9rem}
+
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .75s var(--ease-out),transform .75s var(--ease-out)}
+.reveal.is-in{opacity:1;transform:none}
+</style>
+</head>
+<body class="forma-chrome forma-blog">
+{% set cover = post.image|default(post.featured_image|default('')) %}
+{% if not cover and post.seo is defined and post.seo %}
+  {% set cover = post.seo.featured_image|default(post.seo.og_image|default('')) %}
+{% endif %}
+
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+  [[site-header]]
+
+  <header class="cover">
+    {% if cover %}
+    <div class="cover-media" aria-hidden="true"><img src="{{ cover }}" alt=""></div>
+    {% else %}
+    <div class="cover-fallback" aria-hidden="true"></div>
+    {% endif %}
+    <div class="wrap">
+      <nav class="crumb reveal" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span aria-hidden="true">/</span>
+        <a href="/blog">Blog</a>
+      </nav>
+      {% if post.categories %}<span class="chip reveal">{{ post.categories[0] }}</span>{% endif %}
+      <h1 class="reveal">{{ post.title }}</h1>
+      {% if post.description %}<p class="deck reveal">{{ post.description }}</p>{% endif %}
+      <div class="byline reveal">
+        <span>{{ post.date_label|default(post.date) }}</span>
+        {% if post.author %}<span>{{ post.author }}</span>{% endif %}
+        {% if post.tags %}
+          {% for tag in post.tags|slice(0, 3) %}
+            <span>#{{ tag }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="article-shell">
+    <div class="wrap">
+      <article class="content reveal" id="articleBody">
+        {{ post.content|raw }}
+      </article>
+      <div class="foot-cta reveal">
+        <a class="back" href="/blog">← Back to Blog</a>
+        <span class="next-hint"><a href="/feed.xml">RSS</a> · <a href="/feed.json">JSON Feed</a></span>
+      </div>
+    </div>
+  </main>
+
+  [[site-footer]]
+
+  <script>
+  (function(){
+    var reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var progress=document.getElementById("scrollProgress");
+    function onScroll(){
+      var y=window.scrollY||0;
+      var doc=document.documentElement;
+      var max=Math.max(1,doc.scrollHeight-window.innerHeight);
+      if(progress) progress.style.width=((y/max)*100).toFixed(2)+"%";
+    }
+    window.addEventListener("scroll",onScroll,{passive:true});
+    onScroll();
+    if(!reduce && "IntersectionObserver" in window){
+      var io=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add("is-in");io.unobserve(e.target);}});
+      },{threshold:.12});
+      document.querySelectorAll(".reveal").forEach(function(el){io.observe(el);});
+    } else {
+      document.querySelectorAll(".reveal").forEach(function(el){el.classList.add("is-in");});
+    }
+  })();
+  </script>
+</body>
+</html>

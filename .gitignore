@@ -1,0 +1,27 @@
+database/*.db
+database/*.db-*
+uploads/*
+!uploads/.gitkeep
+feeds/*
+!feeds/.gitkeep
+fallback/*
+!fallback/.gitkeep
+tools/watch-sites.txt
+
+# Per-install generated .htaccess (source of truth is lib/Htaccess.php)
+/.htaccess
+mcp/node_modules/
+.DS_Store
+
+# Secrets / local
+.env
+.env.*
+*.pem
+config.local.php
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+*~
+Thumbs.db
