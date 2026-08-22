@@ -144,7 +144,7 @@ class HostingCheck {
         $checks[] = [
             'id'         => 'static_fallback',
             'level'      => ($fbRules && !empty($fb['writable'])) ? 'pass' : 'warn',
-            'title'      => 'Publish mode + PHP heartbeat',
+            'title'      => 'HTML cache + PHP heartbeat',
             'detail'     => ($fbRules ? '.htaccess publish rules present' : '.htaccess missing publish rules')
                 . ' · marker ' . (!empty($fb['marker']) ? 'on' : 'off')
                 . ' · /up heartbeat · stamp ' . (!empty($fb['stamp']) ? 'written' : 'not yet')
@@ -154,10 +154,10 @@ class HostingCheck {
                 'Watch GET /up. If it dies but /fallback/php-ok.json still returns 200, the vhost FastCGI map is empty — open a DreamHost ticket; do not wipe database/ or uploads/.',
                 'php tools/watch-php.php https://this-site',
             ] : [
-                'When Publish mode is on, Apache serves fallback/*.html directly (before PHP runs) and falls back to PHP for anything not yet published — including a total FastCGI outage.',
-                'Use the button below, or Settings → Cache → turn on Publish mode and click "Publish now".',
+                'When HTML cache is on, Apache serves fallback/*.html directly and falls back to PHP for anything not yet built.',
+                'Use the button below, or Settings → Cache → enable HTML cache and click "Rebuild HTML cache".',
             ],
-            'fix_action' => (!$fbRules) ? ['id' => 'ensure_static_fallback', 'label' => 'Add publish rules + publish site'] : null,
+            'fix_action' => (!$fbRules) ? ['id' => 'ensure_static_fallback', 'label' => 'Add rules + build HTML cache'] : null,
         ];
 
         $ftsOk = class_exists('Search') && Search::fts5Available();

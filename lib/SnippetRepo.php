@@ -26,6 +26,9 @@ class SnippetRepo {
             [$filename, $shortcode, $content]
         );
         Database::get()->flushCache();
+        if (class_exists('Render')) {
+            Render::forgetSnippetMap();
+        }
         if (class_exists('StaticFallback')) {
             StaticFallback::republishIfEnabled();
         }
@@ -36,6 +39,9 @@ class SnippetRepo {
         $filename = PageRepo::sanitizeFilename($filename);
         Database::get()->execute('DELETE FROM snippets WHERE filename = ?', [$filename]);
         Database::get()->flushCache();
+        if (class_exists('Render')) {
+            Render::forgetSnippetMap();
+        }
         if (class_exists('StaticFallback')) {
             StaticFallback::republishIfEnabled();
         }

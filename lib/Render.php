@@ -6,6 +6,7 @@ class Render {
     private static ?Parsedown $parsedown = null;
     private static $twig = null;
     private static ?array $siteContextCache = null;
+    private static ?array $snippetMap = null;
 
     public static function parsedown(): Parsedown {
         if (!self::$parsedown) {
@@ -67,7 +68,7 @@ class Render {
                 'filename'    => $r['filename'],
                 'slug'        => $r['slug'],
                 'title'       => $r['title'],
-                'description' => $r['description'],
+                'description' => self::neutralizeShortcodes((string)($r['description'] ?? '')),
                 'author'      => $r['author'],
                 'date'        => $r['published_at'] ? date('Y-m-d', (int)$r['published_at']) : '',
                 'date_label'  => $r['published_at'] ? date('M j, Y', (int)$r['published_at']) : '',
@@ -80,37 +81,107 @@ class Render {
         }, $rows);
     }
 
-    public static function expandShortcodes(string $content): string {
-        // Fast path: no shortcodes → never touch Twig (keeps public pages up if Twig upload is broken)
+    /**
+     * Expand [[shortcode]] snippets.
+     *
+     * Literal output (does not expand):
+     *   - [[name]] inside <pre>, <code>, <textarea>, <script>, <style>
+     *   - [[!name]]  →  [[name]]
+     *   - \[[name]]  →  [[name]]
+     *
+     * Extra Twig context (query, results_html, …) is available to snippets
+     * that contain {{ }} / {% %} so the same [[search]] box can prefill.
+     *
+     * Descriptions, titles, and other plain-text fields should be passed
+     * through neutralizeShortcodes() so [[search]] never becomes a widget.
+     */
+    public static function neutralizeShortcodes(string $text): string {
+        return preg_replace('/\[\[(!?)([a-zA-Z0-9_-]+)\]\]/', '[[!$2]]', $text) ?? $text;
+    }
+
+    public static function expandShortcodes(string $content, array $extra = []): string {
         if (!str_contains($content, '[[')) {
             return $content;
         }
-        static $map = null;
-        if ($map === null) {
-            $map = [];
+        if (self::$snippetMap === null) {
+            self::$snippetMap = [];
             foreach (Database::get()->query('SELECT shortcode, content FROM snippets') as $row) {
-                $map[$row['shortcode']] = $row['content'];
+                self::$snippetMap[$row['shortcode']] = $row['content'];
             }
         }
+        $map = self::$snippetMap;
         $config = Database::get()->getConfig();
-        return (string)preg_replace_callback('/\[\[(.*?)\]\]/', function ($m) use ($map, $config) {
-            $code = trim($m[1]);
-            if (!isset($map[$code])) {
-                return $m[0];
-            }
-            $snippet = $map[$code];
-            if (str_contains($snippet, '{%') || str_contains($snippet, '{{')) {
-                try {
-                    $snippet = self::twig()->createTemplate($snippet)->render(array_merge(
-                        self::siteContext(),
-                        ['config' => $config]
-                    ));
-                } catch (Exception $e) {
-                    error_log('Shortcode Twig error [' . $code . ']: ' . $e->getMessage());
-                }
-            }
-            return $snippet;
-        }, $content);
+        $protected = [];
+        $stash = static function (string $raw) use (&$protected): string {
+            $key = "\x00FXSC" . count($protected) . "\x00";
+            $protected[$key] = $raw;
+            return $key;
+        };
+        $protect = static function (string $html) use ($stash): string {
+            $html = (string)preg_replace_callback(
+                '/<(pre|code|textarea|script|style|title)\b[^>]*>.*?<\/\1>/is',
+                static fn(array $m): string => $stash($m[0]),
+                $html
+            );
+            $html = (string)preg_replace_callback(
+                '/<meta\b[^>]*>/i',
+                static fn(array $m): string => $stash($m[0]),
+                $html
+            );
+            return (string)preg_replace_callback(
+                '/\s[a-zA-Z_:][-a-zA-Z0-9_:.]*\s*=\s*("[^"]*"|\'[^\']*\')/',
+                static fn(array $m): string => $stash($m[0]),
+                $html
+            );
+        };
+
+        $expandPass = function (string $html) use ($map, $config, $extra, $stash): string {
+            return (string)preg_replace_callback(
+                '/\\\\\[\[([a-zA-Z0-9_-]+)\]\]|\[\[(!?)([a-zA-Z0-9_-]+)\]\]/',
+                function (array $m) use ($map, $config, $extra, $stash): string {
+                    $escaped = ($m[0][0] === '\\') || (($m[2] ?? '') === '!');
+                    $code = ($m[1] ?? '') !== '' ? $m[1] : ($m[3] ?? '');
+                    if ($escaped) {
+                        return $stash('[[' . $code . ']]');
+                    }
+                    if (!isset($map[$code])) {
+                        return $m[0];
+                    }
+                    $snippet = $map[$code];
+                    if (str_contains($snippet, '{%') || str_contains($snippet, '{{')) {
+                        try {
+                            $snippet = self::twig()->createTemplate($snippet)->render(array_merge(
+                                self::siteContext(),
+                                $extra,
+                                ['config' => $config]
+                            ));
+                        } catch (Exception $e) {
+                            error_log('Shortcode Twig error [' . $code . ']: ' . $e->getMessage());
+                        }
+                    }
+                    return $snippet;
+                },
+                $html
+            );
+        };
+
+        // Protect code-like regions, expand (nested snippets up to 4 passes), then restore.
+        $content = $protect($content);
+        for ($i = 0; $i < 4 && str_contains($content, '[['); $i++) {
+            $content = $protect($expandPass($content));
+        }
+        if ($protected) {
+            $content = str_replace(array_keys($protected), array_values($protected), $content);
+        }
+        return $content;
+    }
+
+    public static function forgetSnippetMap(): void {
+        self::$snippetMap = null;
+    }
+
+    public static function forgetSiteContext(): void {
+        self::$siteContextCache = null;
     }
 
     public static function injectGenerator(string $html): string {
@@ -190,6 +261,7 @@ HTML;
         }
         $post['image'] = $image;
         $post['featured_image'] = $image;
+        $post['description'] = self::neutralizeShortcodes((string)($post['description'] ?? ''));
         $post['date_label'] = !empty($row['published_at'])
             ? date('M j, Y', (int)$row['published_at'])
             : ($post['date'] ?? '');
@@ -290,22 +362,85 @@ HTML;
             'query'        => $query,
             'result_count' => count($results),
         ]));
-        return self::expandShortcodes($html);
+        return self::expandShortcodes($html, [
+            'results'      => $results,
+            'query'        => $query,
+            'result_count' => count($results),
+        ]);
     }
 
     public static function renderSearchPage(array $results, string $query): string {
         $fragment = self::renderSearchResultsFragment($results, $query);
         $tpl = Database::get()->queryOne("SELECT content FROM pages WHERE filename = 'search-page'");
         $content = $tpl ? PageRepo::stripMeta($tpl['content']) : self::defaultSearchPageTemplate();
-        $html = self::renderTwig($content, array_merge(self::siteContext(), [
+        $ctx = [
             'results_html' => $fragment,
             'query'        => $query,
             'result_count' => count($results),
-        ]));
-        $html = self::injectGenerator(self::expandShortcodes($html));
+        ];
+        $html = self::renderTwig($content, array_merge(self::siteContext(), $ctx));
+        $html = self::injectGenerator(self::expandShortcodes($html, $ctx));
         $doc = Seo::forSimple('/search', 'Search' . ($query !== '' ? ' — ' . $query : ''));
         $doc['robots'] = 'noindex,follow';
         return Seo::applyToHtml($html, $doc);
+    }
+
+    public static function defaultSearchUiSnippet(): string {
+        return <<<'HTML'
+<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+<style id="forma-search-ui">
+.forma-search{background:
+  radial-gradient(900px 420px at 12% -10%,rgba(252,190,52,.16),transparent 58%),
+  radial-gradient(700px 380px at 110% 0%,rgba(252,190,52,.08),transparent 50%),
+  var(--bg,#0a0a0b)}
+.search-shell{padding:calc(var(--nav-h,3.6rem) + 3.5rem) 0 2rem}
+.search-kicker{margin:0 0 .55rem;color:var(--gold,#fcbe34);font-family:var(--font-brand,"Chakra Petch",system-ui,sans-serif);font-size:.78rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.search-shell h1{margin:0 0 .7rem;font-family:var(--font-brand,"Chakra Petch",system-ui,sans-serif);font-size:clamp(2.4rem,7vw,4.4rem);line-height:.95;letter-spacing:-.03em}
+.search-lede{margin:0 0 1.8rem;max-width:36rem;color:var(--muted,rgba(245,245,247,.62));font-size:1.08rem}
+.fx-search-box{margin:0 0 2rem}
+.fx-search-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.fx-search-row{display:flex;gap:.75rem;align-items:stretch}
+.fx-search-box input[type="search"]{
+  flex:1;min-height:4.15rem;padding:0 1.35rem;border-radius:1.15rem;
+  border:1px solid var(--stroke-gold,rgba(252,190,52,.35));
+  background:rgba(255,255,255,.04);color:var(--text,#f5f5f7);
+  font:600 1.2rem/1.2 var(--font,-apple-system,BlinkMacSystemFont,system-ui,sans-serif);
+  box-shadow:0 0 0 6px rgba(252,190,52,.05), inset 0 1px 0 rgba(255,255,255,.04);
+  outline:none;transition:border-color .2s,box-shadow .2s,background .2s
+}
+.fx-search-box input[type="search"]::placeholder{color:rgba(245,245,247,.38);font-weight:500}
+.fx-search-box input[type="search"]:focus{
+  border-color:var(--gold,#fcbe34);
+  background:rgba(252,190,52,.06);
+  box-shadow:0 0 0 6px rgba(252,190,52,.12)
+}
+.fx-search-box button{
+  min-height:4.15rem;padding:0 1.45rem;border:0;border-radius:1.15rem;cursor:pointer;
+  background:linear-gradient(180deg,#ffd060,#fcbe34 55%,#e6a912);
+  color:#14110a;font:700 1rem/1 var(--font-brand,"Chakra Petch",system-ui,sans-serif);
+  letter-spacing:.04em
+}
+.fx-search-box button:hover{filter:brightness(1.06)}
+.fx-search-results{list-style:none;margin:0;padding:0;display:grid;gap:.85rem}
+.fx-search-result a{
+  display:block;padding:1.15rem 1.25rem 1.2rem;border-radius:1.15rem;
+  border:1px solid var(--stroke,rgba(255,255,255,.1));
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));
+  color:inherit;text-decoration:none;transition:border-color .2s,transform .2s,background .2s
+}
+.fx-search-result a:hover{border-color:var(--stroke-gold,rgba(252,190,52,.35));background:rgba(252,190,52,.06);transform:translateY(-1px);color:inherit}
+.fx-search-type{display:inline-block;margin:0 .55rem .35rem 0;padding:.18rem .5rem;border-radius:999px;border:1px solid var(--stroke-gold,rgba(252,190,52,.35));color:var(--gold,#fcbe34);font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.fx-search-title{display:block;margin:.15rem 0 .25rem;color:#fff;font-family:var(--font-brand,"Chakra Petch",system-ui,sans-serif);font-size:1.28rem;font-weight:700;letter-spacing:-.02em}
+.fx-search-date{color:var(--muted,rgba(245,245,247,.62));font-size:.82rem}
+.fx-search-excerpt{margin:.4rem 0 0;color:rgba(245,245,247,.72);font-size:.95rem}
+.fx-search-excerpt mark{background:rgba(252,190,52,.28);color:#fff;padding:0 .15em;border-radius:.2em}
+.fx-search-empty{padding:1.4rem 1.2rem;border:1px dashed var(--stroke,rgba(255,255,255,.1));border-radius:1.1rem;color:var(--muted,rgba(245,245,247,.62))}
+@media(max-width:640px){
+  .fx-search-row{flex-direction:column}
+  .fx-search-box input[type="search"],.fx-search-box button{min-height:3.5rem;width:100%}
+}
+</style>
+HTML;
     }
 
     public static function defaultSearchResultsTemplate(): string {
@@ -314,17 +449,19 @@ HTML;
 <ul class="fx-search-results">
   {% for r in results %}
     <li class="fx-search-result">
-      <span class="fx-search-type">{{ r.type }}</span>
-      <a href="{{ r.url }}">{{ r.title }}</a>
-      {% if r.date_label %}<span class="fx-search-date">{{ r.date_label }}</span>{% endif %}
-      {% if r.excerpt %}<p class="fx-search-excerpt">{{ r.excerpt|raw }}</p>{% endif %}
+      <a href="{{ r.url }}">
+        <span class="fx-search-type">{{ r.type }}</span>
+        <strong class="fx-search-title">{{ r.title }}</strong>
+        {% if r.date_label %}<span class="fx-search-date">{{ r.date_label }}</span>{% endif %}
+        {% if r.excerpt %}<p class="fx-search-excerpt">{{ r.excerpt|raw }}</p>{% endif %}
+      </a>
     </li>
   {% endfor %}
 </ul>
 {% elseif query %}
 <p class="fx-search-empty">No results for &ldquo;{{ query }}&rdquo;. Try another word.</p>
 {% else %}
-<p class="fx-search-empty">Type something to search the site.</p>
+<p class="fx-search-empty">Type a word. Pages, posts, and episodes show up here.</p>
 {% endif %}
 TWIG;
     }
@@ -334,30 +471,22 @@ TWIG;
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Search — {{ site.title }}</title>
-<style>
-body{font-family:system-ui,-apple-system,sans-serif;max-width:42rem;margin:2.5rem auto;padding:0 1.5rem;line-height:1.6;color:#1a1a1a}
-.fx-search-form{display:flex;gap:.5rem;margin-bottom:1.5rem}
-.fx-search-form input{flex:1;padding:.6rem .8rem;border:1px solid #ccc;border-radius:.5rem;font:inherit}
-.fx-search-form button{padding:.6rem 1rem;border:0;border-radius:.5rem;background:#1a1a1a;color:#fff;cursor:pointer}
-.fx-search-results{list-style:none;margin:0;padding:0}
-.fx-search-result{padding:1rem 0;border-bottom:1px solid #eee}
-.fx-search-type{display:inline-block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-right:.5rem}
-.fx-search-date{font-size:.85rem;color:#888;margin-left:.5rem}
-.fx-search-excerpt{color:#555;margin:.35rem 0 0}
-.fx-search-excerpt mark{background:#fff3c4;padding:0 .1em}
-.fx-search-empty{color:#888}
-</style>
+[[site-head]]
 </head>
-<body>
-<h1>Search</h1>
-<form class="fx-search-form" action="/search" method="get" role="search">
-  <input type="search" name="q" value="{{ query }}" placeholder="Search this site…" autofocus>
-  <button type="submit">Search</button>
-</form>
-<div id="fx-search-results">{{ results_html|raw }}</div>
-<p><a href="/">← Home</a></p>
+<body class="forma-chrome forma-search">
+  [[site-header]]
+  <main class="search-shell">
+    <div class="forma-wrap">
+      <p class="search-kicker">Find it</p>
+      <h1>Search {{ site.title }}</h1>
+      <p class="search-lede">{% if query %}{{ result_count }} result{% if result_count != 1 %}s{% endif %} for “{{ query }}”{% else %}Pages, posts, and episodes — one box.{% endif %}</p>
+      [[search]]
+    </div>
+  </main>
+  [[site-footer]]
 </body>
 </html>
 TWIG;

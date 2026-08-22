@@ -4,7 +4,7 @@ require_once ROOT_DIR . '/lib/bootstrap.php';
 Auth::requireAdmin(false);
 require_once ADMIN_DIR . '/partials/_helpers.php';
 
-// "Publish now" always turns publish mode on — a manual publish implies you want it live.
+// Rebuilding the HTML cache turns it on if needed.
 $cache = Database::get()->getSetting('cache');
 if (empty($cache['static_fallback'])) {
     $cache['static_fallback'] = true;

@@ -112,7 +112,8 @@ class Agent {
             'seo' => 'Sitewide Settings→SEO. Public /robots.txt + /sitemap.xml auto-generated (robots_auto/sitemap_auto) or manual bodies. Meta tags on render.',
             'admin' => 'htmx admin at /admin/. Agents should prefer this API over scraping admin HTML.',
             'uptime' => 'GET /up (no auth) JSON {ok,php,version,ts,fallback}. Static stamp: /fallback/php-ok.json. If stamp is 200 but /up is “No input file specified”, PHP/FastCGI is down.',
-            'publish' => 'Settings→Cache "Publish mode" (cache.static_fallback) writes every page/post/episode to fallback/*.html on every save; Apache serves those files directly (see fallback.marker in /up). Unpublished paths fall through to a live PHP render, so turning it on never blanks the site. "Publish now" (admin) rebuilds everything + the search index in one pass.',
+            'html_cache' => 'Settings→Cache "HTML cache" (cache.static_fallback) writes every page/post/episode to fallback/*.html on every save; Apache serves those files directly (see fallback.marker in /up). Paths without a built file fall through to a live PHP render. "Rebuild HTML cache" rebuilds everything + the search index in one pass.',
+            'publish' => 'Compatibility alias for html_cache.',
             'search' => 'GET /search?q=… — SQLite FTS5 (or LIKE fallback) over pages + published posts + licensed podcast episodes. htmx fragment when header HX-Request: true, full page otherwise. Always PHP, never published as a static file, always noindex. The [[search]] snippet renders the box.',
             'docs' => 'See AGENTS.md and README.md in the Forma project root.',
         ];
@@ -150,7 +151,7 @@ class Agent {
                 ['PUT', '/api/v1/settings/{section}', 'Merge-update settings section', 'settings:write'],
                 ['GET', '/api/v1/seo', 'SEO settings + robots preview', 'content:read'],
                 ['PUT', '/api/v1/seo', 'Update SEO settings', 'settings:write'],
-                ['POST', '/api/v1/cache/flush', 'Flush page cache', 'settings:write'],
+                ['POST', '/api/v1/cache/flush', 'Flush PHP cache', 'settings:write'],
                 ['GET', '/api/v1/export', 'Versioned JSON export (no binaries)', 'backup:read'],
                 ['GET', '/api/v1/export/site', 'Full site package zip (DB + uploads + manifest)', 'backup:read'],
                 ['POST', '/api/v1/import/site', 'Restore site package (multipart package=.zip)', 'settings:write'],

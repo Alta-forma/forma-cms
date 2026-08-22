@@ -159,7 +159,7 @@ class Search {
         self::removeDocument('podcast', $episodeId);
     }
 
-    /** Full reindex — used by "Publish now" / manual maintenance. */
+    /** Full reindex — used by "Rebuild HTML cache" / manual maintenance. */
     public static function reindexAll(): array {
         self::ensureIndex();
         Database::get()->pdo()->exec('DELETE FROM ' . self::table());

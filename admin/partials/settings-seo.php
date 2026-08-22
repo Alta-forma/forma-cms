@@ -19,7 +19,7 @@ $previewUrl = $base . '/';
 $score = (int)$health['score'];
 $scoreClass = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'off');
 ?>
-<div class="settings-card">
+<div class="settings-card seo-health-card">
     <h3><i class="fas fa-heartbeat"></i> SEO health</h3>
     <p class="card-sub">Live audit of titles, descriptions, images, and site basics. Fix these before chasing backlinks.</p>
     <div class="seo-health-summary">
@@ -55,11 +55,11 @@ $scoreClass = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'off');
     <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
     <input type="hidden" name="section" value="seo">
 
-    <div class="settings-card">
+    <div class="settings-card seo-branding-card">
         <h3><i class="fas fa-image"></i> Branding & social</h3>
         <p class="card-sub">Favicon, default share image, and live previews. Per-page featured images override the default.</p>
-        <div class="form-row">
-            <div class="form-group">
+        <div class="seo-media-grid">
+            <div class="seo-media-tile">
                 <?php echo fx_media_field('favicon', $s['favicon'] ?? '', [
                     'label' => 'Favicon',
                     'placeholder' => '/uploads/favicon.ico',
@@ -67,20 +67,21 @@ $scoreClass = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'off');
                     'attrs' => 'data-seo-field="favicon"',
                 ]); ?>
             </div>
-            <div class="form-group">
+            <div class="seo-media-tile">
                 <?php echo fx_media_field('apple_touch_icon', $s['apple_touch_icon'] ?? '', [
                     'label' => 'Apple touch icon',
                     'placeholder' => '/uploads/apple-touch-icon.png',
+                    'hint' => 'Square PNG, ideally 180×180',
                 ]); ?>
             </div>
-        </div>
-        <div class="form-group">
-            <?php echo fx_media_field('default_og_image', $s['default_og_image'] ?? '', [
-                'label' => 'Default featured / social image',
-                'placeholder' => '/uploads/og-default.jpg',
-                'hint' => '1200×630 recommended — used when a page/post has no featured image',
-                'attrs' => 'data-seo-field="image"',
-            ]); ?>
+            <div class="seo-media-tile seo-media-tile-wide">
+                <?php echo fx_media_field('default_og_image', $s['default_og_image'] ?? '', [
+                    'label' => 'Default social image',
+                    'placeholder' => '/uploads/og-default.jpg',
+                    'hint' => '1200×630 — used when content has no featured image',
+                    'attrs' => 'data-seo-field="image"',
+                ]); ?>
+            </div>
         </div>
         <div class="form-row">
             <div class="form-group">
@@ -105,7 +106,7 @@ $scoreClass = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'off');
         ?>
     </div>
 
-    <div class="settings-card">
+    <div class="settings-card seo-schema-card">
         <h3><i class="fas fa-project-diagram"></i> Schema & local</h3>
         <p class="card-sub">Structured data for Google. Pick the entity that matches this site. Place ID helps Maps — it is not a ranking cheat code.</p>
         <div class="form-group">
@@ -127,7 +128,7 @@ $scoreClass = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'off');
                 <label>Display name</label>
                 <input type="text" name="organization_name" value="<?php echo h($s['organization_name'] ?? ''); ?>" placeholder="Defaults to site title">
             </div>
-            <div class="form-group">
+            <div class="form-group seo-inline-media">
                 <?php echo fx_media_field('organization_logo', $s['organization_logo'] ?? '', [
                     'label' => 'Logo / headshot',
                     'placeholder' => '/uploads/logo.png',

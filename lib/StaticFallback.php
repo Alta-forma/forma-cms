@@ -2,7 +2,7 @@
 /**
  * Forma – Publish engine.
  *
- * When "Publish mode" (cache.static_fallback) is on, every public page, post,
+ * When "HTML cache" (cache.static_fallback) is on, every public page, post,
  * podcast episode/archive, and error page is written as real HTML under
  * fallback/ and Apache serves those files directly — before PHP ever runs.
  * A page that hasn't been published yet simply falls through to a live PHP
@@ -11,7 +11,7 @@
  * PHP/FastCGI dies outright (DreamHost "No input file specified.").
  *
  * fallback/.enabled is the single bit Apache can see without asking PHP —
- * it gates every rewrite rule in the "Forma publish mode" .htaccess block.
+ * it gates every rewrite rule in the "Forma HTML cache" .htaccess block.
  */
 class StaticFallback {
     public static function dir(): string {
@@ -110,6 +110,14 @@ class StaticFallback {
     // ---- Pages ---------------------------------------------------------
 
     public static function publishPage(array $row): bool {
+        $filename = (string)($row['filename'] ?? '');
+        $slug = trim((string)($row['slug'] ?? ''));
+        // Internal Twig/search templates are stored as pages with no public
+        // slug. They are rendered by their owning route and must never be
+        // mistaken for the homepage during a full publish.
+        if ($slug === '' && $filename !== 'home') {
+            return false;
+        }
         self::ensureDir();
         try {
             $html = Render::renderPageRow($row);
@@ -117,8 +125,7 @@ class StaticFallback {
             error_log('Forma publish page error: ' . $e->getMessage());
             return false;
         }
-        $slug = trim((string)($row['slug'] ?? ''));
-        if ($slug === '' || ($row['filename'] ?? '') === 'home') {
+        if ($filename === 'home') {
             $slug = '/';
         }
         return self::writeHtml($slug, $html);
@@ -268,7 +275,7 @@ class StaticFallback {
         return self::publishAll();
     }
 
-    /** Rebuild every published file + search index. The one thing "Publish now" needs to call. */
+    /** Rebuild every HTML file + search index. The "Rebuild HTML cache" action calls this. */
     public static function publishAll(): array {
         self::ensureDir();
         $counts = [
@@ -319,13 +326,13 @@ class StaticFallback {
         return $counts;
     }
 
-    /** Turn publish mode on: caller must persist cache.static_fallback = true first. */
+    /** Turn HTML cache on: caller must persist cache.static_fallback = true first. */
     public static function enable(): array {
         self::setMarker(true);
         return self::publishAll();
     }
 
-    /** Turn publish mode off: stop serving files (marker gone), drop the ErrorDocument block. Leaves files on disk. */
+    /** Turn HTML cache off: stop serving files (marker gone), drop the ErrorDocument block. Leaves files on disk. */
     public static function disable(): void {
         self::setMarker(false);
         if (class_exists('Htaccess')) {

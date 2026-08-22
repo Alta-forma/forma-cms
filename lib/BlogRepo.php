@@ -7,7 +7,7 @@ class BlogRepo {
         $db = Database::get();
         if ($publishedOnly) {
             return $db->query(
-                'SELECT filename, slug, title, description, author, published_at, categories, tags, updated_at
+                'SELECT filename, slug, title, description, author, published_at, categories, tags, seo_json, updated_at
                    FROM blog_posts
                   WHERE published_at IS NOT NULL AND published_at <= ?
                   ORDER BY published_at DESC',
@@ -15,7 +15,7 @@ class BlogRepo {
             );
         }
         return $db->query(
-            'SELECT filename, slug, title, description, author, published_at, categories, tags, updated_at
+            'SELECT filename, slug, title, description, author, published_at, categories, tags, seo_json, updated_at
                FROM blog_posts ORDER BY COALESCE(published_at, updated_at) DESC'
         );
     }
@@ -123,6 +123,9 @@ class BlogRepo {
             ]
         );
         $db->flushCache();
+        if (class_exists('Render')) {
+            Render::forgetSiteContext();
+        }
         if (class_exists('Feed')) {
             Feed::maybeRegenerateBlog();
         }
@@ -151,6 +154,9 @@ class BlogRepo {
         }
         $db->execute('DELETE FROM blog_posts WHERE filename = ?', [$filename]);
         $db->flushCache();
+        if (class_exists('Render')) {
+            Render::forgetSiteContext();
+        }
         if (class_exists('Feed')) {
             Feed::maybeRegenerateBlog();
         }

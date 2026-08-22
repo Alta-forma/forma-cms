@@ -24,8 +24,8 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 | Settings | `settings` JSON sections | `site`, `seo`, `blog`, `podcast`, `cache`, … |
 | SEO | Settings → SEO + per doc | Auto meta/favicon/schema; health dashboard; image sitemap; redirects; `/robots.txt` + `/sitemap.xml` |
 | Uptime | `GET /up` + `fallback/` | Heartbeat JSON incl. `fallback` status. If `/up` dies but `/fallback/php-ok.json` is 200, PHP/FastCGI is down. |
-| Publish mode | Settings → Cache & Publish (`cache.static_fallback`) | Every save writes real `.html` under `fallback/`; Apache serves those files first (see `fallback/.enabled`). Unpublished paths fall through to PHP — SQLite is always the source of truth, `fallback/` is a derived cache you can delete and rebuild with "Publish now". |
-| Search | `GET /search?q=…` + `[[search]]` snippet | SQLite FTS5 (LIKE fallback) over pages/posts/episodes. Always PHP, never published as a file. htmx fragment via `HX-Request: true`. |
+| HTML cache | Settings → Cache (`cache.static_fallback`) | Every save writes real `.html` under `fallback/`; Apache serves those files first (see `fallback/.enabled`). Paths without a built file fall through to PHP — SQLite is always the source of truth, `fallback/` is a derived cache you can delete and rebuild with "Rebuild HTML cache". |
+| Search | `GET /search?q=…` + `[[search]]` snippet | SQLite FTS5 (LIKE fallback) over pages/posts/episodes. Always PHP, never published as a file. htmx fragment via `HX-Request: true`. To write the shortcode as text, use a code fence / `<code>` or `[[!search]]`. Descriptions, titles, and meta never expand shortcodes. |
 
 ## Auth
 
@@ -61,5 +61,5 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 - Don’t delete `home`, `_404`, `_403`, `_500`.
 - Don’t commit tokens.
 - Don’t assume unpublished posts are public — they 404 by design.
-- Don’t edit files under `fallback/` directly — they’re regenerated from SQLite on every save, or all at once via "Publish now" / `StaticFallback::publishAll()`.
+- Don’t edit files under `fallback/` directly — they’re regenerated from SQLite on every save, or all at once via "Rebuild HTML cache" / `StaticFallback::publishAll()`.
 - Don’t index or publish `snippets` — they’re building blocks, not content.

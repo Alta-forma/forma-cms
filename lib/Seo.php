@@ -565,7 +565,10 @@ class Seo {
         if (!empty($seo['sitemap_include_pages'])) {
             foreach (PageRepo::list() as $p) {
                 $fn = $p['filename'] ?? '';
-                if (str_starts_with($fn, '_') || in_array($fn, ['blog-archive', 'blog-single', 'podcast-archive', 'podcast-single'], true)) {
+                if (str_starts_with($fn, '_') || in_array($fn, [
+                    'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single',
+                    'search-page', 'search-results',
+                ], true)) {
                     continue;
                 }
                 $full = PageRepo::get($fn);
@@ -722,7 +725,11 @@ class Seo {
 
         $titles = [];
         $descs = [];
-        $skip = ['_404', '_403', '_500', 'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single'];
+        $skip = [
+            '_404', '_403', '_500',
+            'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single',
+            'search-page', 'search-results',
+        ];
 
         foreach (PageRepo::list() as $p) {
             $fn = $p['filename'] ?? '';

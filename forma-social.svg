@@ -1,0 +1,24 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Forma  the portable PHP CMS</title>
+  <desc id="desc">The canonical Forma mark with the product name and tagline.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050505"/>
+      <stop offset="1" stop-color="#121214"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(250 315) rotate(90) scale(330)">
+      <stop offset="0" stop-color="#fcbe34" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#fcbe34" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <g transform="translate(92 147) scale(.78)" fill="#fcbe34" fill-rule="evenodd">
+    <path d="M0,0 L400,0 L320,80 L0,80 L0,0 Z"/>
+    <path d="M0,100 L300,100 L220,180 L0,180 L0,100 Z"/>
+    <path d="M0,200 L80,200 L0,280 L0,200 Z"/>
+  </g>
+  <text x="470" y="294" fill="#f5f5f7" font-family="Helvetica Neue, Arial, sans-serif" font-size="108" font-weight="700">Forma</text>
+  <text x="476" y="363" fill="#a9a9b2" font-family="Helvetica Neue, Arial, sans-serif" font-size="31">The portable PHP CMS that doesnt suck.</text>
+  <text x="476" y="414" fill="#fcbe34" font-family="Helvetica Neue, Arial, sans-serif" font-size="24">PHP + SQLite · HTML cache · SEO · Agent API</text>
+</svg>

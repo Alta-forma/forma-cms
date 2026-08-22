@@ -35,8 +35,8 @@ try {
         http_response_code(200);
         StaticFallback::writeStamp();
         StaticFallback::refreshHomeIfStale();
-        // Self-heal: settings say publish mode is on but the Apache-visible marker/files never
-        // got written (e.g. DB default flipped true before anyone clicked "Publish now").
+        // Self-heal: settings say HTML cache is on but the Apache-visible marker/files never
+        // got written (e.g. DB default flipped true before anyone rebuilt the HTML cache).
         if (StaticFallback::enabled() && !StaticFallback::markerPresent()) {
             StaticFallback::enable();
         }
@@ -127,7 +127,7 @@ try {
         exit;
     }
 
-    // Page cache
+    // PHP cache
     $cacheEnabled = ($config['cache']['enabled'] ?? false) === true;
     $cacheTtl     = (int)($config['cache']['ttl'] ?? 3600);
     if ($cacheEnabled && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'

@@ -9,7 +9,7 @@ class Htaccess {
 RewriteEngine On
 
 # BEGIN Forma static fallback
-# Publish mode: Apache serves fallback/*.html directly when fallback/.enabled exists.
+# HTML cache: Apache serves fallback/*.html directly when fallback/.enabled exists.
 # A page that hasn't been published yet has no matching file, so it falls through
 # to PHP below — a half-migrated site still works. GET /up, /admin, /api, /search,
 # robots.txt/sitemap.xml/feeds always hit PHP so monitors + dynamic routes still work.
@@ -128,7 +128,7 @@ HTA;
     public static function staticFallbackBlock(): string {
         return <<<'HTA'
 # BEGIN Forma static fallback
-# Publish mode: Apache serves fallback/*.html directly when fallback/.enabled exists.
+# HTML cache: Apache serves fallback/*.html directly when fallback/.enabled exists.
 # A page that hasn't been published yet has no matching file, so it falls through
 # to PHP below — a half-migrated site still works. GET /up, /admin, /api, /search,
 # robots.txt/sitemap.xml/feeds always hit PHP so monitors + dynamic routes still work.

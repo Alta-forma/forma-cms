@@ -78,7 +78,7 @@ $sqlite = class_exists('SQLite3') ? SQLite3::version()['versionString'] ?? '' : 
         <li><code>AGENTS.md</code> in the project root — Agent API map</li>
         <li>Admin → Settings → Hosting check — PHP / rewrite / permissions</li>
         <li><code>GET /up</code> — PHP heartbeat; <code>/fallback/php-ok.json</code> if FastCGI is dead</li>
-        <li><code>GET /search?q=…</code> — built-in site search (Settings → Cache & Publish shows the engine in use)</li>
-        <li>Settings → Cache & Publish — turn on Publish mode so Apache can serve the site as files</li>
+        <li><code>GET /search?q=…</code> — built-in site search (Settings → Cache shows the engine in use)</li>
+        <li>Settings → Cache — choose PHP cache, HTML cache, or both</li>
     </ul>
 </div>

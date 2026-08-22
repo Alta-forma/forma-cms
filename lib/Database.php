@@ -142,7 +142,7 @@ class Database {
             'default_author' => 'Admin',
         ],
         'blog' => [
-            'posts_per_page'  => 10,
+            'posts_per_page'  => 20,
             'excerpt_length'  => 250,
             'feed_posts'      => 20,
             'default_author'  => '',
@@ -429,16 +429,31 @@ TWIG;
 
         if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'search'")) {
             $searchSnippet = <<<'HTML'
+[[search-ui]]
 <form class="fx-search-box" role="search" action="/search" method="get"
       hx-get="/search" hx-target="#fx-search-results" hx-push-url="true"
-      hx-trigger="submit, keyup changed delay:400ms from:input[name='q']">
-  <input type="search" name="q" placeholder="Search…" autocomplete="off" aria-label="Search">
+      hx-trigger="submit, keyup changed delay:280ms from:input[name='q']">
+  <label class="fx-search-label" for="fx-search-q">Search</label>
+  <div class="fx-search-row">
+    <input id="fx-search-q" type="search" name="q" value="{{ query|default('') }}" placeholder="Search pages, posts, episodes…" autocomplete="off" aria-label="Search" enterkeyhint="search">
+    <button type="submit">Search</button>
+  </div>
 </form>
-<div id="fx-search-results"></div>
+<div id="fx-search-results">{{ results_html|default('')|raw }}</div>
 HTML;
             $this->execute(
                 'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
                 ['search', 'search', $searchSnippet]
+            );
+        }
+
+        if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'search-ui'")) {
+            if (!class_exists('Render', false)) {
+                require_once ROOT_DIR . '/lib/Render.php';
+            }
+            $this->execute(
+                'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
+                ['search-ui', 'search-ui', Render::defaultSearchUiSnippet()]
             );
         }
 
