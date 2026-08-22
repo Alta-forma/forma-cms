@@ -10,6 +10,7 @@ require_once ROOT_DIR . '/lib/BlogRepo.php';
 require_once ROOT_DIR . '/lib/SnippetRepo.php';
 require_once ROOT_DIR . '/lib/PodcastRepo.php';
 require_once ROOT_DIR . '/lib/MediaRepo.php';
+require_once ROOT_DIR . '/lib/Search.php';
 require_once ROOT_DIR . '/lib/Feed.php';
 require_once ROOT_DIR . '/lib/Render.php';
 require_once ROOT_DIR . '/lib/Agent.php';

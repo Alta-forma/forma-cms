@@ -37,12 +37,6 @@ if ($section === 'site') {
     $current['enabled'] = !empty($_POST['enabled']);
     $current['ttl'] = max(60, (int)($_POST['ttl'] ?? 3600));
     $current['static_fallback'] = !empty($_POST['static_fallback']);
-    if ($current['static_fallback']) {
-        Htaccess::ensureStaticFallbackRules();
-        Htaccess::ensureFastCgiSafeFrontController();
-        StaticFallback::writeStamp();
-        StaticFallback::refreshHomeIfStale(true);
-    }
 } elseif ($section === 'seo') {
     foreach ([
         'robots_extra', 'robots_manual', 'sitemap_manual', 'noindex_paths',
@@ -80,6 +74,20 @@ if ($section === 'podcast') {
 }
 if ($section === 'seo' || $section === 'site') {
     Database::get()->flushCache();
+}
+
+if ($section === 'cache') {
+    // Setting is already persisted above, so StaticFallback::enabled() reads the fresh value.
+    Htaccess::ensureStaticFallbackRules();
+    Htaccess::ensureFastCgiSafeFrontController();
+    if ($current['static_fallback']) {
+        StaticFallback::enable();
+    } else {
+        StaticFallback::disable();
+    }
+}
+if (in_array($section, ['site', 'seo', 'blog', 'podcast'], true)) {
+    StaticFallback::republishIfEnabled();
 }
 
 if ($section === 'seo') {

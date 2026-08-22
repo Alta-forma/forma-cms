@@ -9,25 +9,33 @@ class Htaccess {
 RewriteEngine On
 
 # BEGIN Forma static fallback
-# Last-good HTML so Apache can still serve the homepage if PHP/FastCGI dies
-# (DreamHost “No input file specified.”). GET /up always hits PHP so monitors can tell.
+# Publish mode: Apache serves fallback/*.html directly when fallback/.enabled exists.
+# A page that hasn't been published yet has no matching file, so it falls through
+# to PHP below — a half-migrated site still works. GET /up, /admin, /api, /search,
+# robots.txt/sitemap.xml/feeds always hit PHP so monitors + dynamic routes still work.
+RewriteCond %{DOCUMENT_ROOT}/fallback/.enabled -f
 RewriteCond %{REQUEST_METHOD} GET
 RewriteCond %{QUERY_STRING} !preview
 RewriteCond %{HTTP_HOST} !^preview\.
 RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
+RewriteCond %{REQUEST_URI} !/search(/|$)
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/index.html -f
 RewriteRule ^$ fallback/index.html [L]
 
-# Inner last-good pages only during an outage (touch fallback/.php-down)
+RewriteCond %{DOCUMENT_ROOT}/fallback/.enabled -f
 RewriteCond %{REQUEST_METHOD} GET
 RewriteCond %{QUERY_STRING} !preview
 RewriteCond %{HTTP_HOST} !^preview\.
-RewriteCond %{DOCUMENT_ROOT}/fallback/.php-down -f
 RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
+RewriteCond %{REQUEST_URI} !/search(/|$)
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/$1.html -f
 RewriteRule ^(.+)$ fallback/$1.html [L]
 # END Forma static fallback
@@ -90,7 +98,8 @@ HTA;
     }
 
     /**
-     * Inject last-good HTML rules into an existing .htaccess (keeps PREVIEW / custom blocks).
+     * Inject publish-mode rules into an existing .htaccess (keeps PREVIEW / custom blocks).
+     * Anchored after the redirects block when present so 301s always win over stale files.
      */
     public static function ensureStaticFallbackRules(): bool {
         $path = ROOT_DIR . '/.htaccess';
@@ -102,8 +111,13 @@ HTA;
             return true;
         }
         $block = self::staticFallbackBlock();
-        if (preg_match('/RewriteEngine\s+On\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+        $insertAt = null;
+        if (preg_match('/# END Forma redirects\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
             $insertAt = $m[0][1] + strlen($m[0][0]);
+        } elseif (preg_match('/RewriteEngine\s+On\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+            $insertAt = $m[0][1] + strlen($m[0][0]);
+        }
+        if ($insertAt !== null) {
             $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
         } else {
             $content = $block . $content;
@@ -114,25 +128,33 @@ HTA;
     public static function staticFallbackBlock(): string {
         return <<<'HTA'
 # BEGIN Forma static fallback
-# Last-good HTML so Apache can still serve the homepage if PHP/FastCGI dies
-# (DreamHost “No input file specified.”). GET /up always hits PHP so monitors can tell.
+# Publish mode: Apache serves fallback/*.html directly when fallback/.enabled exists.
+# A page that hasn't been published yet has no matching file, so it falls through
+# to PHP below — a half-migrated site still works. GET /up, /admin, /api, /search,
+# robots.txt/sitemap.xml/feeds always hit PHP so monitors + dynamic routes still work.
+RewriteCond %{DOCUMENT_ROOT}/fallback/.enabled -f
 RewriteCond %{REQUEST_METHOD} GET
 RewriteCond %{QUERY_STRING} !preview
 RewriteCond %{HTTP_HOST} !^preview\.
 RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
+RewriteCond %{REQUEST_URI} !/search(/|$)
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/index.html -f
 RewriteRule ^$ fallback/index.html [L]
 
-# Inner last-good pages only during an outage (touch fallback/.php-down)
+RewriteCond %{DOCUMENT_ROOT}/fallback/.enabled -f
 RewriteCond %{REQUEST_METHOD} GET
 RewriteCond %{QUERY_STRING} !preview
 RewriteCond %{HTTP_HOST} !^preview\.
-RewriteCond %{DOCUMENT_ROOT}/fallback/.php-down -f
 RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
+RewriteCond %{REQUEST_URI} !/search(/|$)
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/$1.html -f
 RewriteRule ^(.+)$ fallback/$1.html [L]
 # END Forma static fallback
@@ -240,5 +262,109 @@ HTA;
             'removed' => $removed,
             'errors' => $errors,
         ];
+    }
+
+    // ---- Error documents (Apache-level, survive a dead FastCGI) ----------
+
+    public static function hasErrorDocuments(?string $content = null): bool {
+        $content = $content ?? (is_file(ROOT_DIR . '/.htaccess') ? (string)file_get_contents(ROOT_DIR . '/.htaccess') : '');
+        return str_contains($content, '# BEGIN Forma error documents');
+    }
+
+    public static function errorDocumentsBlock(): string {
+        return <<<'HTA'
+# BEGIN Forma error documents
+# Served by Apache itself — still works when PHP/FastCGI is completely down.
+ErrorDocument 404 /fallback/_404.html
+ErrorDocument 403 /fallback/_403.html
+ErrorDocument 500 /fallback/_500.html
+# END Forma error documents
+
+HTA;
+    }
+
+    public static function ensureErrorDocuments(bool $on): bool {
+        $path = ROOT_DIR . '/.htaccess';
+        if (!is_file($path) || !is_writable($path)) {
+            return false;
+        }
+        $content = (string)file_get_contents($path);
+        $has = self::hasErrorDocuments($content);
+        if ($on === $has) {
+            return true;
+        }
+        if ($on) {
+            $block = self::errorDocumentsBlock();
+            if (preg_match('/# END Forma static fallback\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
+            } elseif (preg_match('/RewriteEngine\s+On\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
+            } else {
+                $content = $block . $content;
+            }
+        } else {
+            $content = (string)preg_replace('/# BEGIN Forma error documents.*?# END Forma error documents\s*\n?/s', '', $content);
+        }
+        return file_put_contents($path, $content) !== false;
+    }
+
+    // ---- Redirects (Apache-level 301s, written from Settings -> SEO) -----
+
+    public static function hasRedirectsBlock(?string $content = null): bool {
+        $content = $content ?? (is_file(ROOT_DIR . '/.htaccess') ? (string)file_get_contents(ROOT_DIR . '/.htaccess') : '');
+        return str_contains($content, '# BEGIN Forma redirects');
+    }
+
+    private static function redirectRuleLine(array $r): ?string {
+        $from = trim((string)($r['from_path'] ?? ''), '/');
+        $to = trim((string)($r['to_url'] ?? ''));
+        if ($from === '' || $to === '' || empty($r['enabled'])) {
+            return null;
+        }
+        $status = (int)($r['status'] ?? 301);
+        if (!in_array($status, [301, 302, 307, 308], true)) {
+            $status = 301;
+        }
+        // Escape regex metacharacters for RewriteRule's ERE pattern; typical slugs need none of this.
+        $pattern = '^' . preg_quote($from, '/') . '/?$';
+        return "RewriteRule {$pattern} {$to} [R={$status},L]";
+    }
+
+    /**
+     * Rewrites the whole redirects block from the current DB rows. Always anchored right
+     * after "RewriteEngine On" so 301s take priority over both published files and PHP.
+     */
+    public static function syncRedirectsBlock(array $redirects): bool {
+        $path = ROOT_DIR . '/.htaccess';
+        if (!is_file($path) || !is_writable($path)) {
+            return false;
+        }
+        $content = (string)file_get_contents($path);
+        $lines = [];
+        foreach ($redirects as $r) {
+            $line = self::redirectRuleLine($r);
+            if ($line !== null) {
+                $lines[] = $line;
+            }
+        }
+        $block = $lines
+            ? "# BEGIN Forma redirects\n# Written from Settings -> SEO -> Redirects. Apache-level 301s survive PHP outages.\n"
+                . implode("\n", $lines) . "\n# END Forma redirects\n\n"
+            : '';
+        if (self::hasRedirectsBlock($content)) {
+            $content = (string)preg_replace('/# BEGIN Forma redirects.*?# END Forma redirects\s*\n?/s', $block, $content);
+        } elseif ($block !== '') {
+            if (preg_match('/RewriteEngine\s+On\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
+            } else {
+                $content = $block . $content;
+            }
+        } else {
+            return true;
+        }
+        return file_put_contents($path, $content) !== false;
     }
 }

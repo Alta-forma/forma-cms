@@ -255,7 +255,7 @@ $scoreClass = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'off');
 
 <div class="settings-card" id="seo-redirects">
     <h3><i class="fas fa-directions"></i> Redirects</h3>
-    <p class="card-sub">301/302 rules applied in PHP before pages load. Prefer this over hand-editing .htaccess.</p>
+    <p class="card-sub">301/302 rules — also written as real Apache <code>RewriteRule</code>s in <code>.htaccess</code>, so they still work if PHP/FastCGI dies. Prefer this over hand-editing .htaccess.</p>
     <form class="redirect-add-form" hx-post="actions/redirects-save.php" hx-target="#settings-panel" hx-swap="innerHTML">
         <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
         <input type="hidden" name="action" value="save">

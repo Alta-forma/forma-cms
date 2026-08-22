@@ -94,6 +94,9 @@ class PageRepo {
         }
 
         $slug = self::slugFromContent($content, $filename);
+        $existingRow = self::get($filename);
+        $oldSlug = $existingRow['slug'] ?? null;
+
         $db = Database::get();
         $db->execute(
             'INSERT INTO pages (filename, content_type, slug, content)
@@ -106,7 +109,19 @@ class PageRepo {
             [$filename, $contentType, $slug, $content]
         );
         $db->flushCache();
-        return self::get($filename) ?? [];
+        $saved = self::get($filename) ?? [];
+
+        if ($oldSlug !== null && $oldSlug !== $slug && class_exists('StaticFallback')) {
+            StaticFallback::unpublishPage($oldSlug);
+        }
+        if ($saved && class_exists('StaticFallback')) {
+            StaticFallback::publishPage($saved);
+        }
+        if ($saved && class_exists('Search')) {
+            Search::indexPage($saved);
+        }
+
+        return $saved;
     }
 
     public static function delete(string $filename): void {
@@ -115,12 +130,19 @@ class PageRepo {
             throw new RuntimeException('System pages cannot be deleted');
         }
         $db = Database::get();
-        $row = $db->queryOne('SELECT id FROM pages WHERE filename = ?', [$filename]);
+        $row = $db->queryOne('SELECT * FROM pages WHERE filename = ?', [$filename]);
         if (!$row) {
             throw new RuntimeException('Page not found');
         }
         $db->execute('DELETE FROM pages WHERE filename = ?', [$filename]);
         $db->flushCache();
+
+        if (class_exists('StaticFallback') && !empty($row['slug'])) {
+            StaticFallback::unpublishPage($row['slug']);
+        }
+        if (class_exists('Search')) {
+            Search::removePage($filename);
+        }
     }
 
     public static function sanitizeFilename(string $filename): string {

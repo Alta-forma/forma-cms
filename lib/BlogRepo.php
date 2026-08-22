@@ -97,6 +97,8 @@ class BlogRepo {
             }
         }
 
+        $oldSlug = $existing['slug'] ?? null;
+
         $db = Database::get();
         $db->execute(
             'INSERT INTO blog_posts (filename, slug, title, body, description, author, categories, tags, published_at, seo_json)
@@ -124,19 +126,41 @@ class BlogRepo {
         if (class_exists('Feed')) {
             Feed::maybeRegenerateBlog();
         }
-        return self::get($filename) ?? [];
+        $saved = self::get($filename) ?? [];
+
+        if ($oldSlug !== null && $oldSlug !== $slug && class_exists('StaticFallback')) {
+            StaticFallback::unpublishPost($oldSlug);
+        }
+        if ($saved && class_exists('StaticFallback')) {
+            StaticFallback::publishPost($saved);
+            StaticFallback::publishBlogArchive();
+        }
+        if ($saved && class_exists('Search')) {
+            Search::indexPost($saved);
+        }
+
+        return $saved;
     }
 
     public static function delete(string $filename): void {
         $filename = PageRepo::sanitizeFilename($filename);
         $db = Database::get();
-        if (!$db->queryOne('SELECT id FROM blog_posts WHERE filename = ?', [$filename])) {
+        $row = $db->queryOne('SELECT * FROM blog_posts WHERE filename = ?', [$filename]);
+        if (!$row) {
             throw new RuntimeException('Post not found');
         }
         $db->execute('DELETE FROM blog_posts WHERE filename = ?', [$filename]);
         $db->flushCache();
         if (class_exists('Feed')) {
             Feed::maybeRegenerateBlog();
+        }
+
+        if (class_exists('StaticFallback')) {
+            StaticFallback::unpublishPost($row['slug'] ?? $filename);
+            StaticFallback::publishBlogArchive();
+        }
+        if (class_exists('Search')) {
+            Search::removePost($filename);
         }
     }
 

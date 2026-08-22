@@ -97,12 +97,18 @@ class RedirectRepo {
             $id = (int)$db->pdo()->lastInsertId();
         }
         $row = $db->queryOne('SELECT * FROM redirects WHERE id = ?', [$id]);
+        if (class_exists('Htaccess')) {
+            Htaccess::syncRedirectsBlock(self::list());
+        }
         return $row ?: [];
     }
 
     public static function delete(int $id): bool {
         self::ensureTable();
         Database::get()->execute('DELETE FROM redirects WHERE id = ?', [$id]);
+        if (class_exists('Htaccess')) {
+            Htaccess::syncRedirectsBlock(self::list());
+        }
         return true;
     }
 }

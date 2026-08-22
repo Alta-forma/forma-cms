@@ -416,6 +416,8 @@ TWIG;
             'blog-single' => $blogSingle,
             'podcast-archive' => $podcastArchive,
             'podcast-single' => $podcastSingle,
+            'search-results' => Render::defaultSearchResultsTemplate(),
+            'search-page' => Render::defaultSearchPageTemplate(),
         ] as $fn => $content) {
             if (!$this->queryOne('SELECT 1 FROM pages WHERE filename = ?', [$fn])) {
                 $this->execute(
@@ -423,6 +425,21 @@ TWIG;
                     [$fn, 'html', null, $content]
                 );
             }
+        }
+
+        if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'search'")) {
+            $searchSnippet = <<<'HTML'
+<form class="fx-search-box" role="search" action="/search" method="get"
+      hx-get="/search" hx-target="#fx-search-results" hx-push-url="true"
+      hx-trigger="submit, keyup changed delay:400ms from:input[name='q']">
+  <input type="search" name="q" placeholder="Search…" autocomplete="off" aria-label="Search">
+</form>
+<div id="fx-search-results"></div>
+HTML;
+            $this->execute(
+                'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
+                ['search', 'search', $searchSnippet]
+            );
         }
 
         if (!$this->queryOne('SELECT 1 FROM blog_posts WHERE filename = ?', ['welcome'])) {

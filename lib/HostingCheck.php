@@ -144,18 +144,35 @@ class HostingCheck {
         $checks[] = [
             'id'         => 'static_fallback',
             'level'      => ($fbRules && !empty($fb['writable'])) ? 'pass' : 'warn',
-            'title'      => 'Last-good HTML + PHP heartbeat',
-            'detail'     => ($fbRules ? '.htaccess fallback rules present' : '.htaccess missing fallback rules')
-                . ' · /up heartbeat · stamp ' . (!empty($fb['stamp']) ? 'written' : 'not yet'),
+            'title'      => 'Publish mode + PHP heartbeat',
+            'detail'     => ($fbRules ? '.htaccess publish rules present' : '.htaccess missing publish rules')
+                . ' · marker ' . (!empty($fb['marker']) ? 'on' : 'off')
+                . ' · /up heartbeat · stamp ' . (!empty($fb['stamp']) ? 'written' : 'not yet')
+                . ' · last full publish ' . ($fb['last_published'] ? date('Y-m-d H:i', $fb['last_published']) : 'never'),
             'fix_steps'  => $fbRules && !empty($fb['writable']) ? [
                 'If this page loaded, PHP is running right now. DreamHost can still break FastCGI later (“No input file specified.”) even when the panel shows PHP 8.3.',
                 'Watch GET /up. If it dies but /fallback/php-ok.json still returns 200, the vhost FastCGI map is empty — open a DreamHost ticket; do not wipe database/ or uploads/.',
                 'php tools/watch-php.php https://this-site',
             ] : [
-                'Apache should serve fallback/index.html for / when PHP/FastCGI is dead.',
-                'Use the button below, or Settings → Cache → save with last-good HTML on.',
+                'When Publish mode is on, Apache serves fallback/*.html directly (before PHP runs) and falls back to PHP for anything not yet published — including a total FastCGI outage.',
+                'Use the button below, or Settings → Cache → turn on Publish mode and click "Publish now".',
             ],
-            'fix_action' => (!$fbRules) ? ['id' => 'ensure_static_fallback', 'label' => 'Add fallback rules + write homepage'] : null,
+            'fix_action' => (!$fbRules) ? ['id' => 'ensure_static_fallback', 'label' => 'Add publish rules + publish site'] : null,
+        ];
+
+        $ftsOk = class_exists('Search') && Search::fts5Available();
+        $checks[] = [
+            'id'         => 'search_fts5',
+            'level'      => $ftsOk ? 'pass' : 'warn',
+            'title'      => 'Site search engine',
+            'detail'     => $ftsOk
+                ? 'SQLite FTS5 available — ranked full-text search'
+                : 'FTS5 not available — using LIKE fallback (works, less relevant ranking)',
+            'fix_steps'  => $ftsOk ? [] : [
+                'Most hosts (DreamHost, cPanel, SiteGround) ship SQLite with FTS5 built in — nothing to do.',
+                'If you are stuck on the LIKE fallback long-term, ask your host to enable the FTS5 compile option for php-sqlite3 / pdo_sqlite.',
+            ],
+            'fix_action' => null,
         ];
 
         $staticSeo = Htaccess::staticSeoFiles();

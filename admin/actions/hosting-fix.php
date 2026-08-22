@@ -71,9 +71,13 @@ try {
         if (!is_dir(FALLBACK_DIR) && !@mkdir(FALLBACK_DIR, 0755, true)) {
             throw new RuntimeException('Could not create fallback/');
         }
+        $cache = Database::get()->getSetting('cache');
+        $cache['static_fallback'] = true;
+        Database::get()->saveSetting('cache', $cache);
         StaticFallback::writeStamp();
-        StaticFallback::refreshHomeIfStale(true);
-        $message = 'Fallback rules ensured; last-good homepage written if possible.';
+        $counts = StaticFallback::enable();
+        $message = 'Publish rules ensured; published ' . (int)($counts['pages'] ?? 0) . ' pages, '
+            . (int)($counts['posts'] ?? 0) . ' posts.';
     } elseif ($action === 'chmod_database') {
         if (!file_exists(DB_FILE)) {
             throw new RuntimeException('database/forma.db does not exist yet.');

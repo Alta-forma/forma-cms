@@ -204,6 +204,165 @@ HTML;
         return Seo::applyToHtml($html, Seo::forPost($row));
     }
 
+    // ---- Podcast (public archive + episode pages) ------------------------
+
+    public static function renderPodcastArchive(): string {
+        $config = Database::get()->getConfig();
+        $podcastConfig = $config['podcast'] ?? [];
+        $podcastCtx = [
+            'title'       => $podcastConfig['title'] ?: ($config['site']['title'] ?? 'Podcast'),
+            'description' => $podcastConfig['description'] ?? '',
+            'cover_art'   => $podcastConfig['image'] ?? '',
+        ];
+        $episodes = [];
+        foreach (PodcastRepo::list() as $row) {
+            if (empty($row['published_at']) || (int)$row['published_at'] > time()) {
+                continue;
+            }
+            $ep = $row;
+            $ep['id'] = $row['episode_id'];
+            $ep['publish_date'] = date('Y-m-d', (int)$row['published_at']);
+            $episodes[] = $ep;
+        }
+        $tpl = PageRepo::get('podcast-archive');
+        if (!$tpl) {
+            self::sendError(404);
+        }
+        $html = self::renderTwig(PageRepo::stripMeta($tpl['content']), array_merge(self::siteContext(), [
+            'episodes' => $episodes,
+            'podcast'  => $podcastCtx,
+        ]));
+        if (!License::isPodcastLicensed()) {
+            $html .= '<div style="text-align:center;padding:1rem;opacity:.55;font-size:.8rem;">Powered by Forma Podcast</div>';
+        }
+        $html = self::injectGenerator(self::expandShortcodes($html));
+        return Seo::applyToHtml($html, Seo::forSimple(
+            '/podcast',
+            $podcastCtx['title'],
+            $podcastCtx['description'],
+            $podcastCtx['cover_art'] ?? ''
+        ));
+    }
+
+    public static function renderPodcastEpisode(array $row): string {
+        $config = Database::get()->getConfig();
+        $podcastConfig = $config['podcast'] ?? [];
+        $podcastCtx = [
+            'title'       => $podcastConfig['title'] ?: ($config['site']['title'] ?? 'Podcast'),
+            'description' => $podcastConfig['description'] ?? '',
+            'cover_art'   => $podcastConfig['image'] ?? '',
+        ];
+        $episode = $row;
+        $episode['id'] = $row['episode_id'];
+        $episode['publish_date'] = $row['published_at'] ? date('Y-m-d', (int)$row['published_at']) : '';
+        $episode['audio_url'] = forma_uploads_web_prefix() . basename($row['audio_file']);
+        if (!empty($row['show_notes'])) {
+            $episode['show_notes_html'] = self::parsedown()->text($row['show_notes']);
+        }
+        $tpl = PageRepo::get('podcast-single');
+        if (!$tpl) {
+            self::sendError(404);
+        }
+        $html = self::renderTwig(PageRepo::stripMeta($tpl['content']), array_merge(self::siteContext(), [
+            'episode'      => $episode,
+            'podcast'      => $podcastCtx,
+            'podcast_feed' => '/feeds/podcast.xml',
+        ]));
+        if (!License::isPodcastLicensed()) {
+            $html .= '<div style="text-align:center;padding:1rem;opacity:.55;font-size:.8rem;">Powered by Forma Podcast</div>';
+        }
+        $html = self::injectGenerator(self::expandShortcodes($html));
+        return Seo::applyToHtml($html, Seo::forSimple(
+            '/podcast/' . $row['episode_id'],
+            $row['title'] ?: $row['episode_id'],
+            $row['description'] ?? '',
+            ($row['episode_art'] ?: ($podcastCtx['cover_art'] ?? ''))
+        ));
+    }
+
+    // ---- Search ------------------------------------------------------------
+
+    public static function renderSearchResultsFragment(array $results, string $query): string {
+        $tpl = Database::get()->queryOne("SELECT content FROM pages WHERE filename = 'search-results'");
+        $content = $tpl ? PageRepo::stripMeta($tpl['content']) : self::defaultSearchResultsTemplate();
+        $html = self::renderTwig($content, array_merge(self::siteContext(), [
+            'results'      => $results,
+            'query'        => $query,
+            'result_count' => count($results),
+        ]));
+        return self::expandShortcodes($html);
+    }
+
+    public static function renderSearchPage(array $results, string $query): string {
+        $fragment = self::renderSearchResultsFragment($results, $query);
+        $tpl = Database::get()->queryOne("SELECT content FROM pages WHERE filename = 'search-page'");
+        $content = $tpl ? PageRepo::stripMeta($tpl['content']) : self::defaultSearchPageTemplate();
+        $html = self::renderTwig($content, array_merge(self::siteContext(), [
+            'results_html' => $fragment,
+            'query'        => $query,
+            'result_count' => count($results),
+        ]));
+        $html = self::injectGenerator(self::expandShortcodes($html));
+        $doc = Seo::forSimple('/search', 'Search' . ($query !== '' ? ' — ' . $query : ''));
+        $doc['robots'] = 'noindex,follow';
+        return Seo::applyToHtml($html, $doc);
+    }
+
+    public static function defaultSearchResultsTemplate(): string {
+        return <<<'TWIG'
+{% if results %}
+<ul class="fx-search-results">
+  {% for r in results %}
+    <li class="fx-search-result">
+      <span class="fx-search-type">{{ r.type }}</span>
+      <a href="{{ r.url }}">{{ r.title }}</a>
+      {% if r.date_label %}<span class="fx-search-date">{{ r.date_label }}</span>{% endif %}
+      {% if r.excerpt %}<p class="fx-search-excerpt">{{ r.excerpt|raw }}</p>{% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% elseif query %}
+<p class="fx-search-empty">No results for &ldquo;{{ query }}&rdquo;. Try another word.</p>
+{% else %}
+<p class="fx-search-empty">Type something to search the site.</p>
+{% endif %}
+TWIG;
+    }
+
+    public static function defaultSearchPageTemplate(): string {
+        return <<<'TWIG'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Search — {{ site.title }}</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;max-width:42rem;margin:2.5rem auto;padding:0 1.5rem;line-height:1.6;color:#1a1a1a}
+.fx-search-form{display:flex;gap:.5rem;margin-bottom:1.5rem}
+.fx-search-form input{flex:1;padding:.6rem .8rem;border:1px solid #ccc;border-radius:.5rem;font:inherit}
+.fx-search-form button{padding:.6rem 1rem;border:0;border-radius:.5rem;background:#1a1a1a;color:#fff;cursor:pointer}
+.fx-search-results{list-style:none;margin:0;padding:0}
+.fx-search-result{padding:1rem 0;border-bottom:1px solid #eee}
+.fx-search-type{display:inline-block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-right:.5rem}
+.fx-search-date{font-size:.85rem;color:#888;margin-left:.5rem}
+.fx-search-excerpt{color:#555;margin:.35rem 0 0}
+.fx-search-excerpt mark{background:#fff3c4;padding:0 .1em}
+.fx-search-empty{color:#888}
+</style>
+</head>
+<body>
+<h1>Search</h1>
+<form class="fx-search-form" action="/search" method="get" role="search">
+  <input type="search" name="q" value="{{ query }}" placeholder="Search this site…" autofocus>
+  <button type="submit">Search</button>
+</form>
+<div id="fx-search-results">{{ results_html|raw }}</div>
+<p><a href="/">← Home</a></p>
+</body>
+</html>
+TWIG;
+    }
+
     public static function staticError(int $code): string {
         $titles = [403 => 'Forbidden', 404 => 'Not Found', 500 => 'Server Error'];
         $t = $titles[$code] ?? 'Error';
