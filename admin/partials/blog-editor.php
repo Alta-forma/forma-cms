@@ -150,11 +150,7 @@ $summary = trim(($title ?: $filename ?: 'new post') . ($slug ? " · /blog/{$slug
 <footer>
     <div class="buttons">
         <div class="button-group">
-            <button type="button" class="standard-btn"
-                    hx-post="actions/blog-preview.php"
-                    hx-include="#blog-form"
-                    hx-target="#blog-preview"
-                    hx-swap="innerHTML">
+            <button type="button" class="standard-btn" data-blog-preview>
                 <i class="small fas fa-eye"></i> Preview
             </button>
             <button type="submit" form="blog-form" class="standard-btn">
@@ -172,4 +168,3 @@ $summary = trim(($title ?: $filename ?: 'new post') . ($slug ? " · /blog/{$slug
         </div>
     </div>
 </footer>
-<div id="blog-preview" style="display:none"></div>

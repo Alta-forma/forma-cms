@@ -25,6 +25,11 @@ if ($section === 'site') {
     $current['blog_feed_rss'] = !empty($_POST['blog_feed_rss']);
     $current['blog_feed_json'] = !empty($_POST['blog_feed_json']);
     $current['auto_regen_feed'] = !empty($_POST['auto_regen_feed']);
+    if (isset($_POST['default_author'])) {
+        $site = Database::get()->getSetting('site');
+        $site['default_author'] = trim((string)$_POST['default_author']);
+        Database::get()->saveSetting('site', $site);
+    }
 } elseif ($section === 'podcast') {
     foreach (['title', 'description', 'author', 'email', 'category', 'subcategory', 'image', 'explicit', 'language'] as $k) {
         if (isset($_POST[$k])) {
@@ -42,12 +47,13 @@ if ($section === 'site') {
         'robots_extra', 'robots_manual', 'sitemap_manual', 'noindex_paths',
         'title_separator', 'default_og_image', 'favicon', 'apple_touch_icon',
         'twitter_site', 'twitter_card', 'google_site_verification', 'bing_site_verification',
+        'google_analytics',
         'organization_name', 'organization_logo', 'schema_type', 'same_as',
         'schema_email', 'schema_phone', 'schema_address', 'schema_city', 'schema_region',
-        'schema_postal', 'schema_country', 'place_id', 'gbp_url', 'maps_embed_url',
+        'schema_postal', 'schema_country', 'schema_hours', 'schema_price_range', 'place_id', 'gbp_url', 'review_url', 'maps_embed_url',
     ] as $k) {
         if (isset($_POST[$k])) {
-            $current[$k] = in_array($k, ['robots_manual', 'sitemap_manual', 'same_as'], true)
+            $current[$k] = in_array($k, ['robots_manual', 'sitemap_manual', 'same_as', 'schema_hours'], true)
                 ? (string)$_POST[$k]
                 : trim((string)$_POST[$k]);
         }

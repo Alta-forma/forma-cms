@@ -43,6 +43,7 @@ try {
     }
 
     if ($kind === 'upload') {
+        session_write_close();
         $saved = MediaRepo::saveUpload($_FILES['file'] ?? []);
         echo json_encode(['success' => true, 'insert' => $saved['url'], 'item' => $saved, 'filename' => $saved['filename']]);
         exit;

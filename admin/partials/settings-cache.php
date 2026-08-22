@@ -16,19 +16,22 @@ $age = static function (?int $sec): string {
     }
     return (int)floor($sec / 3600) . 'h ago';
 };
+$phpOn = !empty($s['enabled']);
+$htmlOn = !empty($s['static_fallback']);
+fx_settings_scroll_open();
 ?>
 <?php echo fx_panel_header('bolt', 'Cache', 'Choose how Forma serves rendered pages'); ?>
 
-<form hx-post="actions/settings-save.php" hx-target="#fx-toast" hx-swap="outerHTML">
+<form id="fx-settings-form" hx-post="actions/settings-save.php" hx-target="#fx-toast" hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
     <input type="hidden" name="section" value="cache">
 
-    <div class="settings-card cache-card php-cache-card">
+    <div class="settings-card cache-card php-cache-card <?php echo $phpOn ? 'card-glow-pass' : ''; ?>">
         <h3><i class="fas fa-microchip"></i> PHP cache</h3>
         <p class="card-sub">
             Stores rendered pages in SQLite so PHP can skip repeat Twig and Markdown work.
         </p>
-        <?php echo fx_switch('enabled', !empty($s['enabled']), 'Enable PHP cache', 'PHP still handles each request, with less rendering work.'); ?>
+        <?php echo fx_switch('enabled', $phpOn, 'Enable PHP cache', 'PHP still handles each request, with less rendering work.'); ?>
         <div class="form-group" style="margin-top:1rem">
             <label>Time to live</label>
             <input type="number" name="ttl" min="60" value="<?php echo (int)($s['ttl'] ?? 3600); ?>">
@@ -45,7 +48,6 @@ $age = static function (?int $sec): string {
             </div>
         </div>
         <div class="card-actions">
-            <button type="submit" class="standard-btn"><i class="small fas fa-save"></i> Save cache settings</button>
             <button type="button" class="standard-btn subtle-btn"
                     hx-post="actions/cache-flush.php"
                     hx-vals='{"csrf_token":"<?php echo h(Auth::csrf()); ?>"}'
@@ -56,17 +58,17 @@ $age = static function (?int $sec): string {
         </div>
     </div>
 
-    <div class="settings-card cache-card html-cache-card">
+    <div class="settings-card cache-card html-cache-card <?php echo $htmlOn ? 'card-glow-pass' : ''; ?>">
         <h3><i class="fas fa-file-code"></i> HTML cache</h3>
         <p class="card-sub">
             Writes public pages, posts, and podcast episodes to real HTML files. Apache serves
             those files directly; search, admin, and the API remain dynamic.
         </p>
-        <?php echo fx_switch('static_fallback', !empty($s['static_fallback']), 'Enable HTML cache', 'Creates the full cache now, then refreshes it automatically when content changes.'); ?>
+        <?php echo fx_switch('static_fallback', $htmlOn, 'Enable HTML cache', 'Creates the full cache now, then refreshes it automatically when content changes.'); ?>
         <div class="cache-status-grid">
             <div class="cache-stat">
                 <span>Status</span>
-                <strong><?php echo !empty($fb['enabled']) ? ($fb['marker'] ? 'On' : 'Waiting to build') : 'Off'; ?></strong>
+                <strong><?php echo $htmlOn ? ($fb['marker'] ? 'On' : 'Waiting to build') : 'Off'; ?></strong>
             </div>
             <div class="cache-stat">
                 <span>Homepage</span>
@@ -90,7 +92,6 @@ $age = static function (?int $sec): string {
             </div>
         </div>
         <div class="card-actions">
-            <button type="submit" class="standard-btn"><i class="small fas fa-save"></i> Save cache settings</button>
             <button type="button" class="standard-btn subtle-btn"
                     hx-post="actions/fallback-rebuild.php"
                     hx-vals='{"csrf_token":"<?php echo h(Auth::csrf()); ?>"}'
@@ -101,3 +102,6 @@ $age = static function (?int $sec): string {
         </div>
     </div>
 </form>
+<?php
+fx_settings_scroll_close();
+echo fx_settings_footer('fx-settings-form');

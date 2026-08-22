@@ -170,13 +170,37 @@
   function pickUpload(cm, toolbar) {
     const input = document.createElement('input');
     input.type = 'file';
+    input.multiple = true;
     input.accept = 'image/*,audio/*,video/*,.pdf,.svg,.webp';
     input.style.display = 'none';
     document.body.appendChild(input);
     input.onchange = () => {
-      const file = input.files[0];
+      const files = input.files;
       input.remove();
-      if (!file) return;
+      if (!files || !files.length) return;
+      const insertFrom = (data) => {
+        const path = data.insert || data.path || data.url || '';
+        const name = data.filename || 'file';
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        const img = ['jpg','jpeg','png','gif','svg','webp','avif'].includes(ext);
+        let text = path;
+        if (img) text = isMd(cm) ? '![' + name + '](' + path + ')' : '<img src="' + path + '" alt="' + name + '">';
+        else if (isMd(cm)) text = '[' + name + '](' + path + ')';
+        else text = '<a href="' + path + '">' + name + '</a>';
+        insertAtCursor(text, cm);
+        loadAll(toolbar, cm);
+      };
+      if (window.FormaUploads && window.FormaUploads.uploadFiles) {
+        window.FormaUploads.uploadFiles(files, {
+          url: 'actions/toolbar-quick-add.php',
+          field: 'file',
+          kind: 'upload',
+          list: false,
+          onEach: (res) => { if (res.ok && res.data) insertFrom(res.data); },
+        });
+        return;
+      }
+      const file = files[0];
       const fd = new FormData();
       fd.append('kind', 'upload');
       fd.append('file', file);
@@ -185,16 +209,7 @@
         .then((r) => r.json())
         .then((data) => {
           if (!data.success) throw new Error(data.error || 'Upload failed');
-          const path = data.insert || '';
-          const name = data.filename || 'file';
-          const ext = (name.split('.').pop() || '').toLowerCase();
-          const img = ['jpg','jpeg','png','gif','svg','webp','avif'].includes(ext);
-          let text = path;
-          if (img) text = isMd(cm) ? '![' + name + '](' + path + ')' : '<img src="' + path + '" alt="' + name + '">';
-          else if (isMd(cm)) text = '[' + name + '](' + path + ')';
-          else text = '<a href="' + path + '">' + name + '</a>';
-          insertAtCursor(text, cm);
-          loadAll(toolbar, cm);
+          insertFrom(data);
         })
         .catch((e) => alert(e.message));
     };

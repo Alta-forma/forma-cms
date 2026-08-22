@@ -6,12 +6,12 @@ if (!License::isPodcastLicensed()):
     <div class="locked-banner" style="width:100%">
         <i class="fas fa-lock" style="font-size:2rem;color:var(--primary)"></i>
         <h2>Podcasts are a paid unlock</h2>
-        <p>Activate a license in Settings → License (or use <code>FX-DEV-LOCAL</code> for local testing).</p>
+        <p>Activate a license in Settings → General (or use <code>FX-DEV-LOCAL</code> for local testing).</p>
         <button type="button" class="standard-btn"
-                hx-get="index.php?section=settings&partial=1&sub=license"
+                hx-get="index.php?section=settings&partial=1&sub=general"
                 hx-target="#main"
-                hx-push-url="index.php?section=settings&sub=license">
-            Open License
+                hx-push-url="index.php?section=settings&sub=general">
+            Open Settings
         </button>
     </div>
 </div>

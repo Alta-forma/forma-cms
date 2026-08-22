@@ -9,13 +9,25 @@ $previewImage = $previewImage ?? '';
 $previewUrl   = $previewUrl ?? (rtrim(Database::get()->getSetting('site')['url'] ?? 'https://example.com', '/') . '/');
 $host = parse_url($previewUrl, PHP_URL_HOST) ?: 'example.com';
 $imgAbs = $previewImage !== '' ? (preg_match('#^https?://#i', $previewImage) ? $previewImage : Seo::absoluteUrl($previewImage)) : '';
+$siteSeo = Seo::settings();
+$siteRow = Database::get()->getSetting('site');
+$suffixOn = !empty($siteSeo['title_suffix']);
+$titleSep = (string)($siteSeo['title_separator'] ?? ' — ');
+$siteTitle = (string)($siteRow['title'] ?? '');
+$serpTitle = $previewTitle;
+if ($suffixOn && $siteTitle !== '' && $serpTitle !== '' && !str_contains($serpTitle, $siteTitle)) {
+    $serpTitle .= $titleSep . $siteTitle;
+}
 ?>
-<div class="seo-preview" data-seo-preview>
+<div class="seo-preview" data-seo-preview
+     data-title-suffix="<?php echo $suffixOn ? '1' : '0'; ?>"
+     data-title-sep="<?php echo h($titleSep); ?>"
+     data-site-title="<?php echo h($siteTitle); ?>">
     <div class="seo-preview-col">
         <div class="seo-preview-label">Google</div>
         <div class="serp-card">
             <div class="serp-url"><?php echo h($host); ?> › …</div>
-            <div class="serp-title" data-preview="title"><?php echo h(mb_strimwidth($previewTitle, 0, 60, '…')); ?></div>
+            <div class="serp-title" data-preview="title"><?php echo h(mb_strimwidth($serpTitle, 0, 60, '…')); ?></div>
             <div class="serp-desc" data-preview="desc"><?php echo h(mb_strimwidth($previewDesc !== '' ? $previewDesc : 'Meta description will appear here.', 0, 160, '…')); ?></div>
         </div>
     </div>

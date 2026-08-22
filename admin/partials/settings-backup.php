@@ -5,6 +5,7 @@ $dbSizeH = $dbSize > 1048576 ? round($dbSize / 1048576, 1) . ' MB' : round($dbSi
 $up = SitePackage::uploadsStats();
 $upH = $up['bytes'] > 1048576 ? round($up['bytes'] / 1048576, 1) . ' MB' : round($up['bytes'] / 1024) . ' KB';
 $hasZip = class_exists('ZipArchive');
+fx_settings_scroll_open();
 ?>
 <?php echo fx_panel_header('download', 'Backup', 'Versioned site packages for safe restores & future migrations'); ?>
 
@@ -42,7 +43,7 @@ $hasZip = class_exists('ZipArchive');
         <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
         <div class="form-group">
             <label>Site package (.zip)</label>
-            <input type="file" name="package" accept=".zip,application/zip" required>
+            <?php echo fx_file_pick('package', '.zip,application/zip', 'Choose zip'); ?>
         </div>
         <?php echo fx_switch('replace_database', true, 'Replace database from package', 'Off = merge content from data.json only'); ?>
         <?php echo fx_switch('merge_uploads', true, 'Merge uploads folder', ''); ?>
@@ -82,3 +83,4 @@ $hasZip = class_exists('ZipArchive');
     <?php echo fx_url_pill('GET /api/v1/export/site  →  zip stream'); ?>
     <?php echo fx_url_pill('GET /api/v1/export  →  JSON (versioned)'); ?>
 </div>
+<?php fx_settings_scroll_close();

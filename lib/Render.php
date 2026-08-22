@@ -492,13 +492,120 @@ TWIG;
 TWIG;
     }
 
+    public static function errorPageCopy(int $code): array {
+        $pages = [
+            403 => [
+                'code' => '403',
+                'title' => 'Forbidden',
+                'headline' => 'You don’t have a key to this door.',
+                'lede' => 'This URL is locked. The public site is still that way.',
+            ],
+            404 => [
+                'code' => '404',
+                'title' => 'Page not found',
+                'headline' => 'This URL is a ghost.',
+                'lede' => 'No page at this slug. Search, or go home.',
+            ],
+            500 => [
+                'code' => '500',
+                'title' => 'Server error',
+                'headline' => 'Something broke on our side.',
+                'lede' => 'PHP had a bad moment. Cached pages may still be standing.',
+            ],
+        ];
+        return $pages[$code] ?? $pages[404];
+    }
+
+    public static function defaultErrorUiSnippet(): string {
+        return <<<'HTML'
+<style id="forma-error-ui">
+.forma-error{background:
+  radial-gradient(900px 420px at 8% -8%,rgba(252,190,52,.16),transparent 58%),
+  radial-gradient(640px 360px at 110% 8%,rgba(252,190,52,.07),transparent 52%),
+  var(--bg,#0a0a0b)}
+.error-shell{padding:calc(var(--nav-h,3.6rem) + 4.2rem) 0 3rem;min-height:calc(100vh - 12rem)}
+.error-kicker{margin:0 0 .4rem;color:var(--gold,#fcbe34);font-family:var(--font-brand,"Chakra Petch",system-ui,sans-serif);font-size:.78rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.error-code{margin:0 0 .15rem;font-family:var(--font-brand,"Chakra Petch",system-ui,sans-serif);font-size:clamp(5.5rem,18vw,11rem);line-height:.8;letter-spacing:-.06em;color:rgba(252,190,52,.16)}
+.error-shell h1{margin:0 0 .85rem;max-width:16ch;font-family:var(--font-brand,"Chakra Petch",system-ui,sans-serif);font-size:clamp(2rem,5.5vw,3.4rem);line-height:1;letter-spacing:-.03em}
+.error-lede{margin:0 0 1.8rem;max-width:34rem;color:var(--muted,rgba(245,245,247,.62));font-size:1.12rem}
+.error-actions{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1.6rem}
+.error-btn{display:inline-flex;align-items:center;justify-content:center;min-height:3rem;padding:0 1.15rem;border-radius:980px;background:linear-gradient(180deg,#ffd060,#fcbe34 55%,#e6a912);color:#14110a!important;font:700 .92rem/1 var(--font-brand,"Chakra Petch",system-ui,sans-serif);letter-spacing:.03em}
+.error-btn.ghost{background:transparent;border:1px solid var(--stroke-gold,rgba(252,190,52,.35));color:var(--gold,#fcbe34)!important}
+.error-btn:hover{filter:brightness(1.06);color:#14110a!important}
+.error-btn.ghost:hover{background:rgba(252,190,52,.1);color:#fff!important}
+.error-mark{width:clamp(3.2rem,8vw,4.6rem);color:var(--gold,#fcbe34);margin-bottom:1.3rem}
+</style>
+HTML;
+    }
+
+    public static function defaultErrorPageTemplate(int $code): string {
+        $c = self::errorPageCopy($code);
+        $search = $code === 404 ? "      [[search]]\n" : '';
+        $h1 = htmlspecialchars($c['headline']);
+        $lede = htmlspecialchars($c['lede']);
+        $num = htmlspecialchars($c['code']);
+        $title = htmlspecialchars($c['title']);
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{$num} — {$title}</title>
+[[site-head]]
+[[error-ui]]
+</head>
+<body class="forma-chrome forma-error">
+  [[site-header]]
+  <main class="error-shell">
+    <div class="forma-wrap">
+      <svg class="error-mark logo-svg" width="400" height="280" viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g fill="currentColor" fill-rule="evenodd">
+          <path d="M0,0 L400,0 L320,80 L0,80 L0,0 Z"></path>
+          <path d="M0,100 L300,100 L220,180 L0,180 L0,100 Z"></path>
+          <path d="M0,200 L80,200 L0,280 L0,200 Z"></path>
+        </g>
+      </svg>
+      <p class="error-kicker">Error {$num}</p>
+      <p class="error-code" aria-hidden="true">{$num}</p>
+      <h1>{$h1}</h1>
+      <p class="error-lede">{$lede}</p>
+{$search}      <div class="error-actions">
+        <a class="error-btn" href="/">Home</a>
+        <a class="error-btn ghost" href="/blog">Blog</a>
+        <a class="error-btn ghost" href="/docs">Docs</a>
+      </div>
+    </div>
+  </main>
+  [[site-footer]]
+</body>
+</html>
+HTML;
+    }
+
     public static function staticError(int $code): string {
-        $titles = [403 => 'Forbidden', 404 => 'Not Found', 500 => 'Server Error'];
-        $t = $titles[$code] ?? 'Error';
+        $c = self::errorPageCopy($code);
+        $num = htmlspecialchars($c['code']);
+        $title = htmlspecialchars($c['title']);
+        $h1 = htmlspecialchars($c['headline']);
+        $lede = htmlspecialchars($c['lede']);
         return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<title>' . htmlspecialchars($t) . '</title>'
-            . '<style>body{font-family:system-ui,sans-serif;max-width:36rem;margin:4rem auto;padding:0 1rem;line-height:1.5}</style></head><body>'
-            . '<h1>' . htmlspecialchars($t) . '</h1><p>Something went wrong. Please try again later.</p></body></html>';
+            . '<title>' . $num . ' — ' . $title . '</title>'
+            . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            . '<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">'
+            . '<style>:root{--gold:#fcbe34;--bg:#0a0a0b;--text:#f5f5f7;--muted:rgba(245,245,247,.62)}'
+            . 'body{margin:0;min-height:100vh;display:grid;place-items:center;padding:2.5rem 1.4rem;background:radial-gradient(800px 380px at 12% -10%,rgba(252,190,52,.16),transparent 58%),#0a0a0b;color:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}'
+            . '.wrap{width:min(40rem,100%)}svg{width:3.4rem;color:var(--gold);margin-bottom:1.2rem}'
+            . '.kicker{margin:0;color:var(--gold);font-family:"Chakra Petch",system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;font-size:.75rem}'
+            . '.code{margin:.1rem 0 .2rem;font-family:"Chakra Petch",system-ui,sans-serif;font-size:clamp(4.5rem,16vw,8rem);line-height:.85;color:rgba(252,190,52,.18)}'
+            . 'h1{margin:0 0 .7rem;font-family:"Chakra Petch",system-ui,sans-serif;font-size:clamp(1.8rem,5vw,2.8rem);line-height:1.05}'
+            . 'p{margin:0 0 1.4rem;color:var(--muted);font-size:1.05rem}'
+            . 'a{color:var(--gold)}</style></head><body><div class="wrap">'
+            . '<svg viewBox="0 0 400 280" aria-hidden="true"><g fill="currentColor" fill-rule="evenodd">'
+            . '<path d="M0,0 L400,0 L320,80 L0,80 L0,0 Z"/><path d="M0,100 L300,100 L220,180 L0,180 L0,100 Z"/><path d="M0,200 L80,200 L0,280 L0,200 Z"/></g></svg>'
+            . '<p class="kicker">Error ' . $num . '</p><p class="code" aria-hidden="true">' . $num . '</p>'
+            . '<h1>' . $h1 . '</h1><p>' . $lede . '</p><p><a href="/">← Home</a></p>'
+            . '</div></body></html>';
     }
 
     public static function sendError(int $code): void {

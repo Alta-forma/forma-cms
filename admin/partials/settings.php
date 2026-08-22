@@ -2,27 +2,33 @@
 require_once __DIR__ . '/_helpers.php';
 $sub = $_GET['sub'] ?? 'general';
 $podcastLicensed = License::isPodcastLicensed();
+$aliases = [
+    'license' => 'general',
+    'about'   => 'general',
+    'hosting' => 'server',
+    'agents'  => 'access',
+    'account' => 'access',
+];
+if (isset($aliases[$sub])) {
+    $sub = $aliases[$sub];
+}
 $subs = [
-    'general'  => ['General', 'cog'],
-    'seo'      => ['SEO', 'search'],
-    'blog'     => ['Blog', 'blog'],
+    'general' => ['General', 'cog'],
+    'seo'     => ['SEO', 'search'],
+    'blog'    => ['Blog', 'blog'],
 ];
 if ($podcastLicensed) {
     $subs['podcast'] = ['Podcast', 'podcast'];
 }
 $subs += [
-    'cache'    => ['Cache', 'bolt'],
-    'server'   => ['Server', 'shield-alt'],
-    'hosting'  => ['Hosting check', 'cloud'],
-    'account'  => ['Account', 'user-lock'],
-    'agents'   => ['Agents', 'robot'],
-    'license'  => ['License', 'key'],
-    'backup'   => ['Backup', 'download'],
-    'import'   => ['Import', 'file-import'],
-    'about'    => ['About', 'info-circle'],
+    'cache'  => ['Cache', 'bolt'],
+    'server' => ['Server', 'server'],
+    'access' => ['Access', 'user-lock'],
+    'backup' => ['Backup', 'download'],
+    'import' => ['Import', 'file-import'],
 ];
 if ($sub === 'podcast' && !$podcastLicensed) {
-    $sub = 'license';
+    $sub = 'general';
 }
 if (!isset($subs[$sub])) {
     $sub = 'general';

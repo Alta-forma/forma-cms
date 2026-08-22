@@ -31,6 +31,7 @@ class Seo {
             'twitter_card'            => 'summary_large_image',
             'google_site_verification'=> '',
             'bing_site_verification'  => '',
+            'google_analytics'        => '',
             'json_ld_website'         => true,
             'schema_type'             => 'person', // none|person|organization|local_business
             'organization_name'       => '',
@@ -43,8 +44,11 @@ class Seo {
             'schema_region'           => '',
             'schema_postal'            => '',
             'schema_country'          => 'US',
+            'schema_hours'            => '',
+            'schema_price_range'      => '',
             'place_id'                => '',
             'gbp_url'                 => '',
+            'review_url'              => '',
             'maps_embed_url'          => '',
             'noindex_paths'           => '/admin,/api,/old',
         ];
@@ -67,7 +71,53 @@ class Seo {
         if (!$seo['sitemap_auto'] && trim((string)($seo['sitemap_manual'] ?? '')) === '') {
             $seo['sitemap_manual'] = self::buildSitemapXml($seo);
         }
+        $seo['google_site_verification'] = self::parseVerificationToken((string)($seo['google_site_verification'] ?? ''));
+        $seo['bing_site_verification'] = self::parseVerificationToken((string)($seo['bing_site_verification'] ?? ''));
+        $seo['google_analytics'] = self::parseAnalyticsId((string)($seo['google_analytics'] ?? ''));
         return $seo;
+    }
+
+    /** Pull a token out of a raw paste (full meta tag or the value itself). */
+    public static function parseVerificationToken(string $raw): string {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        if (preg_match('/content\s*=\s*["\']([^"\']+)["\']/i', $raw, $m)) {
+            return trim($m[1]);
+        }
+        return trim($raw);
+    }
+
+    /** Accept G- / GTM- / UA- or a pasted snippet containing one. */
+    public static function parseAnalyticsId(string $raw): string {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        if (preg_match('/\b(GTM-[A-Z0-9]+)\b/i', $raw, $m)) {
+            return strtoupper($m[1]);
+        }
+        if (preg_match('/\b(G-[A-Z0-9]+)\b/i', $raw, $m)) {
+            return strtoupper($m[1]);
+        }
+        if (preg_match('/\b(UA-\d+-\d+)\b/i', $raw, $m)) {
+            return strtoupper($m[1]);
+        }
+        return $raw;
+    }
+
+    public static function analyticsHeadHtml(array $seo): string {
+        $id = self::parseAnalyticsId((string)($seo['google_analytics'] ?? ''));
+        if ($id === '') {
+            return '';
+        }
+        $esc = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+        if (str_starts_with($id, 'GTM-')) {
+            return '<script data-fx-analytics="gtm">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({\'gtm.start\':Date.now(),event:\'gtm.js\'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!=\'dataLayer\'?\'&l=\'+l:\'\';j.async=true;j.src=\'https://www.googletagmanager.com/gtm.js?id=\'+i+dl;f.parentNode.insertBefore(j,f);})(window,document,\'script\',\'dataLayer\',\'' . $esc . '\');</script>';
+        }
+        return '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $esc . '" data-fx-analytics="ga4"></script>' . "\n"
+            . '<script data-fx-analytics="ga4">window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag(\'js\',new Date());gtag(\'config\',\'' . $esc . '\');</script>';
     }
 
     public static function settings(): array {
@@ -321,6 +371,11 @@ class Seo {
             $tags[] = '<meta name="msvalidate.01" content="' . $esc($doc['bing_site_verification']) . '">';
         }
 
+        $analytics = self::analyticsHeadHtml($seo);
+        if ($analytics !== '') {
+            $tags[] = $analytics;
+        }
+
         $ld = self::jsonLd($doc);
         if ($ld) {
             $tags[] = '<script type="application/ld+json">' . $ld . '</script>';
@@ -342,9 +397,11 @@ class Seo {
                 $out[] = $p;
             }
         }
-        $gbp = trim((string)($seo['gbp_url'] ?? ''));
-        if ($gbp !== '' && preg_match('#^https?://#i', $gbp) && !in_array($gbp, $out, true)) {
-            $out[] = $gbp;
+        foreach (['gbp_url', 'review_url', 'maps_embed_url'] as $extraKey) {
+            $extra = trim((string)($seo[$extraKey] ?? ''));
+            if ($extra !== '' && preg_match('#^https?://#i', $extra) && !in_array($extra, $out, true)) {
+                $out[] = $extra;
+            }
         }
         return $out;
     }
@@ -431,10 +488,24 @@ class Seo {
             if ($sameAs) {
                 $biz['sameAs'] = $sameAs;
             }
-            if (!empty($seo['place_id'])) {
-                $biz['hasMap'] = 'https://www.google.com/maps/place/?q=place_id:' . rawurlencode((string)$seo['place_id']);
-            } elseif (!empty($seo['maps_embed_url'])) {
-                $biz['hasMap'] = $seo['maps_embed_url'];
+            $placeId = trim((string)($seo['place_id'] ?? ''));
+            $mapUrl = trim((string)($seo['gbp_url'] ?? ''))
+                ?: trim((string)($seo['maps_embed_url'] ?? ''));
+            if ($placeId !== '') {
+                $biz['hasMap'] = 'https://www.google.com/maps/place/?q=place_id:' . rawurlencode($placeId);
+            } elseif ($mapUrl !== '') {
+                $biz['hasMap'] = $mapUrl;
+            }
+            $hoursRaw = trim((string)($seo['schema_hours'] ?? ''));
+            if ($hoursRaw !== '') {
+                $hours = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $hoursRaw) ?: [])));
+                if ($hours) {
+                    $biz['openingHours'] = count($hours) === 1 ? $hours[0] : $hours;
+                }
+            }
+            $priceRange = trim((string)($seo['schema_price_range'] ?? ''));
+            if ($priceRange !== '') {
+                $biz['priceRange'] = $priceRange;
             }
             $graph[] = $biz;
         }
@@ -485,6 +556,7 @@ class Seo {
             '/<meta\s+name=["\']twitter:[^"\']+["\'][^>]*>/i',
             '/<meta\s+name=["\']google-site-verification["\'][^>]*>/i',
             '/<meta\s+name=["\']msvalidate\.01["\'][^>]*>/i',
+            '/<script[^>]*data-fx-analytics[^>]*>.*?<\/script>/is',
             '/<script\s+type=["\']application\/ld\+json["\'][^>]*>.*?<\/script>/is',
         ];
         foreach ($patterns as $p) {
@@ -695,6 +767,68 @@ class Seo {
      * Sitewide SEO health audit for the admin dashboard.
      * @return array{score:int,counts:array,issues:list<array>}
      */
+    private static function uploadPathExists(string $path): bool {
+        $path = trim($path);
+        if ($path === '' || !str_starts_with($path, '/uploads/')) {
+            return true;
+        }
+        return defined('ROOT_DIR') && is_file(ROOT_DIR . $path);
+    }
+
+    /** @param callable $add */
+    private static function auditDocument(
+        callable $add,
+        array &$titles,
+        array &$descs,
+        string $kind,
+        string $label,
+        string $href,
+        string $title,
+        string $displayTitle,
+        string $desc,
+        string $img,
+        array $seo,
+        string $robots = ''
+    ): void {
+        $displayTitle = trim($displayTitle) !== '' ? trim($displayTitle) : $title;
+        if ($title === '') {
+            $add('title_missing', 'fail', "{$kind} “{$label}” has no title", 'Set title or SEO title', $href);
+        } else {
+            $len = mb_strlen($displayTitle);
+            $fieldLen = mb_strlen($title);
+            if ($len > 60) {
+                $fix = $title;
+                if ($displayTitle !== $title && $fieldLen <= 60) {
+                    $fix = 'Site title suffix pushes the <title> over 60 characters';
+                }
+                $add('title_long', 'warn', "{$kind} “{$label}” title is {$len} chars (aim ≤60)", $fix, $href);
+            }
+            $key = mb_strtolower($displayTitle);
+            if (isset($titles[$key])) {
+                $add('title_dupe', 'fail', "Duplicate title: “{$displayTitle}” ({$titles[$key]} & {$label})", '', $href);
+            }
+            $titles[$key] = $label;
+        }
+        if ($desc === '') {
+            $add('desc_missing', 'warn', "{$kind} “{$label}” has no meta description", '', $href);
+        } else {
+            $len = mb_strlen($desc);
+            if ($len > 160) {
+                $add('desc_long', 'warn', "{$kind} “{$label}” description is {$len} chars (aim ≤160)", '', $href);
+            } elseif ($len < 50) {
+                $add('desc_short', 'info', "{$kind} “{$label}” description is short ({$len} chars)", '', $href);
+            }
+            $dkey = mb_strtolower($desc);
+            if (isset($descs[$dkey])) {
+                $add('desc_dupe', 'warn', "Duplicate description on “{$label}” (also {$descs[$dkey]})", '', $href);
+            }
+            $descs[$dkey] = $label;
+        }
+        if ($img === '' && trim((string)($seo['default_og_image'] ?? '')) === '') {
+            $add('image_missing', 'warn', "{$kind} “{$label}” has no featured image (and no site default)", 'Set a default social image once in SEO settings', $href);
+        }
+    }
+
     public static function healthReport(): array {
         $seo = self::settings();
         $site = Database::get()->getSetting('site');
@@ -706,21 +840,58 @@ class Seo {
         if (trim((string)($site['url'] ?? '')) === '') {
             $add('site_url', 'fail', 'Site URL is empty', 'Set it under Settings → General', 'index.php?section=settings&sub=general');
         }
+        if (empty($seo['robots_index'])) {
+            $add('site_noindex', 'fail', 'Sitewide indexing is off', 'Turn on “Allow search engines to index”', 'index.php?section=settings&sub=seo');
+        }
+        $siteDesc = trim((string)($site['description'] ?? ''));
+        if ($siteDesc === '') {
+            $add('site_desc', 'warn', 'Site description is empty', 'Set it under Settings → General', 'index.php?section=settings&sub=general');
+        } elseif (mb_strlen($siteDesc) > 160) {
+            $add('site_desc_long', 'warn', 'Site description is ' . mb_strlen($siteDesc) . ' chars (aim ≤160)', '', 'index.php?section=settings&sub=general');
+        }
         if (trim((string)($seo['favicon'] ?? '')) === '') {
-            $add('favicon', 'warn', 'No favicon set', 'Add one under Branding & social', '');
+            $add('favicon', 'warn', 'No favicon set', 'Add one under How links look', '');
         }
         if (trim((string)($seo['default_og_image'] ?? '')) === '') {
-            $add('default_og', 'warn', 'No default social / OG image', 'Upload a 1200×630 image for shares', '');
+            $add('default_og', 'warn', 'No default social / OG image', 'Upload a 1200×630 image under How links look', '');
         }
         if (empty($seo['sitemap_enabled'])) {
-            $add('sitemap', 'warn', 'Sitemap is disabled', 'Enable sitemap.xml for discovery', '');
+            $add('sitemap', 'warn', 'Sitemap is disabled', 'Enable sitemap.xml under Forma already does this', '');
         }
         $faviconPath = trim((string)($seo['favicon'] ?? ''));
-        if ($faviconPath !== '' && str_starts_with($faviconPath, '/uploads/')) {
-            $abs = ROOT_DIR . $faviconPath;
-            if (!is_file($abs)) {
-                $add('favicon_missing', 'fail', 'Favicon path does not exist on disk', $faviconPath, '');
+        if ($faviconPath !== '' && !self::uploadPathExists($faviconPath)) {
+            $add('favicon_missing', 'fail', 'Favicon path does not exist on disk', $faviconPath, '');
+        }
+        $ogPath = trim((string)($seo['default_og_image'] ?? ''));
+        if ($ogPath !== '' && !self::uploadPathExists($ogPath)) {
+            $add('og_missing', 'fail', 'Default social image path does not exist on disk', $ogPath, '');
+        }
+
+        $schemaType = (string)($seo['schema_type'] ?? 'person');
+        if (in_array($schemaType, ['local_business', 'organization', 'person'], true)
+            && trim((string)($seo['organization_logo'] ?? '')) === ''
+        ) {
+            $add('schema_logo', 'info', 'No schema logo / headshot', 'Used in JSON-LD and Google’s knowledge panel', '');
+        }
+        if ($schemaType === 'local_business') {
+            if (trim((string)($seo['schema_phone'] ?? '')) === '') {
+                $add('schema_phone', 'warn', 'Business phone is missing', 'Add it under This business', '');
             }
+            if (trim((string)($seo['schema_address'] ?? '')) === '' && trim((string)($seo['schema_city'] ?? '')) === '') {
+                $add('schema_address', 'warn', 'Business address is missing', 'Add street and city under This business', '');
+            }
+            $hasMaps = trim((string)($seo['gbp_url'] ?? '')) !== ''
+                || trim((string)($seo['place_id'] ?? '')) !== ''
+                || trim((string)($seo['maps_embed_url'] ?? '')) !== '';
+            if (!$hasMaps) {
+                $add('schema_gbp', 'warn', 'No Google Maps link', 'Paste the Share link under Google', '');
+            }
+        }
+        if (trim((string)($seo['google_site_verification'] ?? '')) === '') {
+            $add('gsc', 'info', 'Search Console is not connected', 'Paste the HTML tag from Google Search Console under Google', '');
+        }
+        if (trim((string)($seo['google_analytics'] ?? '')) === '') {
+            $add('analytics', 'info', 'No Analytics / Tag Manager ID', 'Paste a G- or GTM- ID under Google', '');
         }
 
         $titles = [];
@@ -740,48 +911,17 @@ class Seo {
             if (!$full) {
                 continue;
             }
-            $meta = PageRepo::extractMeta($full['content'] ?? '');
-            $title = trim((string)($meta['seo_title'] ?? $meta['title'] ?? ''));
-            $desc = trim((string)($meta['seo_description'] ?? $meta['description'] ?? ''));
-            $img = self::resolveImage($meta, $seo);
-            $robots = strtolower((string)($meta['robots'] ?? ''));
-            $href = 'index.php?section=pages&file=' . rawurlencode($fn);
-            $label = $fn;
-
-            if ($title === '') {
-                $add('title_missing', 'fail', "Page “{$label}” has no title", 'Set title or SEO title', $href);
-            } else {
-                $len = mb_strlen($title);
-                if ($len > 60) {
-                    $add('title_long', 'warn', "Page “{$label}” title is {$len} chars (aim ≤60)", $title, $href);
-                }
-                $key = mb_strtolower($title);
-                if (isset($titles[$key])) {
-                    $add('title_dupe', 'fail', "Duplicate title: “{$title}” ({$titles[$key]} & {$label})", '', $href);
-                }
-                $titles[$key] = $label;
-            }
-            if ($desc === '') {
-                $add('desc_missing', 'warn', "Page “{$label}” has no meta description", '', $href);
-            } else {
-                $len = mb_strlen($desc);
-                if ($len > 160) {
-                    $add('desc_long', 'warn', "Page “{$label}” description is {$len} chars (aim ≤160)", '', $href);
-                } elseif ($len < 50) {
-                    $add('desc_short', 'info', "Page “{$label}” description is short ({$len} chars)", '', $href);
-                }
-                $dkey = mb_strtolower($desc);
-                if (isset($descs[$dkey])) {
-                    $add('desc_dupe', 'warn', "Duplicate description on “{$label}” (also {$descs[$dkey]})", '', $href);
-                }
-                $descs[$dkey] = $label;
-            }
-            if ($img === '' && trim((string)($seo['default_og_image'] ?? '')) === '') {
-                $add('image_missing', 'warn', "Page “{$label}” has no featured image (and no site default)", 'Set a default social image once in SEO settings', $href);
-            }
-            if (str_contains($robots, 'noindex') && empty($seo['sitemap_enabled']) === false) {
-                // Fine — sitemap builder skips noindex; just note
-            }
+            $doc = self::forPage($full);
+            self::auditDocument(
+                $add, $titles, $descs, 'Page', $fn,
+                'index.php?section=pages&file=' . rawurlencode($fn),
+                trim((string)($doc['title'] ?? '')),
+                trim((string)($doc['display_title'] ?? '')),
+                trim((string)($doc['description'] ?? '')),
+                trim((string)($doc['og_image'] ?? '')),
+                $seo,
+                (string)($doc['robots'] ?? '')
+            );
         }
 
         foreach (BlogRepo::list(false) as $post) {
@@ -789,27 +929,52 @@ class Seo {
             if (!$full) {
                 continue;
             }
-            $seoJson = json_decode($full['seo_json'] ?? '{}', true) ?: [];
-            $title = trim((string)($seoJson['seo_title'] ?? $full['title'] ?? ''));
-            $desc = trim((string)($seoJson['seo_description'] ?? $full['description'] ?? ''));
-            $img = self::resolveImage($seoJson, $seo);
-            $href = 'index.php?section=blog&file=' . rawurlencode($post['filename']);
-            $label = 'post:' . ($post['slug'] ?: $post['filename']);
             $pub = !empty($full['published_at']) && (int)$full['published_at'] <= time();
-
             if (!$pub) {
-                continue; // draft — skip health noise
+                continue;
             }
-            if ($title === '') {
-                $add('title_missing', 'fail', "Post “{$label}” has no title", '', $href);
-            }
-            if ($desc === '') {
-                $add('desc_missing', 'warn', "Post “{$label}” has no description", '', $href);
-            }
-            if ($img === '' && trim((string)($seo['default_og_image'] ?? '')) === '') {
-                $add('image_missing', 'warn', "Post “{$label}” has no featured image (and no site default)", '', $href);
+            $doc = self::forPost($full);
+            $label = $post['slug'] ?: $post['filename'];
+            self::auditDocument(
+                $add, $titles, $descs, 'Post', $label,
+                'index.php?section=blog&file=' . rawurlencode($post['filename']),
+                trim((string)($doc['title'] ?? '')),
+                trim((string)($doc['display_title'] ?? '')),
+                trim((string)($doc['description'] ?? '')),
+                trim((string)($doc['og_image'] ?? '')),
+                $seo,
+                (string)($doc['robots'] ?? '')
+            );
+        }
+
+        if (class_exists('License') && License::isPodcastLicensed() && class_exists('PodcastRepo')) {
+            foreach (PodcastRepo::list() as $ep) {
+                if (empty($ep['published_at']) || (int)$ep['published_at'] > time()) {
+                    continue;
+                }
+                $id = (string)($ep['episode_id'] ?? '');
+                $doc = self::forSimple(
+                    '/podcast/' . $id,
+                    (string)($ep['title'] ?? ''),
+                    (string)($ep['description'] ?? ''),
+                    (string)($ep['episode_art'] ?? '')
+                );
+                self::auditDocument(
+                    $add, $titles, $descs, 'Episode', $id !== '' ? $id : 'episode',
+                    'index.php?section=podcast&file=' . rawurlencode($id),
+                    trim((string)($doc['title'] ?? '')),
+                    trim((string)($doc['display_title'] ?? '')),
+                    trim((string)($doc['description'] ?? '')),
+                    trim((string)($doc['og_image'] ?? '')),
+                    $seo
+                );
             }
         }
+
+        $rank = ['fail' => 0, 'warn' => 1, 'info' => 2];
+        usort($issues, static function (array $a, array $b) use ($rank): int {
+            return ($rank[$a['level'] ?? ''] ?? 9) <=> ($rank[$b['level'] ?? ''] ?? 9);
+        });
 
         $fail = count(array_filter($issues, static fn($i) => $i['level'] === 'fail'));
         $warn = count(array_filter($issues, static fn($i) => $i['level'] === 'warn'));

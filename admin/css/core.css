@@ -265,6 +265,7 @@ footer {
     left: 0;
     right: 0;
     height: 56px;
+    box-sizing: border-box;
     background: var(--footer-bg);
     border-top: 1px solid var(--border);
     display: flex;
@@ -278,6 +279,16 @@ footer .buttons {
     display: flex;
     gap: 8px;
     align-items: center;
+    max-width: 100%;
+}
+
+footer .button-group {
+    max-width: 100%;
+    height: auto;
+}
+
+footer .button-group button {
+    min-width: 0;
 }
 
 /* ==========================================================================
@@ -602,6 +613,7 @@ select {
 .editor-container {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1128,6 +1140,42 @@ select {
 } /* Forma htmx extras */
 .toast{position:fixed;bottom:72px;right:20px;background:var(--primary);color:#121212;padding:.6rem 1rem;border-radius:4px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+
+.fx-upload-toasts{
+  position:fixed;right:20px;bottom:72px;z-index:2100;display:flex;flex-direction:column-reverse;gap:.55rem;
+  max-width:min(22rem,calc(100vw - 2.5rem));pointer-events:none;
+}
+.fx-upload-toast{
+  pointer-events:auto;display:flex;align-items:center;gap:.75rem;
+  background:#2a2a2c;border:1px solid var(--border);border-radius:10px;
+  padding:.7rem .85rem .7rem .7rem;color:var(--text);
+  box-shadow:0 14px 36px rgba(0,0,0,.38);
+  animation:fx-upload-in .22s ease-out;
+}
+.fx-upload-toast.is-out{opacity:0;transform:translateY(8px);transition:opacity .22s,transform .22s}
+.fx-upload-toast.is-fail{border-color:rgba(244,67,54,.45)}
+.fx-upload-toast-body{min-width:0;flex:1}
+.fx-upload-toast-name{
+  display:block;font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:16rem;
+}
+.fx-upload-toast-status{display:block;font-size:.75rem;color:var(--text-muted);margin-top:.12rem}
+.fx-upload-toast.is-fail .fx-upload-toast-status{color:#f87171}
+.fx-upload-ring{width:2.15rem;height:2.15rem;flex-shrink:0;transform-origin:50% 50%}
+.fx-upload-ring .track{stroke:rgba(255,255,255,.12);stroke-width:3}
+.fx-upload-ring .fill{stroke:var(--primary);stroke-width:3;stroke-linecap:round;transform:rotate(-90deg);transform-origin:18px 18px}
+.fx-upload-ring.is-spin{animation:fx-ring-spin .9s linear infinite}
+.fx-upload-ring.is-done .fill{stroke:var(--primary)}
+.fx-upload-ring.is-fail .fill{stroke:#f87171}
+.dropzone.is-uploading{opacity:.92}
+.fx-file-hidden{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;opacity:0;
+}
+@keyframes fx-upload-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fx-ring-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .fx-upload-toast,.fx-upload-toast.is-out,.fx-upload-ring.is-spin{animation:none;transition:none}
+}
 .status-pill{font-size:.75rem;opacity:.7;margin-left:.35rem}
 .file-item.htmx-request{opacity:.6}
 .editor-form .CodeMirror{flex:1;height:100%;border:1px solid var(--border);border-radius:4px}
@@ -1171,13 +1219,118 @@ select {
 .fx-modal { background: var(--bg-end); border: 1px solid var(--border); border-radius: 8px; width: min(420px, 100%); padding: 1.25rem; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
 .fx-modal h3 { margin: 0 0 1rem; }
 .fx-modal-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }
+
+/* Blog live preview — real blog-single chrome in a resizable frame */
+.fx-preview-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: rgba(0, 0, 0, .62);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+}
+.fx-preview-shell {
+    display: flex;
+    flex-direction: column;
+    width: min(1100px, calc(100vw - 2.5rem));
+    height: calc(100vh - 2.5rem);
+    min-width: 360px;
+    min-height: 320px;
+    max-width: calc(100vw - 2.5rem);
+    max-height: calc(100vh - 2.5rem);
+    resize: both;
+    overflow: hidden;
+    background: #141414;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+}
+.fx-preview-toolbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    height: 48px;
+    padding: 0 .85rem;
+    background: var(--footer-bg);
+    border-bottom: 1px solid var(--border);
+}
+.fx-preview-toolbar strong {
+    font-size: .88rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.fx-preview-sizes {
+    display: inline-flex;
+    gap: 2px;
+    margin-left: auto;
+    background: rgba(0, 0, 0, .25);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+}
+.fx-preview-sizes button {
+    min-width: 0;
+    padding: 6px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: .8rem;
+}
+.fx-preview-sizes button.is-active,
+.fx-preview-sizes button:hover {
+    color: #121212;
+    background: var(--primary);
+}
+.fx-preview-toolbar .fx-preview-close {
+    min-width: 0;
+    padding: 6px 12px;
+}
+.fx-preview-viewport {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+    background: #0c0c0c;
+    padding: .65rem;
+}
+.fx-preview-iframe {
+    display: block;
+    width: var(--preview-w, 100%);
+    max-width: 100%;
+    height: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    transition: width .2s ease;
+}
+
+/* Styled file picker (Backup / Import) */
+.fx-file-pick {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+.fx-file-pick .standard-btn { min-width: 0; }
+.fx-file-name {
+    color: var(--text-muted);
+    font-size: .85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 22rem;
+}
+.fx-file-name.is-set { color: var(--text); }
+
 .editor-toolbar .dropdown-item.add-new { color: var(--primary); font-weight: 600; border-bottom: 1px solid var(--border); }
 .editor-toolbar .toolbar-upload-btn { background: transparent; border: 1px solid rgba(255,255,255,.15); color: var(--text-muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; }
 .editor-toolbar .toolbar-upload-btn:hover { color: var(--primary); background: rgba(255,255,255,.08); }
 .CodeMirror { position: relative; }
-#health-dot { display: none; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; }
-#health-dot.pulse { animation: health-pulse 1.8s ease-in-out infinite; }
-@keyframes health-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(1.4)} }
 
 /* ==========================================================================
    SETTINGS DESIGN SYSTEM (Forma)
@@ -1199,21 +1352,40 @@ select {
 .settings-panel-header h2 { margin: 0; font-size: 1.25rem; }
 .settings-panel-header p { margin: .15rem 0 0; color: var(--text-muted); font-size: .85rem; }
 
-/* Settings: ONLY the panel scrolls — cards grow with their content (no nested card scrollports). */
+/* Settings: scroll body + 56px footer (same chrome as Pages / Posts / Uploads). */
 #settings-panel.settings-panel-shell,
 .editor-container.settings-panel-shell {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    padding: 1.5rem;
-    display: block !important; /* override .editor-container flex — avoids shrinking children into scroll boxes */
+    padding: 0;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+#settings-panel > .settings-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 1.5rem 1.5rem 5rem;
     overflow-x: hidden !important;
     overflow-y: auto !important;
 }
-#settings-panel > form,
-#settings-panel > .settings-card,
-#settings-panel > .settings-panel-header {
+#settings-panel > footer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 56px;
+    box-sizing: border-box;
+}
+#settings-panel > .settings-scroll > form,
+#settings-panel > .settings-scroll > .settings-card,
+#settings-panel > .settings-scroll > .settings-panel-header {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -1258,7 +1430,11 @@ select {
     margin: 0;
 }
 .settings-card {
-    background: var(--bg-end);
+    --card-glow: rgba(252, 190, 52, 0.07);
+    position: relative;
+    background:
+        radial-gradient(circle at 100% 0, var(--card-glow), transparent 36%),
+        var(--bg-end);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 1.25rem 1.5rem;
@@ -1272,9 +1448,15 @@ select {
     /* Never a nested scrollport — the settings panel scrolls */
     overflow: visible;
 }
+.settings-card.card-glow-pass { --card-glow: rgba(74, 222, 128, 0.12); }
+.settings-card.card-glow-warn,
 .settings-card.card-warn {
+    --card-glow: rgba(251, 191, 36, 0.14);
     border-color: rgba(251, 191, 36, 0.45);
 }
+.settings-card.card-glow-fail { --card-glow: rgba(248, 113, 113, 0.12); }
+.settings-card.card-glow-blue,
+.settings-card.seo-google-card { --card-glow: rgba(66, 133, 244, 0.12); }
 .settings-card > h3 { margin: 0 0 .25rem; font-size: 1rem; display: flex; align-items: center; gap: .5rem; }
 .settings-card > h3 i { color: var(--primary); font-size: .9rem; width: 18px; text-align: center; }
 .settings-card .card-sub { color: var(--text-muted); font-size: .83rem; margin: 0 0 1.1rem; overflow-wrap: anywhere; }
@@ -1352,12 +1534,6 @@ select {
 }
 
 /* Cache settings: two clear systems with compact status blocks. */
-.cache-card {
-    position: relative;
-    background:
-        radial-gradient(circle at 100% 0, rgba(252,190,52,.055), transparent 34%),
-        var(--bg-end);
-}
 .cache-card > h3 {
     font-size: 1.05rem;
     margin-bottom: .4rem;
@@ -1441,15 +1617,6 @@ select {
 .kv-row .v code { background: rgba(0,0,0,.3); padding: .1rem .4rem; border-radius: 4px; font-size: .85em; }
 
 /* SEO health + previews */
-.seo-settings-form .settings-card,
-.seo-health-card {
-    border-color: rgba(255,255,255,.085);
-}
-.seo-health-card {
-    background:
-        radial-gradient(circle at 100% 0, rgba(52,211,153,.08), transparent 34%),
-        var(--bg-end);
-}
 .seo-health-summary { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
 .seo-score {
     font-size: 1.05rem !important;
@@ -1457,7 +1624,30 @@ select {
     border-radius: 999px !important;
     box-shadow: 0 5px 18px rgba(0,0,0,.16);
 }
-.seo-issue-list { margin-top: 1rem; display: flex; flex-direction: column; gap: .45rem; max-height: none; overflow: visible; }
+.seo-health-details { margin-top: .85rem; }
+.seo-health-details > summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: .88rem;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.seo-health-details > summary::-webkit-details-marker { display: none; }
+.seo-health-details > summary::before {
+    content: '▸';
+    font-size: .75rem;
+    line-height: 1;
+}
+.seo-health-details[open] > summary::before { content: '▾'; }
+.seo-issue-list { margin-top: .75rem; display: flex; flex-direction: column; gap: .45rem; max-height: 16rem; overflow: auto; }
+.seo-advanced { margin-top: 1rem; }
+.seo-advanced > summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: .82rem;
+}
 .seo-issue { display: flex; align-items: flex-start; gap: .65rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,.15); }
 .seo-issue .lvl { flex: none; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .4rem; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); }
 .seo-issue.level-fail .lvl { color: #f87171; border-color: rgba(248,113,113,.4); }
@@ -1481,10 +1671,36 @@ select {
 .char-count.over { color: #f87171; }
 
 /* SEO asset cards: make image choices feel like assets, not path inputs. */
-.seo-branding-card {
-    background:
-        radial-gradient(circle at 100% 0, rgba(96,165,250,.08), transparent 36%),
-        var(--bg-end);
+.seo-paste { margin-bottom: 1rem; }
+.seo-paste-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .35rem;
+}
+.seo-paste-head label { margin: 0; font-weight: 600; }
+.seo-paste input[type="text"] { width: 100%; }
+.seo-done-list {
+    margin: .85rem 0 1rem;
+    padding-left: 1.15rem;
+    color: var(--text);
+    line-height: 1.55;
+    font-size: .9rem;
+}
+.seo-done-list li { margin: .25rem 0; }
+.seo-auto-tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .85rem;
+}
+@media (max-width: 800px) { .seo-auto-tools { grid-template-columns: 1fr; } }
+.seo-rich-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+.seo-rich-actions .standard-btn {
+    text-decoration: none;
 }
 .seo-media-grid {
     display: grid;
@@ -1735,6 +1951,52 @@ select {
     display: flex;
     align-items: center;
     gap: .55rem;
+}
+.uploads-section .upload-item.is-ghost {
+    pointer-events: none;
+    cursor: wait;
+    opacity: .78;
+}
+.uploads-section .upload-item.is-ghost-fail {
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 1;
+}
+.uploads-section .upload-ghost-icon {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.uploads-section .upload-ghost-icon .fx-upload-ring {
+    width: 28px;
+    height: 28px;
+    position: relative;
+    z-index: 1;
+}
+.uploads-section .upload-ghost-icon .is-ghost-thumb {
+    position: absolute;
+    inset: 0;
+    opacity: .42;
+}
+.uploads-section .upload-ghost-text {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .05rem;
+}
+.uploads-section .upload-ghost-pct {
+    font-size: .72rem;
+    color: var(--text-muted);
+    line-height: 1.1;
+}
+.uploads-section .upload-item.is-fail .upload-ghost-pct,
+.uploads-section .upload-item.is-ghost-fail .upload-ghost-pct {
+    color: #f87171;
 }
 .uploads-section .upload-thumb {
     width: 28px;

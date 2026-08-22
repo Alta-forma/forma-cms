@@ -3,12 +3,22 @@ require_once __DIR__ . '/_helpers.php';
 $s = Database::get()->getSetting('blog');
 $site = Database::get()->getSetting('site');
 $base = rtrim($site['url'] ?? '', '/');
+fx_settings_scroll_open();
 ?>
-<?php echo fx_panel_header('blog', 'Blog & feeds', 'How your posts are syndicated to readers'); ?>
+<?php echo fx_panel_header('blog', 'Blog', 'Publishing defaults and how posts are syndicated'); ?>
 
-<form hx-post="actions/settings-save.php" hx-target="#fx-toast" hx-swap="outerHTML">
+<form id="fx-settings-form" hx-post="actions/settings-save.php" hx-target="#fx-toast" hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
     <input type="hidden" name="section" value="blog">
+
+    <div class="settings-card">
+        <h3><i class="fas fa-pen-nib"></i> Publishing defaults</h3>
+        <p class="card-sub">Applied when a post doesn’t specify its own author.</p>
+        <div class="form-group">
+            <label>Default author</label>
+            <input type="text" name="default_author" value="<?php echo h($site['default_author'] ?? ''); ?>">
+        </div>
+    </div>
 
     <div class="settings-card">
         <h3><i class="fas fa-list"></i> Feed content</h3>
@@ -34,7 +44,6 @@ $base = rtrim($site['url'] ?? '', '/');
         <?php echo fx_switch('blog_feed_json', (bool)($s['blog_feed_json'] ?? true), 'JSON Feed', 'Modern alternative at /feed.json'); ?>
         <?php echo fx_switch('auto_regen_feed', (bool)($s['auto_regen_feed'] ?? true), 'Auto-regenerate on save', 'Rebuild feeds every time a post is saved or deleted'); ?>
         <div class="card-actions">
-            <button type="submit" class="standard-btn"><i class="small fas fa-save"></i> Save changes</button>
             <button type="button" class="standard-btn"
                     hx-post="actions/feed-regen.php"
                     hx-vals='{"csrf_token":"<?php echo h(Auth::csrf()); ?>","kind":"blog"}'
@@ -51,3 +60,6 @@ $base = rtrim($site['url'] ?? '', '/');
     <?php echo fx_url_pill(($base ?: '') . '/feed.xml'); ?>
     <?php echo fx_url_pill(($base ?: '') . '/feed.json'); ?>
 </div>
+<?php
+fx_settings_scroll_close();
+echo fx_settings_footer('fx-settings-form');
