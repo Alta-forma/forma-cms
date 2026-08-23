@@ -45,6 +45,7 @@ try {
     }
 
     if ($method === 'POST') {
+        session_write_close();
         $saved = MediaRepo::saveUpload($_FILES['file'] ?? []);
         $path = '/uploads/' . $saved['filename'];
         echo json_encode([

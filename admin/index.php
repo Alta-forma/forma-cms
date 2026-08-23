@@ -15,7 +15,7 @@ if ($podcastLicensed) {
 }
 if ($section === 'podcast' && !$podcastLicensed) {
     $section = 'settings';
-    $_GET['sub'] = $_GET['sub'] ?? 'license';
+    $_GET['sub'] = $_GET['sub'] ?? 'general';
 }
 if (!in_array($section, $valid, true)) {
     $section = 'pages';
@@ -27,6 +27,11 @@ if ($section === 'settings' && empty($_GET['sub']) && !empty($_GET['subsection']
 
 $csrf = Auth::csrf();
 $base = htmlspecialchars(forma_admin_base_href(), ENT_QUOTES, 'UTF-8');
+$fxAsset = static function (string $rel): string {
+    $path = ADMIN_DIR . '/' . ltrim($rel, '/');
+    $v = is_file($path) ? (string)filemtime($path) : (string)time();
+    return $rel . '?v=' . $v;
+};
 
 // Partial-only requests (htmx into #main)
 if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' && empty($_GET['full']))) {
@@ -47,7 +52,7 @@ if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/monokai.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/core.css">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($fxAsset('css/core.css'), ENT_QUOTES, 'UTF-8'); ?>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/xml/xml.min.js"></script>
@@ -73,14 +78,12 @@ if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' 
                     type="button"
                     data-section="<?php echo $s; ?>"
                     class="<?php echo $section === $s ? 'active' : ''; ?>"
-                    style="<?php echo $s === 'settings' ? 'position:relative' : ''; ?>"
                     hx-get="index.php?section=<?php echo $s; ?>&partial=1"
                     hx-target="#main"
                     hx-push-url="index.php?section=<?php echo $s; ?>"
                     hx-on::after-request="document.querySelectorAll('nav button[data-section]').forEach(b=>b.classList.toggle('active', b.dataset.section==='<?php echo $s; ?>'))"
                 >
                     <i class="fas fa-<?php echo $icon; ?>"></i> <?php echo ucfirst($s); ?>
-                    <?php if ($s === 'settings'): ?><span id="health-dot"></span><?php endif; ?>
                 </button>
                 <?php endforeach; ?>
             </div>
@@ -107,7 +110,8 @@ if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' 
     </div>
 
     <div id="fx-toast" class="toast" data-show="0">Saved</div>
-    <script src="js/editor-toolbar.js"></script>
-    <script src="js/admin.js"></script>
+    <div id="fx-upload-toasts" class="fx-upload-toasts" aria-live="polite" aria-relevant="additions"></div>
+    <script src="<?php echo htmlspecialchars($fxAsset('js/editor-toolbar.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+    <script src="<?php echo htmlspecialchars($fxAsset('js/admin.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 </body>
 </html>

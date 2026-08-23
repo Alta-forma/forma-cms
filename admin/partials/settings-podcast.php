@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/_helpers.php';
 if (!License::isPodcastLicensed()) {
-    require __DIR__ . '/settings-license.php';
+    require __DIR__ . '/settings-general.php';
     return;
 }
 $s = Database::get()->getSetting('podcast');
@@ -14,10 +14,11 @@ $categories = [
     'Science', 'Society & Culture', 'Sports', 'TV & Film', 'Technology', 'True Crime',
 ];
 $explicit = $s['explicit'] ?? 'no';
+fx_settings_scroll_open();
 ?>
 <?php echo fx_panel_header('podcast', 'Podcast', 'Show metadata for your podcast RSS feed'); ?>
 
-<form hx-post="actions/settings-save.php" hx-target="#fx-toast" hx-swap="outerHTML">
+<form id="fx-settings-form" hx-post="actions/settings-save.php" hx-target="#fx-toast" hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
     <input type="hidden" name="section" value="podcast">
 
@@ -90,23 +91,21 @@ $explicit = $s['explicit'] ?? 'no';
         <?php echo fx_switch('podcast_feed_rss', (bool)($s['podcast_feed_rss'] ?? true), 'Podcast RSS feed', 'Required for Apple Podcasts, Spotify, etc.'); ?>
         <?php echo fx_switch('auto_regen_feed', (bool)($s['auto_regen_feed'] ?? true), 'Auto-regenerate on save', 'Rebuild the feed every time an episode is saved or deleted'); ?>
         <div class="card-actions">
-            <button type="submit" class="standard-btn"><i class="small fas fa-save"></i> Save changes</button>
-            <?php if ($licensed): ?>
             <button type="button" class="standard-btn"
                     hx-post="actions/feed-regen.php"
                     hx-vals='{"csrf_token":"<?php echo h(Auth::csrf()); ?>","kind":"podcast"}'
                     hx-target="#fx-toast" hx-swap="outerHTML">
                 <i class="small fas fa-sync"></i> Regenerate now
             </button>
-            <?php endif; ?>
         </div>
     </div>
 </form>
 
-<?php if ($licensed): ?>
 <div class="settings-card">
     <h3><i class="fas fa-link"></i> Public feed URL</h3>
     <p class="card-sub">Submit this to Apple Podcasts, Spotify, and other directories.</p>
     <?php echo fx_url_pill(($base ?: '') . '/podcast.xml'); ?>
 </div>
-<?php endif; ?>
+<?php
+fx_settings_scroll_close();
+echo fx_settings_footer('fx-settings-form');

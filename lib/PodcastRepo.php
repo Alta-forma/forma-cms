@@ -65,7 +65,17 @@ class PodcastRepo {
         );
         Database::get()->flushCache();
         Feed::maybeRegeneratePodcast();
-        return self::get($id) ?? [];
+        $saved = self::get($id) ?? [];
+
+        if ($saved && class_exists('StaticFallback')) {
+            StaticFallback::publishEpisode($saved);
+            StaticFallback::publishPodcastArchive();
+        }
+        if ($saved && class_exists('Search')) {
+            Search::indexEpisode($saved);
+        }
+
+        return $saved;
     }
 
     public static function delete(string $episodeId): void {
@@ -76,5 +86,13 @@ class PodcastRepo {
         Database::get()->execute('DELETE FROM podcast_episodes WHERE episode_id = ?', [$episodeId]);
         Database::get()->flushCache();
         Feed::maybeRegeneratePodcast();
+
+        if (class_exists('StaticFallback')) {
+            StaticFallback::unpublishEpisode($episodeId);
+            StaticFallback::publishPodcastArchive();
+        }
+        if (class_exists('Search')) {
+            Search::removeEpisode($episodeId);
+        }
     }
 }

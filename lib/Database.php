@@ -142,7 +142,7 @@ class Database {
             'default_author' => 'Admin',
         ],
         'blog' => [
-            'posts_per_page'  => 10,
+            'posts_per_page'  => 20,
             'excerpt_length'  => 250,
             'feed_posts'      => 20,
             'default_author'  => '',
@@ -209,6 +209,7 @@ class Database {
             'twitter_card'             => 'summary_large_image',
             'google_site_verification' => '',
             'bing_site_verification'   => '',
+            'google_analytics'         => '',
             'json_ld_website'          => true,
             'schema_type'              => 'person',
             'organization_name'        => '',
@@ -221,8 +222,11 @@ class Database {
             'schema_region'            => '',
             'schema_postal'             => '',
             'schema_country'           => 'US',
+            'schema_hours'             => '',
+            'schema_price_range'       => '',
             'place_id'                 => '',
             'gbp_url'                  => '',
+            'review_url'               => '',
             'maps_embed_url'           => '',
             'noindex_paths'            => '/admin,/api,/old',
         ],
@@ -297,25 +301,22 @@ class Database {
     }
 
     private function seedSystemContent(): void {
-        $err = function (string $title): string {
-            $h = htmlspecialchars($title);
-            return "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{$h}</title>"
-                . "<style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1.5rem;line-height:1.6}</style></head><body>"
-                . "<h1>{$h}</h1><p>The page you requested is not available.</p><p><a href=\"/\">Home</a></p></body></html>";
-        };
-
+        if (!class_exists('Render', false)) {
+            require_once ROOT_DIR . '/lib/Render.php';
+        }
         foreach ([
-            '_404' => ['/404', '404 – Not found'],
-            '_403' => ['/403', '403 – Forbidden'],
-            '_500' => ['/500', '500 – Server error'],
-        ] as $filename => [$slug, $title]) {
+            '_404' => [404, '/404', 'Page not found'],
+            '_403' => [403, '/403', 'Forbidden'],
+            '_500' => [500, '/500', 'Server error'],
+        ] as $filename => [$code, $slug, $title]) {
             if ($this->queryOne('SELECT 1 FROM pages WHERE filename = ?', [$filename])) {
                 continue;
             }
-            $meta = "<!--META\nslug: {$slug}\ntitle: {$title}\n-->\n";
+            $copy = Render::errorPageCopy($code);
+            $meta = "<!--META\nslug: {$slug}\ntitle: {$title}\nseo_title: {$title} | Forma\nseo_description: {$copy['lede']}\nrobots: noindex,nofollow\n-->\n";
             $this->execute(
                 'INSERT INTO pages (filename, content_type, slug, content) VALUES (?, ?, ?, ?)',
-                [$filename, 'html', $slug, $meta . $err($title)]
+                [$filename, 'html', $slug, $meta . Render::staticError($code)]
             );
         }
 
@@ -416,6 +417,8 @@ TWIG;
             'blog-single' => $blogSingle,
             'podcast-archive' => $podcastArchive,
             'podcast-single' => $podcastSingle,
+            'search-results' => Render::defaultSearchResultsTemplate(),
+            'search-page' => Render::defaultSearchPageTemplate(),
         ] as $fn => $content) {
             if (!$this->queryOne('SELECT 1 FROM pages WHERE filename = ?', [$fn])) {
                 $this->execute(
@@ -423,6 +426,46 @@ TWIG;
                     [$fn, 'html', null, $content]
                 );
             }
+        }
+
+        if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'search'")) {
+            $searchSnippet = <<<'HTML'
+[[search-ui]]
+<form class="fx-search-box" role="search" action="/search" method="get"
+      hx-get="/search" hx-target="#fx-search-results" hx-push-url="true"
+      hx-trigger="submit, keyup changed delay:280ms from:input[name='q']">
+  <label class="fx-search-label" for="fx-search-q">Search</label>
+  <div class="fx-search-row">
+    <input id="fx-search-q" type="search" name="q" value="{{ query|default('') }}" placeholder="Search pages, posts, episodes…" autocomplete="off" aria-label="Search" enterkeyhint="search">
+    <button type="submit">Search</button>
+  </div>
+</form>
+<div id="fx-search-results">{{ results_html|default('')|raw }}</div>
+HTML;
+            $this->execute(
+                'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
+                ['search', 'search', $searchSnippet]
+            );
+        }
+
+        if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'error-ui'")) {
+            if (!class_exists('Render', false)) {
+                require_once ROOT_DIR . '/lib/Render.php';
+            }
+            $this->execute(
+                'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
+                ['error-ui', 'error-ui', Render::defaultErrorUiSnippet()]
+            );
+        }
+
+        if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'search-ui'")) {
+            if (!class_exists('Render', false)) {
+                require_once ROOT_DIR . '/lib/Render.php';
+            }
+            $this->execute(
+                'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
+                ['search-ui', 'search-ui', Render::defaultSearchUiSnippet()]
+            );
         }
 
         if (!$this->queryOne('SELECT 1 FROM blog_posts WHERE filename = ?', ['welcome'])) {

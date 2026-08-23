@@ -35,6 +35,11 @@ try {
         http_response_code(200);
         StaticFallback::writeStamp();
         StaticFallback::refreshHomeIfStale();
+        // Self-heal: settings say HTML cache is on but the Apache-visible marker/files never
+        // got written (e.g. DB default flipped true before anyone rebuilt the HTML cache).
+        if (StaticFallback::enabled() && !StaticFallback::markerPresent()) {
+            StaticFallback::enable();
+        }
         $st = StaticFallback::status();
         echo json_encode([
             'ok'      => true,
@@ -122,7 +127,7 @@ try {
         exit;
     }
 
-    // Page cache
+    // PHP cache
     $cacheEnabled = ($config['cache']['enabled'] ?? false) === true;
     $cacheTtl     = (int)($config['cache']['ttl'] ?? 3600);
     if ($cacheEnabled && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
@@ -174,75 +179,35 @@ try {
     // Podcast (public pages; watermark if unlicensed)
     if (str_starts_with($path, '/podcast')) {
         $episodeId = ($path === '/podcast') ? '' : ltrim(substr($path, 9), '/');
-        $podcastConfig = $config['podcast'] ?? [];
-        $podcastCtx = [
-            'title'       => $podcastConfig['title'] ?: ($config['site']['title'] ?? 'Podcast'),
-            'description' => $podcastConfig['description'] ?? '',
-            'cover_art'   => $podcastConfig['image'] ?? '',
-        ];
         if ($episodeId === '') {
-            $rows = PodcastRepo::list();
-            $episodes = [];
-            foreach ($rows as $row) {
-                if (empty($row['published_at']) || (int)$row['published_at'] > time()) {
-                    continue;
-                }
-                $ep = $row;
-                $ep['id'] = $row['episode_id'];
-                $ep['publish_date'] = date('Y-m-d', (int)$row['published_at']);
-                $episodes[] = $ep;
-            }
-            $tpl = PageRepo::get('podcast-archive');
-            if ($tpl) {
-                $html = Render::renderTwig(PageRepo::stripMeta($tpl['content']), array_merge(Render::siteContext(), [
-                    'episodes' => $episodes,
-                    'podcast'  => $podcastCtx,
-                ]));
-                if (!License::isPodcastLicensed()) {
-                    $html .= '<div style="text-align:center;padding:1rem;opacity:.55;font-size:.8rem;">Powered by Forma Podcast</div>';
-                }
-                $html = Render::injectGenerator(Render::expandShortcodes($html));
-                echo Seo::applyToHtml($html, Seo::forSimple(
-                    '/podcast',
-                    $podcastCtx['title'],
-                    $podcastCtx['description'],
-                    $podcastCtx['cover_art'] ?? ''
-                ));
-                exit;
-            }
-        } else {
-            $row = PodcastRepo::get($episodeId);
-            if (!$row || empty($row['published_at']) || (int)$row['published_at'] > time()) {
-                Render::sendError(404);
-            }
-            $episode = $row;
-            $episode['id'] = $row['episode_id'];
-            $episode['publish_date'] = $row['published_at'] ? date('Y-m-d', (int)$row['published_at']) : '';
-            $episode['audio_url'] = forma_uploads_web_prefix() . basename($row['audio_file']);
-            if (!empty($row['show_notes'])) {
-                $episode['show_notes_html'] = Render::parsedown()->text($row['show_notes']);
-            }
-            $tpl = PageRepo::get('podcast-single');
-            if ($tpl) {
-                $html = Render::renderTwig(PageRepo::stripMeta($tpl['content']), array_merge(Render::siteContext(), [
-                    'episode' => $episode,
-                    'podcast' => $podcastCtx,
-                    'podcast_feed' => '/feeds/podcast.xml',
-                ]));
-                if (!License::isPodcastLicensed()) {
-                    $html .= '<div style="text-align:center;padding:1rem;opacity:.55;font-size:.8rem;">Powered by Forma Podcast</div>';
-                }
-                $html = Render::injectGenerator(Render::expandShortcodes($html));
-                echo Seo::applyToHtml($html, Seo::forSimple(
-                    '/podcast/' . $episodeId,
-                    $row['title'] ?: $episodeId,
-                    $row['description'] ?? '',
-                    ($row['episode_art'] ?: ($podcastCtx['cover_art'] ?? ''))
-                ));
-                exit;
-            }
+            $html = Render::renderPodcastArchive();
+            $putCache($path, $html);
+            echo $html;
+            exit;
         }
-        Render::sendError(404);
+        $row = PodcastRepo::get($episodeId);
+        if (!$row || empty($row['published_at']) || (int)$row['published_at'] > time()) {
+            Render::sendError(404);
+        }
+        $html = Render::renderPodcastEpisode($row);
+        $putCache($path, $html);
+        echo $html;
+        exit;
+    }
+
+    // Search — always PHP, never published as a static file (results are per-query).
+    if ($path === '/search') {
+        $q = trim((string)($_GET['q'] ?? ''));
+        $results = $q !== '' ? Search::query($q, 30) : [];
+        header('X-Robots-Tag: noindex');
+        $isHx = strtolower((string)($_SERVER['HTTP_HX_REQUEST'] ?? '')) === 'true';
+        if ($isHx) {
+            header('Content-Type: text/html; charset=UTF-8');
+            echo Render::renderSearchResultsFragment($results, $q);
+        } else {
+            echo Render::renderSearchPage($results, $q);
+        }
+        exit;
     }
 
     // Standard pages

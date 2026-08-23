@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/_helpers.php';
+fx_settings_scroll_open();
 ?>
 <?php echo fx_panel_header('file-import', 'Import', 'Bring an older Forma site into this install'); ?>
 
@@ -10,7 +11,7 @@ require_once __DIR__ . '/_helpers.php';
         <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
         <div class="form-group">
             <label>JSON export file</label>
-            <input type="file" name="json_file" accept=".json,application/json" required>
+            <?php echo fx_file_pick('json_file', '.json,application/json', 'Choose JSON'); ?>
         </div>
         <div class="card-actions">
             <button type="submit" class="standard-btn"><i class="small fas fa-file-import"></i> Import</button>
@@ -23,3 +24,4 @@ require_once __DIR__ . '/_helpers.php';
     <p class="card-sub">On the server, you can import straight from an older Forma SQLite file.</p>
     <?php echo fx_url_pill('php tools/import-formalite.php --db /path/to/formalite.db'); ?>
 </div>
+<?php fx_settings_scroll_close();

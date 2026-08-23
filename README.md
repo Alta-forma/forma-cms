@@ -4,6 +4,15 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 
 **AltaForma** is the company that builds and hosts sites on Forma. This repo is the CMS.
 
+- Site: [forma-cms.me](https://forma-cms.me)
+- Download zip: [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip)
+- Clone: `git clone https://github.com/onechrisjones/forma-cms.git`
+- Podcast unlock ($39): [Buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608)
+
+The 2025 flat-file experiment still lives at [onechrisjones/forma](https://github.com/onechrisjones/forma). This repo is the current PHP + SQLite product.
+
+Deploy notes: [docs/DEPLOY.md](docs/DEPLOY.md) · Podcast keys: [docs/LICENSING.md](docs/LICENSING.md)
+
 ## Principles
 
 - **One SQLite file** is a feature
@@ -23,11 +32,17 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 ## Quick start
 
 ```bash
+git clone https://github.com/onechrisjones/forma-cms.git
+cd forma-cms
 chmod -R 775 database uploads feeds
 php -S localhost:8787 router.php
 ```
 
+Or unzip [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip) into the web root.
+
 Open http://localhost:8787/admin — login `admin` / `admin` (change immediately).
+
+DreamHost / Apache / Nginx: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Layout
 
@@ -43,7 +58,7 @@ Open http://localhost:8787/admin — login `admin` / `admin` (change immediately
 ├── database/forma.db   # created on first request
 ├── uploads/
 ├── feeds/
-└── fallback/           # last-good HTML + php-ok.json (runtime)
+└── fallback/           # published HTML + php-ok.json (runtime, derived — safe to delete)
 ```
 
 ## Admin
@@ -62,8 +77,9 @@ Top nav loads sections via htmx into `#main`. Editors use CodeMirror; save/delet
 | `/podcast`, `/podcast/{id}` | Podcast pages (templates in DB) |
 | `/admin` | Admin |
 | `/api/v1/*` | Agent API (`GET /api/v1/help` for the map) |
+| `/search` | Site search (htmx fragment or full page). `[[search]]` snippet renders the box |
 | `/up` | PHP heartbeat JSON (no auth). Pair with `/fallback/php-ok.json` |
-| `/fallback/index.html` | Last-good homepage Apache can serve if FastCGI dies |
+| `/fallback/index.html` | Published homepage Apache can serve directly, or if PHP/FastCGI dies |
 
 Templates live as pages: `blog-archive`, `blog-single`, `podcast-archive`, `podcast-single`.
 
@@ -108,12 +124,14 @@ php tools/formax.php export-site
 
 Tokens are stored hashed. HTTPS required for non-local requests when `security.agent_https_only` is true.
 
-## Cache vs PHP outages
+## PHP cache vs HTML cache
 
 Settings → **Cache**:
 
-- **Page cache** (SQLite) skips Twig/Markdown on the next hit. **PHP still runs.** It does not help when DreamHost FastCGI returns “No input file specified.”
-- **Last-good HTML** writes `fallback/index.html`. Apache serves that for `/` if PHP is dead. Heartbeat: `GET /up`. Stamp: `/fallback/php-ok.json`.
+- **PHP cache** (SQLite) skips Twig/Markdown on the next hit. PHP still handles the request.
+- **HTML cache** (`cache.static_fallback`) writes every page, post, and podcast episode to real `.html` files under `fallback/`. Apache serves those files directly for anything already built; a path without an HTML file falls through to a live PHP render. Error pages (`fallback/_404.html` etc.) are wired up as Apache `ErrorDocument`s, and redirects are written as real `.htaccess` `RewriteRule`s.
+  - SQLite is always the source of truth; `fallback/` is 100% derived. Delete it and click **Rebuild HTML cache** to rebuild from scratch.
+  - Heartbeat: `GET /up` (also self-heals the on-disk marker if settings say "on" but nothing's been published yet). Stamp: `/fallback/php-ok.json`.
 
 ```bash
 php tools/watch-php.php https://alta-forma.com https://client-site.example
@@ -122,6 +140,15 @@ php tools/watch-php.php https://alta-forma.com https://client-site.example
 
 Copy `tools/watch-sites.example.txt` → `tools/watch-sites.txt` and cron / LaunchAgent every 5 minutes.
 
+## Search
+
+`GET /search?q=…` — SQLite FTS5 full-text search (falls back to `LIKE` on hosts without the FTS5 extension) over pages, published posts, and licensed podcast episodes. Snippets are never indexed.
+
+- Drop the `[[search]]` snippet anywhere for a live-as-you-type htmx search box (progressively enhances into a plain GET form if JS/htmx is unavailable).
+- Templates are editable pages like everything else: `search-results` (the results fragment, also used for the htmx response) and `search-page` (the full page wrapper).
+- Always served by PHP — never published as a static file — and always `noindex`.
+- **Rebuild HTML cache** also rebuilds the full search index; per-item saves/deletes keep it in sync automatically.
+
 ## SEO
 
 Admin → **Settings → SEO**: health dashboard, favicon/social defaults, schema (Person/Org/LocalBusiness), auto robots/sitemap (with images), redirects. Per-page SEO is optional — titles/descriptions/images fall back automatically.  
@@ -129,10 +156,9 @@ Per-page / per-post SEO panels override title, description, OG image, canonical,
 
 ## Licenses
 
-Settings → License.
+Forma itself is MIT. Podcast hosting is a $39 one-time unlock — [buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General. Local/dev: `FX-DEV-LOCAL`. Details: [docs/LICENSING.md](docs/LICENSING.md).
 
-- **Podcast** — paid unlock (`FX-PERP-…`, `FX-SUB-…`, or local `FX-DEV-LOCAL`)
-- **Forms** — email relay (included with an AltaForma site; self-serve buys a key or BYO Formspree/Resend)
+The HMAC secret that mints keys is **not** in this repo (`lib/LicenseHMACSecret.hex` is gitignored).
 
 ## Import from an older install
 
@@ -146,4 +172,4 @@ Also available in Admin → Settings → Import.
 
 ## License
 
-MIT
+[MIT](LICENSE)

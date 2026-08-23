@@ -57,19 +57,15 @@ if ($sel && MediaRepo::isTextExt($sel['ext'])) {
 
     <div class="editor-container">
         <?php if ($showDrop): ?>
-        <form id="upload-form" class="dropzone"
-              hx-post="actions/uploads-save.php"
-              hx-encoding="multipart/form-data"
-              hx-target="#main"
-              hx-swap="innerHTML"
+        <form id="upload-form" class="dropzone" data-fx-uploads
               onclick="if(!event.target.closest('.browse-btn')) document.getElementById('upload-input').click()"
               ondragover="event.preventDefault(); this.classList.add('dz-drag-hover')"
               ondragleave="this.classList.remove('dz-drag-hover')"
-              ondrop="event.preventDefault(); this.classList.remove('dz-drag-hover'); var i=document.getElementById('upload-input'); i.files=event.dataTransfer.files; htmx.trigger('#upload-form','submit')">
+              ondrop="event.preventDefault(); this.classList.remove('dz-drag-hover');">
             <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
-            <input type="file" name="file[]" id="upload-input" multiple style="display:none"
+            <input type="file" name="file[]" id="upload-input" class="fx-file-hidden" multiple
                    onclick="event.stopPropagation()"
-                   onchange="htmx.trigger('#upload-form','submit')">
+                   onchange="if(window.FormaUploads){window.FormaUploads.fromDropzone(this);}">
             <div class="dz-message">
                 <i class="fas fa-cloud-upload-alt"></i>
                 <h3>Drop files here or click to upload</h3>

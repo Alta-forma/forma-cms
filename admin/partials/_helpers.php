@@ -35,6 +35,49 @@ function fx_panel_header(string $icon, string $title, string $sub = ''): string 
         . '</div></div>';
 }
 
+/** Open the scrolling body of a settings pane (footer sits outside this). */
+function fx_settings_scroll_open(): void {
+    echo '<div class="settings-scroll">';
+}
+
+function fx_settings_scroll_close(): void {
+    echo '</div>';
+}
+
+/** Sticky 56px pane footer — same chrome as Pages / Posts / Uploads. */
+function fx_settings_footer(string $formId, string $label = 'Save', string $icon = 'save'): string {
+    return '<footer>'
+        . '<div class="buttons"><div class="button-group">'
+        . '<button type="submit" form="' . h($formId) . '" class="standard-btn">'
+        . '<i class="small fas fa-' . h($icon) . '"></i> ' . h($label)
+        . '</button></div></div>'
+        . '</footer>';
+}
+
+/** Paste field with set/empty pill. */
+function fx_seo_paste(string $name, string $value, string $label, string $hint, string $placeholder = ''): string {
+    $set = trim($value) !== '';
+    $id = 'seo-' . preg_replace('/[^a-z0-9_-]/i', '-', $name);
+    return '<div class="seo-paste">'
+        . '<div class="seo-paste-head"><label for="' . h($id) . '">' . h($label) . '</label>'
+        . '<span class="status-badge ' . ($set ? 'ok' : 'off') . '">' . ($set ? 'set' : 'empty') . '</span></div>'
+        . '<input type="text" id="' . h($id) . '" name="' . h($name) . '" value="' . h($value) . '"'
+        . ' placeholder="' . h($placeholder) . '" autocomplete="off">'
+        . ($hint !== '' ? '<span class="hint">' . h($hint) . '</span>' : '')
+        . '</div>';
+}
+
+/** Styled file picker (hides the native Choose File control). */
+function fx_file_pick(string $name, string $accept, string $button = 'Choose file'): string {
+    $id = 'file-' . preg_replace('/[^a-z0-9_-]/i', '-', $name);
+    return '<div class="fx-file-pick">'
+        . '<input type="file" id="' . h($id) . '" name="' . h($name) . '" accept="' . h($accept) . '" class="fx-file-hidden" required>'
+        . '<button type="button" class="standard-btn" data-file-trigger>'
+        . '<i class="small fas fa-folder-open"></i> ' . h($button) . '</button>'
+        . '<span class="fx-file-name" data-file-name>No file chosen</span>'
+        . '</div>';
+}
+
 /** Copyable feed/URL pill. */
 function fx_url_pill(string $url): string {
     return '<div class="feed-url-row"><span>' . h($url) . '</span>'
