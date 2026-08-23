@@ -1,5 +1,6 @@
 database/*.db
 database/*.db-*
+database/updates/
 uploads/*
 !uploads/.gitkeep
 feeds/*

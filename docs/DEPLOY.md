@@ -3,7 +3,7 @@
 Forma is PHP 8.1+ and one SQLite file. No Composer, no MySQL.
 
 Download: [github.com/Alta-forma/forma-cms](https://github.com/Alta-forma/forma-cms)
-Zip: [forma-cms-main.zip](https://github.com/Alta-forma/forma-cms/archive/refs/heads/main.zip)
+Latest release: [Releases](https://github.com/Alta-forma/forma-cms/releases/latest) — use that zip, not `main`.
 
 ## Local
 
@@ -29,7 +29,7 @@ Open http://localhost:8787/admin — first boot is `admin` / `admin`. Change tha
 4. Hit the site once so Forma can write `.htaccess` (Admin → Settings → Server → Write .htaccess). The source of truth is `lib/Htaccess.php` — do not hand-edit `.htaccess` and then expect it to survive a rewrite.
 5. Open `/admin`, change the password, then Settings → SEO / Cache as needed.
 
-On later **code** deploys, rsync `admin/`, `lib/`, `api/`, `mcp/`, `templates/`, and the entry PHP files. **Do not overwrite** `database/`, `uploads/`, or a live `.htaccess` you have already customized for a vhost (preview bypasses, etc.). SQLite is the site; the PHP tree is the app.
+On later **code** updates, use **Settings → Update** (GitHub Releases only). Manual rsync of `admin/`, `lib/`, `api/`, `mcp/`, `templates/`, and entry PHP files is the bootstrap path for sites that do not have that pane yet. **Do not overwrite** `database/`, `uploads/`, or a live `.htaccess` you have already customized. SQLite is the site; the PHP tree is the app. How AltaForma publishes: [RELEASE.md](RELEASE.md).
 
 DreamHost FastCGI often strips `Authorization`. Forma’s generated `.htaccess` copies it back so Agent API Bearer tokens work. The DreamHost-safe header is `X-Forma-Token`.
 
@@ -75,7 +75,8 @@ Settings → Cache → **Enable HTML cache** writes real `.html` under `fallback
 2. Settings → SEO (site name, default share image, schema)
 3. Settings → Server (confirm rewrite / Authorization)
 4. Settings → Backup → download a site package before you get brave
-5. Optional: [Buy Forma Podcast — $39](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General
+5. Later CMS versions: Settings → Update (after this install is on 0.2.0+)
+6. Optional: [Buy Forma Podcast — $39](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General
 
 ## What this repo does not contain
 

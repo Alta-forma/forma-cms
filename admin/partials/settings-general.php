@@ -60,7 +60,7 @@ fx_settings_scroll_open();
         Agents start at <code>GET /api/v1/help</code>.
     </p>
     <div class="kv-row"><span class="k">Product</span><span class="v"><?php echo h(FORMA_PRODUCT); ?></span></div>
-    <div class="kv-row"><span class="k">Version</span><span class="v"><code><?php echo h(FORMA_VERSION); ?></code> · <?php echo h(FORMA_VERSION_DATE); ?></span></div>
+    <div class="kv-row"><span class="k">Version</span><span class="v"><code><?php echo h(FORMA_VERSION); ?></code> · <?php echo h(FORMA_VERSION_DATE); ?> · <a href="index.php?section=settings&amp;sub=update">Update</a></span></div>
     <div class="kv-row"><span class="k">Schema</span><span class="v">v<?php echo (int)FORMA_SCHEMA_VERSION; ?></span></div>
     <div class="kv-row"><span class="k">PHP</span><span class="v"><?php echo h($php); ?></span></div>
     <?php if ($sqlite !== ''): ?>
@@ -72,10 +72,11 @@ fx_settings_scroll_open();
         <li>Agent API tokens under Settings → Access</li>
         <li>Versioned site packages under Settings → Backup</li>
         <li>Hosting checks under Settings → Server</li>
+        <li>CMS updates under Settings → Update — GitHub <strong>releases</strong> only, never git main. Never overwrites <code>database/</code> or <code>uploads/</code>.</li>
     </ul>
     <p class="hint" style="margin-top:.85rem;margin-bottom:0">
-        In-app updates are not wired yet — replace PHP files (or restore a site package) yourself.
-        Don’t yank <code>database/</code> or <code>uploads/</code> when you do.
+        To ship Forma to the world, tag a GitHub Release (see <code>docs/RELEASE.md</code>), then click <strong>Update Forma</strong> on each install.
+        Do not rsync a dirty branch onto live sites.
     </p>
 </div>
 

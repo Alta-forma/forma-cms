@@ -5,13 +5,13 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 **AltaForma** is the company that builds and hosts sites on Forma. This repo is the CMS.
 
 - Site: [forma-cms.me](https://forma-cms.me)
-- Download zip: [forma-cms-main.zip](https://github.com/Alta-forma/forma-cms/archive/refs/heads/main.zip)
+- Download: [latest GitHub Release](https://github.com/Alta-forma/forma-cms/releases/latest) (not `main`)
 - Clone: `git clone https://github.com/Alta-forma/forma-cms.git`
 - Podcast unlock ($39): [Buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608)
 
 The 2025 flat-file experiment still lives at [onechrisjones/forma](https://github.com/onechrisjones/forma). This repo is the current PHP + SQLite product.
 
-Deploy notes: [docs/DEPLOY.md](docs/DEPLOY.md) · Podcast keys: [docs/LICENSING.md](docs/LICENSING.md)
+Deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · **Ship updates:** [docs/RELEASE.md](docs/RELEASE.md) · Podcast keys: [docs/LICENSING.md](docs/LICENSING.md)
 
 ## Principles
 
@@ -26,7 +26,7 @@ Deploy notes: [docs/DEPLOY.md](docs/DEPLOY.md) · Podcast keys: [docs/LICENSING.
 ## Requirements
 
 - PHP 8.1+ (8.2+ recommended)
-- Extensions: `pdo_sqlite`, `json`, `fileinfo`, `session`, `curl` (CLI remote only)
+- Extensions: `pdo_sqlite`, `json`, `fileinfo`, `session`, `zip` (updates + site packages), `curl` (outbound HTTPS)
 - Apache `mod_rewrite` (or Nginx `try_files`) — or PHP built-in server via `router.php`
 
 ## Quick start
@@ -38,7 +38,7 @@ chmod -R 775 database uploads feeds
 php -S localhost:8787 router.php
 ```
 
-Or unzip [forma-cms-main.zip](https://github.com/Alta-forma/forma-cms/archive/refs/heads/main.zip) into the web root.
+Or download the **latest Release** zip from [GitHub Releases](https://github.com/Alta-forma/forma-cms/releases/latest) — not “Code → Download ZIP” on the repo (that is `main`, which can be unfinished).
 
 Open http://localhost:8787/admin — login `admin` / `admin` (change immediately).
 
@@ -169,6 +169,12 @@ php tools/import-formalite.php /path/to/forma.db
 ```
 
 Also available in Admin → Settings → Import.
+
+## Updating an existing install
+
+**Settings → Update → Update Forma.** That installs the latest *GitHub Release* only. It never writes `database/`, `uploads/`, `feeds/`, `fallback/`, `.htaccess`, or license secrets. It takes an app-file backup first; Rollback is on the same pane.
+
+AltaForma ships to the world with `./tools/release.sh` after bumping `version.php`. Do not rsync `main` onto live sites. Details: [docs/RELEASE.md](docs/RELEASE.md).
 
 ## License
 

@@ -70,8 +70,21 @@ class HostingCheck {
                 ? (extension_loaded('curl') ? 'curl available' : 'allow_url_fopen=On')
                 : 'No curl and allow_url_fopen is Off',
             'fix_steps'  => $httpOut ? [] : [
-                'License checks need either the curl extension or allow_url_fopen=On in php.ini.',
+                'License checks and Settings → Update need either the curl extension or allow_url_fopen=On in php.ini.',
                 'cPanel: MultiPHP INI Editor. Or ask support to enable one of these.',
+            ],
+            'fix_action' => null,
+        ];
+
+        $zipOk = class_exists('ZipArchive');
+        $checks[] = [
+            'id'         => 'ext_zip',
+            'level'      => $zipOk ? 'pass' : 'fail',
+            'title'      => 'PHP extension: zip',
+            'detail'     => $zipOk ? 'Loaded' : 'Not loaded',
+            'fix_steps'  => $zipOk ? [] : [
+                'Site packages and Settings → Update need ZipArchive (ext-zip).',
+                'Ask the host to enable the zip PHP extension for this domain.',
             ],
             'fix_action' => null,
         ];

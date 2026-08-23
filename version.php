@@ -2,8 +2,8 @@
 /**
  * Forma – Version
  */
-define('FORMA_VERSION', '0.1.0');
-define('FORMA_VERSION_DATE', '2026-08-03');
+define('FORMA_VERSION', '0.2.0');
+define('FORMA_VERSION_DATE', '2026-08-22');
 define('FORMA_PRODUCT', 'Forma');
 define('FORMA_DEV_MODE', false);
 

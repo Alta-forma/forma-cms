@@ -22,3 +22,4 @@ require_once ROOT_DIR . '/lib/Seo.php';
 require_once ROOT_DIR . '/lib/RedirectRepo.php';
 require_once ROOT_DIR . '/lib/Importer.php';
 require_once ROOT_DIR . '/lib/SitePackage.php';
+require_once ROOT_DIR . '/lib/Updater.php';

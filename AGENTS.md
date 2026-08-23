@@ -55,8 +55,15 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 - Manifest fields: `format`=`formax-site`, `format_version`, `schema_version`, `app_version`
 - Future app versions migrate using `schema_version`; reject packages newer than the running app
 
+## Updating the CMS
+
+Installs pull **GitHub Releases** only (`Alta-forma/forma-cms`). Admin → **Settings → Update**. Never rsync `main` onto a live vhost. Never copy `database/`, `uploads/`, or a customized `.htaccess` when updating code.
+
+AltaForma: bump `version.php`, merge to `main`, `./tools/release.sh`. Full checklist: [`docs/RELEASE.md`](docs/RELEASE.md).
+
 ## Don’t
 
+- Don’t rsync `main` or overwrite `database/` / `uploads/` / live `.htaccess` to “update Forma”. Use Settings → Update after a GitHub Release.
 - Don’t scrape `/admin` HTML when the API works.
 - Don’t delete `home`, `_404`, `_403`, `_500`.
 - Don’t commit tokens.
