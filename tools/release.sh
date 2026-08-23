@@ -47,14 +47,14 @@ if [[ "$remote" != *Alta-forma/forma-cms* ]]; then
   exit 1
 fi
 
-echo "Pushing main…"
+echo "Pushing main..."
 git push origin main
 
-echo "Tagging $tag…"
+echo "Tagging ${tag}..."
 git tag -a "$tag" -m "Forma $version"
 git push origin "$tag"
 
-echo "Creating GitHub Release $tag…"
+echo "Creating GitHub Release ${tag}..."
 gh release create "$tag" \
   --repo Alta-forma/forma-cms \
   --title "Forma $version" \
