@@ -4,6 +4,15 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 
 **AltaForma** is the company that builds and hosts sites on Forma. This repo is the CMS.
 
+- Site: [forma-cms.me](https://forma-cms.me)
+- Download zip: [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip)
+- Clone: `git clone https://github.com/onechrisjones/forma-cms.git`
+- Podcast unlock ($39): [Buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608)
+
+The 2025 flat-file experiment still lives at [onechrisjones/forma](https://github.com/onechrisjones/forma). This repo is the current PHP + SQLite product.
+
+Deploy notes: [docs/DEPLOY.md](docs/DEPLOY.md) · Podcast keys: [docs/LICENSING.md](docs/LICENSING.md)
+
 ## Principles
 
 - **One SQLite file** is a feature
@@ -23,11 +32,17 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 ## Quick start
 
 ```bash
+git clone https://github.com/onechrisjones/forma-cms.git
+cd forma-cms
 chmod -R 775 database uploads feeds
 php -S localhost:8787 router.php
 ```
 
+Or unzip [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip) into the web root.
+
 Open http://localhost:8787/admin — login `admin` / `admin` (change immediately).
+
+DreamHost / Apache / Nginx: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Layout
 
@@ -141,10 +156,9 @@ Per-page / per-post SEO panels override title, description, OG image, canonical,
 
 ## Licenses
 
-Settings → License.
+Forma itself is MIT. Podcast hosting is a $39 one-time unlock — [buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General. Local/dev: `FX-DEV-LOCAL`. Details: [docs/LICENSING.md](docs/LICENSING.md).
 
-- **Podcast** — paid unlock (`FX-PERP-…`, `FX-SUB-…`, or local `FX-DEV-LOCAL`)
-- **Forms** — email relay (included with an AltaForma site; self-serve buys a key or BYO Formspree/Resend)
+The HMAC secret that mints keys is **not** in this repo (`lib/LicenseHMACSecret.hex` is gitignored).
 
 ## Import from an older install
 
@@ -158,4 +172,4 @@ Also available in Admin → Settings → Import.
 
 ## License
 
-MIT
+[MIT](LICENSE)

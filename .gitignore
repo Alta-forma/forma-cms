@@ -28,3 +28,6 @@ Thumbs.db
 
 # Never publish the license HMAC secret
 lib/LicenseHMACSecret.hex
+
+# Local scratch / pulled live HTML — not the product
+.scratch/
