@@ -2,13 +2,13 @@
 
 Forma is PHP 8.1+ and one SQLite file. No Composer, no MySQL.
 
-Download: [github.com/onechrisjones/forma-cms](https://github.com/onechrisjones/forma-cms)
-Zip: [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip)
+Download: [github.com/Alta-forma/forma-cms](https://github.com/Alta-forma/forma-cms)
+Zip: [forma-cms-main.zip](https://github.com/Alta-forma/forma-cms/archive/refs/heads/main.zip)
 
 ## Local
 
 ```bash
-git clone https://github.com/onechrisjones/forma-cms.git
+git clone https://github.com/Alta-forma/forma-cms.git
 cd forma-cms
 chmod -R 775 database uploads feeds
 php -S localhost:8787 router.php

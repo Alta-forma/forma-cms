@@ -5,8 +5,8 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 **AltaForma** is the company that builds and hosts sites on Forma. This repo is the CMS.
 
 - Site: [forma-cms.me](https://forma-cms.me)
-- Download zip: [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip)
-- Clone: `git clone https://github.com/onechrisjones/forma-cms.git`
+- Download zip: [forma-cms-main.zip](https://github.com/Alta-forma/forma-cms/archive/refs/heads/main.zip)
+- Clone: `git clone https://github.com/Alta-forma/forma-cms.git`
 - Podcast unlock ($39): [Buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608)
 
 The 2025 flat-file experiment still lives at [onechrisjones/forma](https://github.com/onechrisjones/forma). This repo is the current PHP + SQLite product.
@@ -32,13 +32,13 @@ Deploy notes: [docs/DEPLOY.md](docs/DEPLOY.md) · Podcast keys: [docs/LICENSING.
 ## Quick start
 
 ```bash
-git clone https://github.com/onechrisjones/forma-cms.git
+git clone https://github.com/Alta-forma/forma-cms.git
 cd forma-cms
 chmod -R 775 database uploads feeds
 php -S localhost:8787 router.php
 ```
 
-Or unzip [forma-cms-main.zip](https://github.com/onechrisjones/forma-cms/archive/refs/heads/main.zip) into the web root.
+Or unzip [forma-cms-main.zip](https://github.com/Alta-forma/forma-cms/archive/refs/heads/main.zip) into the web root.
 
 Open http://localhost:8787/admin — login `admin` / `admin` (change immediately).
 
