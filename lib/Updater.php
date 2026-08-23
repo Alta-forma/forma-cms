@@ -30,9 +30,9 @@ class Updater {
         ];
     }
 
-    /** Directories replaced on update (deny-list still applied inside). */
+    /** Directories replaced on update (deny-list still applied inside). Not `docs/` — that would 403 a CMS page at /docs. */
     public static function rootDirs(): array {
-        return ['admin', 'lib', 'api', 'mcp', 'templates', 'docs'];
+        return ['admin', 'lib', 'api', 'mcp', 'templates'];
     }
 
     /** Only these files under tools/ — never a full wipe of tools/. */

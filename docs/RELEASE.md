@@ -46,7 +46,7 @@ First-time sites that are still on 0.1.x do not have this pane. Bootstrap them *
 - Point the updater at `main.zip`
 - Copy `database/` or `uploads/` when “just updating code”
 - Click **Write .htaccess** after an update unless you intend to replace that vhost’s rules
-- Commit `lib/LicenseHMACSecret.hex`
+- Copy a `docs/` (or `blog/`) folder into a site web root — it will shadow the CMS page and Apache 403s the URL
 
 ## Versioning
 
