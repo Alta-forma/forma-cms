@@ -318,16 +318,21 @@
       if (ta.codemirror) return;
       var mode = ta.dataset.mode || 'markdown';
       var fill = ta.dataset.cm === 'fill' || ta.classList.contains('htaccess-editor');
-      var cm = CodeMirror.fromTextArea(ta, {
-        mode: mode,
-        theme: 'monokai',
-        lineNumbers: true,
-        lineWrapping: true,
-        tabSize: 2,
-        indentWithTabs: false,
-        // Expand fully so settings cards grow; only #settings-panel scrolls
-        viewportMargin: Infinity
-      });
+      var cm;
+      try {
+        cm = CodeMirror.fromTextArea(ta, {
+          mode: mode === 'null' ? null : mode,
+          theme: 'monokai',
+          lineNumbers: true,
+          lineWrapping: true,
+          tabSize: 2,
+          indentWithTabs: false,
+          viewportMargin: Infinity
+        });
+      } catch (err) {
+        console.error('Forma: CodeMirror failed', err);
+        return;
+      }
       ta.codemirror = cm;
       cm.on('change', function () { cm.save(); });
       if (fill) {
@@ -784,8 +789,6 @@
         toast.dataset.show = '0';
       }, 1800);
     }
-  }
-
   }
 
   document.body.addEventListener('click', function (e) {
