@@ -81,7 +81,7 @@ fx_settings_scroll_open();
 
 <div class="settings-card <?php echo $st['licensed'] ? 'card-glow-pass' : 'card-glow-warn'; ?>">
     <h3><i class="fas fa-key"></i> License</h3>
-    <p class="card-sub">Podcast hosting is a paid unlock. The Podcast nav stays hidden until a key is active.</p>
+    <p class="card-sub">Forma is free. Podcast hosting is $39 one-time. Buy in this panel, then paste the emailed key.</p>
     <div class="kv-row">
         <span class="k">Podcast</span>
         <span class="v">
@@ -101,11 +101,16 @@ fx_settings_scroll_open();
     <form hx-post="actions/license-activate.php" hx-target="#settings-panel" hx-swap="innerHTML">
         <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
         <div class="form-group" style="margin-top:1rem">
+            <label>License email</label>
+            <input type="email" name="license_email" value="<?php echo h($st['licensed_to'] ?? ''); ?>" placeholder="the address you paid with" autocomplete="email">
+        </div>
+        <div class="form-group">
             <label>License key</label>
-            <input type="text" name="license_key" placeholder="FX-PERP-XXXXXXXX-XXXX" style="font-family:monospace">
-            <span class="hint">Perpetual keys look like FX-PERP-… Older FL- keys also work. Local unlock: FX-DEV-LOCAL</span>
+            <input type="text" name="license_key" placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace">
+            <span class="hint">$39 one-time. Same email you used at checkout. Local unlock: FX-DEV-LOCAL</span>
         </div>
         <div class="card-actions">
+            <a class="standard-btn" href="<?php echo h(License::BUY_URL); ?>" target="_blank" rel="noopener">Buy Podcast — $39</a>
             <button type="submit" class="standard-btn"><i class="small fas fa-key"></i> Activate</button>
         </div>
     </form>

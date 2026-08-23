@@ -626,6 +626,23 @@ class Seo {
         return implode("\n", $lines) . "\n";
     }
 
+    /** ISO-8601 lastmod. Accepts unix ints or SQL/ISO datetime strings; ignores epoch-garbage. */
+    public static function lastmodIso(mixed $ts): ?string {
+        if ($ts === null || $ts === '' || $ts === false) {
+            return null;
+        }
+        if (is_numeric($ts)) {
+            $n = (int)$ts;
+        } else {
+            $parsed = strtotime((string)$ts);
+            $n = $parsed === false ? 0 : $parsed;
+        }
+        if ($n < 946684800) { // 2000-01-01
+            return null;
+        }
+        return date('c', $n);
+    }
+
     public static function buildSitemapXml(array $seo): string {
         if (empty($seo['sitemap_enabled'])) {
             return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
@@ -656,7 +673,7 @@ class Seo {
                 $loc = self::absoluteUrl($slug === '/' || $slug === '' ? '/' : $slug);
                 $entry = [
                     'loc' => $loc,
-                    'lastmod' => !empty($p['updated_at']) ? date('c', (int)$p['updated_at']) : null,
+                    'lastmod' => self::lastmodIso($p['updated_at'] ?? null),
                     'changefreq' => $slug === '/' || $slug === '' ? 'weekly' : 'monthly',
                     'priority' => ($slug === '/' || $slug === '') ? '1.0' : '0.7',
                 ];
@@ -683,9 +700,8 @@ class Seo {
                 }
                 $entry = [
                     'loc' => self::absoluteUrl('/blog/' . $post['slug']),
-                    'lastmod' => !empty($post['updated_at']) ? date('c', (int)$post['updated_at']) : (
-                        !empty($post['published_at']) ? date('c', (int)$post['published_at']) : null
-                    ),
+                    'lastmod' => self::lastmodIso($post['updated_at'] ?? null)
+                        ?? self::lastmodIso($post['published_at'] ?? null),
                     'changefreq' => 'monthly',
                     'priority' => '0.6',
                 ];
@@ -718,7 +734,7 @@ class Seo {
                 }
                 $entry = [
                     'loc' => self::absoluteUrl('/podcast/' . $ep['episode_id']),
-                    'lastmod' => date('c', (int)$ep['published_at']),
+                    'lastmod' => self::lastmodIso($ep['published_at'] ?? null),
                     'changefreq' => 'monthly',
                     'priority' => '0.5',
                 ];

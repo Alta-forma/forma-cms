@@ -112,7 +112,8 @@ class Search {
             return;
         }
         $meta = PageRepo::extractMeta($page['content'] ?? '');
-        if (($meta['noindex_search'] ?? '') === 'true' || ($meta['robots'] ?? '') === 'noindex') {
+        $robots = strtolower((string)($meta['robots'] ?? ''));
+        if (($meta['noindex_search'] ?? '') === 'true' || str_contains($robots, 'noindex')) {
             self::removeDocument('page', $filename);
             return;
         }

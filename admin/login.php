@@ -4,7 +4,7 @@ require_once ROOT_DIR . '/lib/bootstrap.php';
 Auth::startSession();
 
 if (Auth::user()) {
-    header('Location: index.php');
+    header('Location: ' . rtrim(forma_admin_base_href(), '/') . '/index.php');
     exit;
 }
 
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($row && password_verify($password, $row['password_hash'])) {
             $db->execute('DELETE FROM login_attempts WHERE ip = ?', [$ip]);
             Auth::login($username);
-            header('Location: index.php');
+            header('Location: ' . rtrim(forma_admin_base_href(), '/') . '/index.php');
             exit;
         }
         $db->execute('INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)', [$ip, time()]);
@@ -65,7 +65,7 @@ $showProductSub = $siteTitle !== FORMA_PRODUCT;
     <?php if ($error): ?>
         <p style="color:var(--error);text-align:center"><?php echo htmlspecialchars($error); ?></p>
     <?php endif; ?>
-    <form method="post">
+    <form method="post" action="login.php">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required autofocus>
