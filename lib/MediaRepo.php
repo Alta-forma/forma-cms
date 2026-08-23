@@ -17,7 +17,7 @@ class MediaRepo {
                 'filename' => $f,
                 'size'     => filesize($path),
                 'mtime'    => filemtime($path),
-                'url'      => forma_uploads_web_prefix() . rawurlencode($f),
+                'url'      => forma_uploads_web_url($f),
                 'ext'      => strtolower(pathinfo($f, PATHINFO_EXTENSION)),
             ];
         }
@@ -51,7 +51,7 @@ class MediaRepo {
         }
         return [
             'filename' => $destName,
-            'url'      => forma_uploads_web_prefix() . rawurlencode($destName),
+            'url'      => forma_uploads_web_url($destName),
             'size'     => filesize($dest),
         ];
     }
@@ -75,7 +75,7 @@ class MediaRepo {
             'filename' => $filename,
             'size'     => filesize($path),
             'mtime'    => filemtime($path),
-            'url'      => forma_uploads_web_prefix() . rawurlencode($filename),
+            'url'      => forma_uploads_web_url($filename),
             'ext'      => strtolower(pathinfo($filename, PATHINFO_EXTENSION)),
             'path'     => $path,
         ];

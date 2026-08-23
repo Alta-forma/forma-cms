@@ -483,7 +483,7 @@ function self_agent_store_media(array $file): array {
     @unlink($file['tmp_name']);
     return [
         'filename' => $destName,
-        'url'      => forma_uploads_web_prefix() . rawurlencode($destName),
+        'url'      => forma_uploads_web_url($destName),
         'size'     => filesize($dest),
     ];
 }

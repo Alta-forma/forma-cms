@@ -9,16 +9,22 @@ function forma_site_base_path(): string {
     if (!empty($_SERVER['DOCUMENT_ROOT'])) {
         $doc  = realpath($_SERVER['DOCUMENT_ROOT']);
         $root = realpath(ROOT_DIR);
-        if ($doc !== false && $root !== false && str_starts_with($root, $doc) && strlen($root) > strlen($doc)) {
-            $rel = trim(str_replace('\\', '/', substr($root, strlen($doc))), '/');
-            if ($rel !== '') {
-                return '/' . $rel;
+        if ($doc !== false && $root !== false) {
+            if ($root === $doc) {
+                return '';
+            }
+            if (str_starts_with($root, $doc) && strlen($root) > strlen($doc)) {
+                $rel = trim(str_replace('\\', '/', substr($root, strlen($doc))), '/');
+                if ($rel !== '') {
+                    return '/' . $rel;
+                }
             }
         }
     }
     $sn = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php')), '/');
-    if ($sn === '/admin' || preg_match('#^(.+)/admin$#', $sn, $m)) {
-        return ($m[1] ?? '') === '' ? '' : $m[1];
+    // /admin, /admin/partials, /admin/actions, or /subdir/admin/…
+    if (preg_match('#^(.*?)/admin(?:/.*)?$#', $sn, $m)) {
+        return $m[1];
     }
     if (str_contains($sn, '/api/v1')) {
         $sn = preg_replace('#/api/v1.*$#', '', $sn) ?? '';
@@ -33,6 +39,16 @@ function forma_site_base_path(): string {
 function forma_uploads_web_prefix(): string {
     $b = rtrim(forma_site_base_path(), '/');
     return ($b === '' ? '' : $b) . '/uploads/';
+}
+
+/** Encoded URL for <img src>, CSS, and Open in new tab. */
+function forma_uploads_web_url(string $filename): string {
+    return forma_uploads_web_prefix() . rawurlencode(basename($filename));
+}
+
+/** Unencoded path stored in page/post fields (/uploads/file.jpg). */
+function forma_uploads_web_path(string $filename): string {
+    return forma_uploads_web_prefix() . basename($filename);
 }
 
 function forma_admin_base_href(): string {

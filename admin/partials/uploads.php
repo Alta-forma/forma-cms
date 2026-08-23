@@ -36,7 +36,7 @@ if ($sel && MediaRepo::isTextExt($sel['ext'])) {
             <?php endif; ?>
             <?php foreach ($files as $f):
                 $icon = MediaRepo::iconFor($f['ext']);
-                $isImg = MediaRepo::isImageExt($f['ext']) && $f['ext'] !== 'svg';
+                $isImg = MediaRepo::isImageExt($f['ext']);
             ?>
             <div class="file-item upload-item <?php echo $active === $f['filename'] ? 'active' : ''; ?>"
                  title="<?php echo h($f['filename']); ?>"
@@ -45,7 +45,10 @@ if ($sel && MediaRepo::isTextExt($sel['ext'])) {
                  hx-swap="innerHTML"
                  hx-push-url="index.php?section=uploads&file=<?php echo urlencode($f['filename']); ?>">
                 <?php if ($isImg): ?>
-                    <span class="upload-thumb" style="background-image:url('<?php echo h($f['url']); ?>')"></span>
+                    <span class="upload-thumb<?php echo $f['ext'] === 'svg' ? ' is-svg' : ''; ?>">
+                        <img src="<?php echo h($f['url']); ?>" alt="" loading="lazy" decoding="async"
+                             onerror="this.parentNode.classList.add('is-missing');this.remove()">
+                    </span>
                 <?php else: ?>
                     <i class="fas <?php echo h($icon); ?>"></i>
                 <?php endif; ?>
@@ -83,16 +86,30 @@ if ($sel && MediaRepo::isTextExt($sel['ext'])) {
             <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
             <input type="hidden" name="filename" value="<?php echo h($sel['filename']); ?>">
 
-            <div class="form-group">
-                <label for="filename-edit">Filename</label>
-                <input type="text" id="filename-edit" name="new_filename" value="<?php echo h($sel['filename']); ?>" required>
-                <span class="hint">
-                    <?php echo number_format($sel['size'] / 1024, 1); ?> KB
-                    · <a href="<?php echo h($sel['url']); ?>" target="_blank" rel="noopener">Open</a>
-                    · <code class="upload-url"><?php echo h($sel['url']); ?></code>
-                    <button type="button" class="linkish" title="Copy URL"
-                            onclick="navigator.clipboard.writeText(<?php echo h(json_encode($sel['url'])); ?>).then(()=>{this.textContent='Copied';setTimeout(()=>this.textContent='Copy',1200)})">Copy</button>
-                </span>
+            <?php
+            $bytes = (int)$sel['size'];
+            if ($bytes < 1024) {
+                $sizeLabel = $bytes . ' B';
+            } elseif ($bytes < 1048576) {
+                $kb = $bytes / 1024;
+                $sizeLabel = number_format($kb, $kb >= 100 ? 0 : 1) . ' KB';
+            } else {
+                $sizeLabel = number_format($bytes / 1048576, 1) . ' MB';
+            }
+            $kind = strtoupper((string)$sel['ext']);
+            $when = date('M j, Y', (int)$sel['mtime']);
+            ?>
+
+            <div class="upload-asset-head">
+                <div class="form-group">
+                    <label for="filename-edit">Filename</label>
+                    <input type="text" id="filename-edit" name="new_filename" value="<?php echo h($sel['filename']); ?>" required>
+                </div>
+                <div class="form-group">
+                    <label>Public URL</label>
+                    <?php echo fx_url_pill($sel['url'], ['open' => true]); ?>
+                    <span class="hint upload-asset-stats"><?php echo h($sizeLabel); ?> · <?php echo h($kind); ?> · <?php echo h($when); ?></span>
+                </div>
             </div>
 
             <?php if (MediaRepo::isTextExt($sel['ext'])): ?>
@@ -102,7 +119,11 @@ if ($sel && MediaRepo::isTextExt($sel['ext'])) {
             <?php else: ?>
                 <div class="form-group preview-content">
                     <?php if (MediaRepo::isImageExt($sel['ext'])): ?>
-                        <div><img src="<?php echo h($sel['url']); ?>" alt="<?php echo h($sel['filename']); ?>"></div>
+                        <div class="upload-preview-stage">
+                            <img src="<?php echo h($sel['url']); ?>" alt="<?php echo h($sel['filename']); ?>"
+                                 onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.hidden=false">
+                            <div class="no-preview" hidden>Couldn’t load this image.</div>
+                        </div>
                     <?php elseif (MediaRepo::isVideoExt($sel['ext'])): ?>
                         <div><video src="<?php echo h($sel['url']); ?>" controls></video></div>
                     <?php elseif (MediaRepo::isAudioExt($sel['ext'])): ?>

@@ -32,7 +32,7 @@ try {
             $files[] = [
                 'filename' => $f['filename'],
                 'url'      => $f['url'],
-                'path'     => '/uploads/' . $f['filename'],
+                'path'     => forma_uploads_web_path($f['filename']),
                 'ext'      => $ext,
                 'size'     => $f['size'],
                 'mtime'    => $f['mtime'],
@@ -47,7 +47,7 @@ try {
     if ($method === 'POST') {
         session_write_close();
         $saved = MediaRepo::saveUpload($_FILES['file'] ?? []);
-        $path = '/uploads/' . $saved['filename'];
+        $path = forma_uploads_web_path($saved['filename']);
         echo json_encode([
             'success'  => true,
             'filename' => $saved['filename'],

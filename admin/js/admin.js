@@ -142,19 +142,22 @@
     ui.queued();
     ui.promote = function (data) {
       var filename = (data && (data.filename || (data.files && data.files[0] && data.files[0].filename))) || '';
-      var url = (data && (data.url || data.path)) || (filename ? '/uploads/' + encodeURIComponent(filename) : '');
+      var url = (data && data.url) || (data && data.path) || '';
+      if (!url || url.indexOf('/admin/') !== -1) {
+        url = filename ? '/uploads/' + encodeURIComponent(filename) : '';
+      }
       if (row._fxBlob) {
         try { URL.revokeObjectURL(row._fxBlob); } catch (e) {}
         row._fxBlob = '';
       }
       var name = filename || file.name || 'file';
       var ext = (name.split('.').pop() || '').toLowerCase();
-      var showThumb = /^(jpe?g|png|gif|webp)$/i.test(ext);
+      var showThumb = /^(jpe?g|png|gif|webp|svg|ico)$/i.test(ext);
       row.className = 'file-item upload-item';
       row.removeAttribute('aria-busy');
       row.title = name;
       row.innerHTML = (showThumb && url
-        ? '<span class="upload-thumb" style="background-image:url(\'' + attrUrl(url) + '\')"></span>'
+        ? '<span class="upload-thumb' + (ext === 'svg' ? ' is-svg' : '') + '"><img src="' + attrUrl(url) + '" alt="" onerror="this.parentNode.classList.add(\'is-missing\');this.remove()"></span>'
         : '<i class="fas ' + iconClass(ext) + '"></i>') +
         '<span class="upload-name"></span>';
       row.querySelector('.upload-name').textContent = name;

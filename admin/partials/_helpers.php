@@ -78,10 +78,15 @@ function fx_file_pick(string $name, string $accept, string $button = 'Choose fil
         . '</div>';
 }
 
-/** Copyable feed/URL pill. */
-function fx_url_pill(string $url): string {
-    return '<div class="feed-url-row"><span>' . h($url) . '</span>'
-        . '<button type="button" title="Copy" onclick="navigator.clipboard.writeText(' . h(json_encode($url)) . ').then(()=>{this.innerHTML=\'<i class=&quot;fas fa-check&quot;></i>\';setTimeout(()=>this.innerHTML=\'<i class=&quot;fas fa-copy&quot;></i>\',1200)})"><i class="fas fa-copy"></i></button></div>';
+/** Copyable URL pill. Pass open:true for an external-link button. */
+function fx_url_pill(string $url, array $opts = []): string {
+    $open = !empty($opts['open']);
+    $html = '<div class="feed-url-row"><span title="' . h($url) . '">' . h($url) . '</span>'
+        . '<button type="button" title="Copy URL" aria-label="Copy URL" onclick="navigator.clipboard.writeText(' . h(json_encode($url)) . ').then(()=>{this.innerHTML=\'<i class=&quot;fas fa-check&quot;></i>\';setTimeout(()=>this.innerHTML=\'<i class=&quot;fas fa-copy&quot;></i>\',1200)})"><i class="fas fa-copy"></i></button>';
+    if ($open) {
+        $html .= '<a href="' . h($url) . '" target="_blank" rel="noopener" title="Open in new tab" aria-label="Open in new tab"><i class="fas fa-external-link-alt"></i></a>';
+    }
+    return $html . '</div>';
 }
 
 /**

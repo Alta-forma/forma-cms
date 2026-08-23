@@ -50,7 +50,7 @@ try {
             'files'    => $uploaded,
             'filename' => $last['filename'] ?? '',
             'url'      => $last['url'] ?? '',
-            'path'     => '/uploads/' . ($last['filename'] ?? ''),
+            'path'     => forma_uploads_web_path($last['filename'] ?? ''),
         ], JSON_UNESCAPED_SLASHES);
         exit;
     }
