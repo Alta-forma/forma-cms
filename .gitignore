@@ -32,3 +32,6 @@ lib/LicenseHMACSecret.hex
 
 # Local scratch / pulled live HTML — not the product
 .scratch/
+
+# Machine-local agent notes (not the public CMS)
+HANDOFF.md
