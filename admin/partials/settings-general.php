@@ -80,7 +80,7 @@ fx_settings_scroll_open();
                 hx-swap="innerHTML"
                 hx-push-url="index.php?section=settings&amp;sub=update"
                 hx-on::after-request="document.querySelectorAll('.settings-nav .file-item').forEach(function(i){i.classList.remove('active');}); var n=document.querySelector('.settings-nav .file-item[data-section=update]'); if(n) n.classList.add('active');">
-            <i class="fas fa-cloud-download-alt"></i> Update Forma
+            <i class="fas fa-cloud-download-alt"></i> Update Forma core
         </button>
     </div>
 </div>

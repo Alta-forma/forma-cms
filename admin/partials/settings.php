@@ -23,7 +23,7 @@ if ($podcastLicensed) {
 $subs += [
     'cache'  => ['Cache', 'bolt'],
     'server' => ['Server', 'server'],
-    'update' => ['Update', 'cloud-download-alt'],
+    'update' => ['Forma core', 'cube'],
     'access' => ['Access', 'user-lock'],
     'backup' => ['Backup', 'download'],
     'import' => ['Import', 'file-import'],

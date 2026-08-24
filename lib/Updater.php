@@ -312,7 +312,7 @@ class Updater {
 
             $result = [
                 'ok'      => true,
-                'message' => 'Updated Forma ' . $from . ' → ' . $to . '. Content was not touched. If you customized .htaccess, leave it — do not Write .htaccess unless you mean to.',
+                'message' => 'Updated Forma core ' . $from . ' → ' . $to . '. Pages, posts, and uploads were not touched.',
                 'from'    => $from,
                 'to'      => $to,
                 'backup'  => $backup,
@@ -361,7 +361,7 @@ class Updater {
             $file = $list[0]['path'] ?? null;
         }
         if (!$file || !is_file($file)) {
-            return self::fail('No app-file backup to restore.', $from, $log);
+            return self::fail('No Forma core backup to restore yet. One is saved before each update.', $from, $log);
         }
 
         try {
@@ -374,7 +374,7 @@ class Updater {
             $to = self::versionFromFile(ROOT_DIR . '/version.php') ?: $from;
             $result = [
                 'ok'      => true,
-                'message' => 'Restored app files from backup. Now running ' . $to . '. Content was not touched.',
+                'message' => 'Restored Forma core from the last backup. Now running ' . $to . '. Pages, posts, and uploads were not touched.',
                 'from'    => $from,
                 'to'      => $to,
                 'backup'  => $file,

@@ -57,13 +57,14 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 
 ## Updating the CMS
 
-Installs pull **GitHub Releases** only (`Alta-forma/forma-cms`). Admin → **Settings → Update**. Never rsync `main` onto a live vhost. Never copy `database/`, `uploads/`, or a customized `.htaccess` when updating code.
+Installs pull **GitHub Releases** only (`Alta-forma/forma-cms`). Admin → **Settings → Forma core**. Never rsync `main` onto a live vhost. Never copy `database/`, `uploads/`, or a customized `.htaccess` when updating code.
 
 AltaForma: bump `version.php`, merge to `main`, `./tools/release.sh`. Full checklist: [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## Don’t
 
-- Don’t rsync `main` or overwrite `database/` / `uploads/` / live `.htaccess` to “update Forma”. Use Settings → Update after a GitHub Release.
+- Don’t rsync `main` or overwrite `database/` / `uploads/` / live `.htaccess` to “update Forma”. Use Settings → Forma core after a GitHub Release.
+- Don’t rsync hotfixes to every vhost. **forma-cms.me only.** Other installs (Eden, Friends, alta-forma.com, …) click Settings → Forma core.
 - Don’t scrape `/admin` HTML when the API works.
 - Don’t delete `home`, `_404`, `_403`, `_500`.
 - Don’t commit tokens.

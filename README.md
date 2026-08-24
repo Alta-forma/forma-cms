@@ -172,7 +172,7 @@ Also available in Admin → Settings → Import.
 
 ## Updating an existing install
 
-**Settings → Update → Update Forma.** That installs the latest *GitHub Release* only. It never writes `database/`, `uploads/`, `feeds/`, `fallback/`, `.htaccess`, or license secrets. It takes an app-file backup first; Rollback is on the same pane.
+**Settings → Forma core.** That updates the CMS only (GitHub Releases). Pages, posts, and uploads stay put. A core backup is saved first; **Undo last update** is on the same pane.
 
 AltaForma ships to the world with `./tools/release.sh` after bumping `version.php`. Do not rsync `main` onto live sites. Details: [docs/RELEASE.md](docs/RELEASE.md).
 

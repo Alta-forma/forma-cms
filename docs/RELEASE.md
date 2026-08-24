@@ -30,7 +30,7 @@ The Update button already refuses to touch those. Manual rsync must too.
 
    That tags `vX.Y.Z` (must match `version.php`) and runs `gh release create`. If the script errors, **stop**. Do not push a tag by hand unless you know why the script failed.
 4. Confirm https://github.com/Alta-forma/forma-cms/releases/latest shows that tag.
-5. On **each** live install: Settings → Update → Check GitHub again → **Update Forma**. Read the confirm dialog. Wait for the toast.
+5. On **each** live install: Settings → **Forma core** → Check for updates → **Update Forma core**. Read the confirm dialog. Wait for the toast.
 
 First-time sites that are still on 0.1.x do not have this pane. Bootstrap them **once** with the 0.2.0+ app files (same allowlist as the updater), then use the button forever after.
 
