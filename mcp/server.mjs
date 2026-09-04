@@ -230,7 +230,7 @@ const tools = [
   },
   {
     name: "formax_get_seo",
-    description: "Get sitewide SEO settings, health report, redirects, robots.txt + sitemap.xml previews",
+    description: "Get sitewide SEO settings, health report, redirects, robots.txt + sitemap.xml + llms.txt previews",
     inputSchema: { type: "object", properties: {} },
   },
   {

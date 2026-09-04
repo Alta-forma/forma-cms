@@ -21,7 +21,7 @@ Deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · **Ship updates:** [docs/RELEASE.md](
 - Markdown-first for longform
 - Clean RSS (podcasts are a paid unlock)
 - Agent-friendly: scoped HTTPS API, no shell
-- SEO-first: `/robots.txt`, `/sitemap.xml`, Open Graph / Twitter / JSON-LD, Settings → SEO
+- SEO-first: `/robots.txt`, `/sitemap.xml`, `/llms.txt`, Open Graph / Twitter / JSON-LD, Settings → SEO
 
 ## Requirements
 
@@ -72,7 +72,7 @@ Top nav loads sections via htmx into `#main`. Editors use CodeMirror; save/delet
 | `/` | Page by slug (home) |
 | `/blog`, `/blog/{slug}` | Blog archive / post |
 | `/feed.xml`, `/feed.json` | Dynamic blog feeds |
-| `/robots.txt`, `/sitemap.xml` | SEO (generated) |
+| `/robots.txt`, `/sitemap.xml`, `/llms.txt` | SEO (generated) |
 | `/feeds/podcast.xml` | Podcast RSS |
 | `/podcast`, `/podcast/{id}` | Podcast pages (templates in DB) |
 | `/admin` | Admin |

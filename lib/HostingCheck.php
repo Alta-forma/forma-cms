@@ -196,7 +196,13 @@ class HostingCheck {
                 'id'         => 'static_seo_files',
                 'level'      => 'fail',
                 'title'      => 'Static robots.txt / sitemap.xml shadowing Forma',
-                'detail'     => 'On disk: ' . implode(', ', array_map(static fn($k) => $k === 'robots' ? 'robots.txt' : 'sitemap.xml', $staticNames))
+                'detail'     => 'On disk: ' . implode(', ', array_map(static function ($k) {
+                        return match ($k) {
+                            'robots' => 'robots.txt',
+                            'llms' => 'llms.txt',
+                            default => 'sitemap.xml',
+                        };
+                    }, $staticNames))
                     . ' — Apache serves these files instead of Forma.',
                 'fix_steps'  => [
                     'Open Settings → Server and click “Delete static robots/sitemap”, or use the button below.',
@@ -231,8 +237,8 @@ class HostingCheck {
             $checks[] = [
                 'id'         => 'static_seo_files',
                 'level'      => 'pass',
-                'title'      => 'Dynamic robots.txt / sitemap.xml',
-                'detail'     => 'Forma serves both via PHP (Settings → SEO).',
+                'title'      => 'Dynamic robots.txt / sitemap.xml / llms.txt',
+                'detail'     => 'Forma serves all three via PHP (Settings → SEO).',
                 'fix_steps'  => [],
                 'fix_action' => null,
             ];

@@ -21,7 +21,7 @@ RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
 RewriteCond %{REQUEST_URI} !/search(/|$)
-RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|llms\.txt|feed\.xml|feed\.json)$
 RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/index.html -f
 RewriteRule ^$ fallback/index.html [L]
@@ -34,7 +34,7 @@ RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
 RewriteCond %{REQUEST_URI} !/search(/|$)
-RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|llms\.txt|feed\.xml|feed\.json)$
 RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/$1.html -f
 RewriteRule ^(.+)$ fallback/$1.html [L]
@@ -44,9 +44,10 @@ RewriteRule ^(.+)$ fallback/$1.html [L]
 RewriteCond %{HTTP:Authorization} .
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# Always serve SEO files via Forma (ignore leftover static robots.txt / sitemap.xml)
+# Always serve SEO files via Forma (ignore leftover static robots.txt / sitemap.xml / llms.txt)
 RewriteRule ^robots\.txt$ /index.php [L]
 RewriteRule ^sitemap\.xml$ /index.php [L]
+RewriteRule ^llms\.txt$ /index.php [L]
 
 # Never rewrite existing .php — empty SCRIPT_FILENAME on some CGI vhosts
 RewriteRule \.php$ - [L]
@@ -140,7 +141,7 @@ RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
 RewriteCond %{REQUEST_URI} !/search(/|$)
-RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|llms\.txt|feed\.xml|feed\.json)$
 RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/index.html -f
 RewriteRule ^$ fallback/index.html [L]
@@ -153,7 +154,7 @@ RewriteCond %{REQUEST_URI} !/up(/|$)
 RewriteCond %{REQUEST_URI} !/admin(/|$)
 RewriteCond %{REQUEST_URI} !/api/
 RewriteCond %{REQUEST_URI} !/search(/|$)
-RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|feed\.xml|feed\.json)$
+RewriteCond %{REQUEST_URI} !^/(robots\.txt|sitemap\.xml|llms\.txt|feed\.xml|feed\.json)$
 RewriteCond %{REQUEST_URI} !/feeds/
 RewriteCond %{DOCUMENT_ROOT}/fallback/$1.html -f
 RewriteRule ^(.+)$ fallback/$1.html [L]
@@ -204,20 +205,35 @@ HTA;
             return false;
         }
         $content = (string)file_get_contents($path);
-        if (preg_match('/RewriteRule\s+\^robots\\\\\.txt\$/i', $content)) {
-            return true;
+        $changed = false;
+        if (!preg_match('/RewriteRule\s+\^robots\\\\\.txt\$/i', $content)) {
+            $block = "# Always serve SEO files via Forma (ignore leftover static robots.txt / sitemap.xml / llms.txt)\n"
+                . "RewriteRule ^robots\\.txt$ /index.php [L]\n"
+                . "RewriteRule ^sitemap\\.xml$ /index.php [L]\n"
+                . "RewriteRule ^llms\\.txt$ /index.php [L]\n\n";
+            if (preg_match('/RewriteCond\s+%\{HTTP:Authorization\}[^\n]*\nRewriteRule[^\n]+\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
+            } elseif (preg_match('/RewriteEngine\s+On\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
+            } else {
+                $content = $block . $content;
+            }
+            $changed = true;
+        } elseif (!preg_match('/RewriteRule\s+\^llms\\\\\.txt\$/i', $content)) {
+            if (preg_match('/RewriteRule\s+\^sitemap\\\\\.xml\$[^\n]*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "RewriteRule ^llms\\.txt$ /index.php [L]\n" . substr($content, $insertAt);
+                $changed = true;
+            } elseif (preg_match('/RewriteRule\s+\^robots\\\\\.txt\$[^\n]*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
+                $insertAt = $m[0][1] + strlen($m[0][0]);
+                $content = substr($content, 0, $insertAt) . "RewriteRule ^llms\\.txt$ /index.php [L]\n" . substr($content, $insertAt);
+                $changed = true;
+            }
         }
-        $block = "# Always serve SEO files via Forma (ignore leftover static robots.txt / sitemap.xml)\n"
-            . "RewriteRule ^robots\\.txt$ index.php [L]\n"
-            . "RewriteRule ^sitemap\\.xml$ index.php [L]\n\n";
-        if (preg_match('/RewriteCond\s+%\{HTTP:Authorization\}[^\n]*\nRewriteRule[^\n]+\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
-            $insertAt = $m[0][1] + strlen($m[0][0]);
-            $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
-        } elseif (preg_match('/RewriteEngine\s+On\s*\n/i', $content, $m, PREG_OFFSET_CAPTURE)) {
-            $insertAt = $m[0][1] + strlen($m[0][0]);
-            $content = substr($content, 0, $insertAt) . "\n" . $block . substr($content, $insertAt);
-        } else {
-            $content = $block . $content;
+        if (!$changed) {
+            return true;
         }
         return file_put_contents($path, $content) !== false;
     }
@@ -231,11 +247,12 @@ HTA;
         return (bool)preg_match('/RewriteRule\s+\^robots\\\\\.txt\$/i', $content);
     }
 
-    /** @return array{robots:bool,sitemap:bool} Whether static files exist on disk (and would shadow Forma without rewrite rules). */
+    /** @return array{robots:bool,sitemap:bool,llms:bool} Whether static files exist on disk (and would shadow Forma without rewrite rules). */
     public static function staticSeoFiles(): array {
         return [
             'robots'  => is_file(ROOT_DIR . '/robots.txt'),
             'sitemap' => is_file(ROOT_DIR . '/sitemap.xml'),
+            'llms'    => is_file(ROOT_DIR . '/llms.txt'),
         ];
     }
 
@@ -246,7 +263,7 @@ HTA;
     public static function removeStaticSeoFiles(): array {
         $removed = [];
         $errors = [];
-        foreach (['robots.txt', 'sitemap.xml'] as $name) {
+        foreach (['robots.txt', 'sitemap.xml', 'llms.txt'] as $name) {
             $path = ROOT_DIR . '/' . $name;
             if (!is_file($path)) {
                 continue;

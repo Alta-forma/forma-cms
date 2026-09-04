@@ -109,7 +109,7 @@ class Agent {
             'posts' => 'Markdown blog posts. Public only when published_at <= now. SEO in seo_json.',
             'snippets' => 'Reusable HTML/Twig fragments via [[shortcode]] in content.',
             'uploads' => 'Files in /uploads; referenced as uploads/filename.',
-            'seo' => 'Sitewide Settings→SEO. Public /robots.txt + /sitemap.xml auto-generated (robots_auto/sitemap_auto) or manual bodies. Meta tags on render.',
+            'seo' => 'Sitewide Settings→SEO. Public /robots.txt + /sitemap.xml + /llms.txt auto-generated (or manual bodies). Meta tags + JSON-LD (incl. breadcrumbs) on render.',
             'admin' => 'htmx admin at /admin/. Agents should prefer this API over scraping admin HTML.',
             'uptime' => 'GET /up (no auth) JSON {ok,php,version,ts,fallback}. Static stamp: /fallback/php-ok.json. If stamp is 200 but /up is “No input file specified”, PHP/FastCGI is down.',
             'html_cache' => 'Settings→Cache "HTML cache" (cache.static_fallback) writes every page/post/episode to fallback/*.html on every save; Apache serves those files directly (see fallback.marker in /up). Paths without a built file fall through to a live PHP render. "Rebuild HTML cache" rebuilds everything + the search index in one pass.',
@@ -166,7 +166,7 @@ class Agent {
                 'format_version' => SitePackage::FORMAT_VERSION,
                 'schema_version' => SitePackage::SCHEMA_VERSION,
             ],
-            'public_urls' => ['/up', '/search', '/robots.txt', '/sitemap.xml', '/feed.xml', '/feed.json', '/fallback/php-ok.json'],
+            'public_urls' => ['/up', '/search', '/robots.txt', '/sitemap.xml', '/llms.txt', '/feed.xml', '/feed.json', '/fallback/php-ok.json'],
         ];
     }
 

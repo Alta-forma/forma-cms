@@ -5,6 +5,7 @@ $site = Database::get()->getSetting('site');
 $base = rtrim($site['url'] ?? '', '/') ?: 'https://your-domain.com';
 $robotsAuto = !array_key_exists('robots_auto', $s) || !empty($s['robots_auto']);
 $sitemapAuto = !array_key_exists('sitemap_auto', $s) || !empty($s['sitemap_auto']);
+$llmsAuto = !array_key_exists('llms_auto', $s) || !empty($s['llms_auto']);
 $health = Seo::healthReport();
 $redirects = RedirectRepo::list();
 $schemaType = $s['schema_type'] ?? 'person';
@@ -206,14 +207,18 @@ fx_settings_scroll_open();
         <ul class="seo-done-list">
             <li>A unique canonical URL on every public page and post</li>
             <li>Open Graph + Twitter cards from titles, descriptions, and images</li>
-            <li>JSON-LD for WebSite plus Person / Organization / LocalBusiness</li>
-            <li>robots.txt and sitemap.xml (pages, published posts, images)</li>
+            <li>JSON-LD for WebSite plus Person / Organization / LocalBusiness, and breadcrumbs</li>
+            <li>robots.txt, sitemap.xml, and llms.txt (pages, published posts, images)</li>
             <li>/admin and /api stay out of the index</li>
         </ul>
         <div class="seo-auto-tools">
             <div>
                 <div class="seo-preview-label">Live robots.txt</div>
                 <?php echo fx_url_pill($base . '/robots.txt'); ?>
+            </div>
+            <div>
+                <div class="seo-preview-label">Live llms.txt</div>
+                <?php echo fx_url_pill($base . '/llms.txt'); ?>
             </div>
             <div>
                 <div class="seo-preview-label">Submit this sitemap in Search Console</div>
@@ -251,6 +256,13 @@ fx_settings_scroll_open();
                 <?php echo fx_switch('sitemap_include_posts', !empty($s['sitemap_include_posts']), 'Include published blog posts + /blog', ''); ?>
                 <?php echo fx_switch('sitemap_include_podcast', !empty($s['sitemap_include_podcast']), 'Include podcast', 'When licensed'); ?>
                 <?php echo fx_switch('sitemap_include_images', !array_key_exists('sitemap_include_images', $s) || !empty($s['sitemap_include_images']), 'Include featured images', 'One image per URL from featured / OG image'); ?>
+                <?php echo fx_switch('llms_enabled', !array_key_exists('llms_enabled', $s) || !empty($s['llms_enabled']), 'Enable llms.txt', 'A plain-text index at /llms.txt for AI crawlers'); ?>
+                <?php echo fx_switch('llms_auto', $llmsAuto, 'Auto-generate llms.txt', 'Turn off to write your own'); ?>
+                <div class="form-group" style="margin-top:1rem">
+                    <label>Manual llms.txt</label>
+                    <textarea name="llms_manual" rows="8" class="mono" spellcheck="false"><?php echo h($s['llms_manual'] ?? ''); ?></textarea>
+                    <span class="hint">Used when Auto is off. Empty + Save seeds from auto output. Markdown, one H1, sections with links.</span>
+                </div>
                 <div class="form-group" style="margin-top:1rem">
                     <label>Manual sitemap.xml</label>
                     <textarea name="sitemap_manual" rows="5" class="mono" spellcheck="false"><?php echo h($s['sitemap_manual'] ?? ''); ?></textarea>

@@ -22,7 +22,7 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 | Snippets | `snippets` | Insert with `[[shortcode]]` in page/post HTML |
 | Uploads | `/uploads` | Media files; use media API |
 | Settings | `settings` JSON sections | `site`, `seo`, `blog`, `podcast`, `cache`, … |
-| SEO | Settings → SEO + per doc | Auto meta/favicon/schema; health dashboard; image sitemap; redirects; `/robots.txt` + `/sitemap.xml` |
+| SEO | Settings → SEO + per doc | Auto meta/favicon/schema; health dashboard; image sitemap; redirects; `/robots.txt` + `/sitemap.xml` + `/llms.txt` |
 | Uptime | `GET /up` + `fallback/` | Heartbeat JSON incl. `fallback` status. If `/up` dies but `/fallback/php-ok.json` is 200, PHP/FastCGI is down. |
 | HTML cache | Settings → Cache (`cache.static_fallback`) | Every save writes real `.html` under `fallback/`; Apache serves those files first (see `fallback/.enabled`). Paths without a built file fall through to PHP — SQLite is always the source of truth, `fallback/` is a derived cache you can delete and rebuild with "Rebuild HTML cache". |
 | Search | `GET /search?q=…` + `[[search]]` snippet | SQLite FTS5 (LIKE fallback) over pages/posts/episodes. Always PHP, never published as a file. htmx fragment via `HX-Request: true`. To write the shortcode as text, use a code fence / `<code>` or `[[!search]]`. Descriptions, titles, and meta never expand shortcodes. |

@@ -1,11 +1,18 @@
 <?php
 /**
- * Forma SEO — sitewide settings, per-document meta, robots.txt, sitemap.xml, health.
+ * Forma SEO — sitewide settings, per-document meta, robots.txt, sitemap.xml, llms.txt, health.
  */
 class Seo {
     public const PAGE_META_KEYS = [
         'seo_title', 'seo_description', 'og_title', 'og_description',
         'og_image', 'featured_image', 'canonical', 'robots', 'twitter_card', 'schema_type',
+    ];
+
+    /** Template / system pages — never public content, never in sitemap or llms.txt. */
+    public const TEMPLATE_FILENAMES = [
+        '_404', '_403', '_500',
+        'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single',
+        'search-page', 'search-results',
     ];
 
     public static function defaults(): array {
@@ -22,6 +29,9 @@ class Seo {
             'sitemap_include_posts'   => true,
             'sitemap_include_podcast' => true,
             'sitemap_include_images'  => true,
+            'llms_auto'               => true,
+            'llms_manual'             => '',
+            'llms_enabled'            => true,
             'title_separator'         => ' — ',
             'title_suffix'            => true,
             'favicon'                 => '',
@@ -60,6 +70,8 @@ class Seo {
         $seo['sitemap_auto'] = !empty($seo['sitemap_auto']);
         $seo['sitemap_enabled'] = !empty($seo['sitemap_enabled']);
         $seo['sitemap_include_images'] = !empty($seo['sitemap_include_images']);
+        $seo['llms_auto'] = !empty($seo['llms_auto']);
+        $seo['llms_enabled'] = !empty($seo['llms_enabled']);
         $allowed = ['none', 'person', 'organization', 'local_business'];
         if (!in_array((string)($seo['schema_type'] ?? ''), $allowed, true)) {
             // Back-compat: old json_ld_organization toggle
@@ -70,6 +82,9 @@ class Seo {
         }
         if (!$seo['sitemap_auto'] && trim((string)($seo['sitemap_manual'] ?? '')) === '') {
             $seo['sitemap_manual'] = self::buildSitemapXml($seo);
+        }
+        if (!$seo['llms_auto'] && trim((string)($seo['llms_manual'] ?? '')) === '') {
+            $seo['llms_manual'] = self::buildLlmsTxt($seo);
         }
         $seo['google_site_verification'] = self::parseVerificationToken((string)($seo['google_site_verification'] ?? ''));
         $seo['bing_site_verification'] = self::parseVerificationToken((string)($seo['bing_site_verification'] ?? ''));
@@ -262,16 +277,23 @@ class Seo {
     public static function forBlogArchive(): array {
         $site = Database::get()->getSetting('site');
         $seo  = self::settings();
-        $title = ($site['title'] ?? 'Blog') . ' Blog';
+        $tpl = Database::get()->queryOne("SELECT content FROM pages WHERE filename = 'blog-archive'");
+        $meta = PageRepo::extractMeta($tpl['content'] ?? '');
+        $title = $meta['seo_title'] ?? (($site['title'] ?? 'Blog') . ' Blog');
+        $desc = $meta['seo_description'] ?? ($site['description'] ?? '');
+        $image = trim((string)($meta['og_image'] ?? $meta['featured_image'] ?? ''));
+        if ($image === '') {
+            $image = $seo['default_og_image'] ?? '';
+        }
         return self::normalize([
             'title'       => $title,
-            'description' => $site['description'] ?? '',
-            'og_title'    => $title,
-            'og_description' => $site['description'] ?? '',
-            'og_image'    => $seo['default_og_image'] ?? '',
-            'canonical'   => '/blog',
-            'robots'      => self::defaultRobotsDirective($seo),
-            'twitter_card'=> $seo['twitter_card'] ?? 'summary_large_image',
+            'description' => $desc,
+            'og_title'    => $meta['og_title'] ?? $title,
+            'og_description' => $meta['og_description'] ?? $desc,
+            'og_image'    => $image,
+            'canonical'   => $meta['canonical'] ?? '/blog',
+            'robots'      => $meta['robots'] ?? self::defaultRobotsDirective($seo),
+            'twitter_card'=> $meta['twitter_card'] ?? ($seo['twitter_card'] ?? 'summary_large_image'),
             'type'        => 'website',
             'path'        => '/blog',
         ], $seo, $site);
@@ -534,6 +556,11 @@ class Seo {
             $graph[] = $article;
         }
 
+        $crumbs = self::breadcrumbList($doc);
+        if ($crumbs) {
+            $graph[] = $crumbs;
+        }
+
         if (!$graph) {
             return '';
         }
@@ -592,6 +619,211 @@ class Seo {
             }
         }
         return self::buildSitemapXml($seo);
+    }
+
+    public static function llmsTxt(?array $seo = null): string {
+        $seo = $seo ?? self::settings();
+        if (empty($seo['llms_enabled'])) {
+            return '';
+        }
+        if (empty($seo['llms_auto'])) {
+            $manual = trim((string)($seo['llms_manual'] ?? ''));
+            if ($manual !== '') {
+                return rtrim($manual) . "\n";
+            }
+        }
+        return self::buildLlmsTxt($seo);
+    }
+
+    public static function buildLlmsTxt(array $seo): string {
+        $site = Database::get()->getSetting('site');
+        $title = trim((string)($site['title'] ?? '')) ?: 'Website';
+        $desc = self::plainTextSnippet((string)($site['description'] ?? ''), 240);
+        $now = time();
+        $lines = ['# ' . $title, ''];
+        if ($desc !== '') {
+            $lines[] = '> ' . $desc;
+            $lines[] = '';
+        }
+        $lines[] = 'Public pages on this site, listed for language models.';
+        $lines[] = '';
+
+        $pages = [];
+        foreach (PageRepo::list() as $p) {
+            $fn = $p['filename'] ?? '';
+            if (str_starts_with($fn, '_') || in_array($fn, self::TEMPLATE_FILENAMES, true)) {
+                continue;
+            }
+            $full = PageRepo::get($fn);
+            if (!$full) {
+                continue;
+            }
+            $meta = PageRepo::extractMeta($full['content'] ?? '');
+            $robots = strtolower((string)($meta['robots'] ?? ''));
+            if (str_contains($robots, 'noindex')) {
+                continue;
+            }
+            $slug = $p['slug'] ?? ('/' . $fn);
+            $loc = self::absoluteUrl($slug === '/' || $slug === '' ? '/' : $slug);
+            $label = trim((string)($meta['title'] ?? $meta['seo_title'] ?? ''));
+            if ($label === '') {
+                $label = $fn === 'home' ? $title : $fn;
+            }
+            $pageDesc = (string)($meta['seo_description'] ?? $meta['description'] ?? '');
+            $pages[] = self::llmsLink($label, $loc, $pageDesc);
+        }
+        if ($pages) {
+            $lines[] = '## Pages';
+            $lines[] = '';
+            foreach ($pages as $line) {
+                $lines[] = $line;
+            }
+            $lines[] = '';
+        }
+
+        $posts = [];
+        foreach (BlogRepo::list(true) as $post) {
+            $full = BlogRepo::get($post['filename']);
+            $seoJson = $full ? (json_decode($full['seo_json'] ?? '{}', true) ?: []) : [];
+            $robots = strtolower((string)($seoJson['robots'] ?? ''));
+            if (str_contains($robots, 'noindex')) {
+                continue;
+            }
+            $label = trim((string)($post['title'] ?? $post['slug'] ?? 'Post'));
+            $loc = self::absoluteUrl('/blog/' . ltrim((string)($post['slug'] ?? ''), '/'));
+            $posts[] = self::llmsLink($label, $loc, (string)($post['description'] ?? ''));
+        }
+        if ($posts) {
+            $lines[] = '## Blog';
+            $lines[] = '';
+            $lines[] = self::llmsLink('Blog', self::absoluteUrl('/blog'), 'All published posts');
+            foreach ($posts as $line) {
+                $lines[] = $line;
+            }
+            $lines[] = '';
+        }
+
+        if (class_exists('License') && License::isPodcastLicensed()) {
+            $eps = [];
+            foreach (PodcastRepo::list() as $ep) {
+                if (empty($ep['published_at']) || (int)$ep['published_at'] > $now) {
+                    continue;
+                }
+                $label = trim((string)($ep['title'] ?? $ep['episode_id'] ?? 'Episode'));
+                $loc = self::absoluteUrl('/podcast/' . $ep['episode_id']);
+                $eps[] = self::llmsLink($label, $loc, (string)($ep['description'] ?? ''));
+            }
+            if ($eps) {
+                $lines[] = '## Podcast';
+                $lines[] = '';
+                $podTitle = trim((string)(Database::get()->getSetting('podcast')['title'] ?? ''));
+                $lines[] = self::llmsLink('Podcast', self::absoluteUrl('/podcast'), $podTitle !== '' ? $podTitle : 'Episodes');
+                foreach ($eps as $line) {
+                    $lines[] = $line;
+                }
+                $lines[] = '';
+            }
+        }
+
+        $lines[] = '## Optional';
+        $lines[] = '';
+        $lines[] = self::llmsLink('Sitemap', self::absoluteUrl('/sitemap.xml'), 'XML sitemap of public URLs');
+        $lines[] = self::llmsLink('robots.txt', self::absoluteUrl('/robots.txt'), 'Crawler rules');
+        if (!empty(Database::get()->getSetting('blog')['blog_feed_rss'])) {
+            $lines[] = self::llmsLink('RSS feed', self::absoluteUrl('/feed.xml'), 'Blog RSS');
+        }
+
+        return implode("\n", $lines) . "\n";
+    }
+
+    private static function llmsLink(string $title, string $url, string $desc = ''): string {
+        $title = str_replace(['[', ']', "\n", "\r"], ['', '', ' ', ''], $title);
+        $title = trim($title) !== '' ? trim($title) : $url;
+        $desc = self::plainTextSnippet($desc);
+        if ($desc === '') {
+            return '- [' . $title . '](' . $url . ')';
+        }
+        return '- [' . $title . '](' . $url . '): ' . $desc;
+    }
+
+    private static function plainTextSnippet(string $raw, int $max = 200): string {
+        if (class_exists('Render')) {
+            $raw = Render::neutralizeShortcodes($raw);
+        }
+        $raw = html_entity_decode(strip_tags($raw), ENT_QUOTES, 'UTF-8');
+        $raw = preg_replace('/\s+/u', ' ', $raw) ?? $raw;
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        if (function_exists('mb_strlen') && mb_strlen($raw) > $max) {
+            return rtrim(mb_substr($raw, 0, $max - 1)) . '…';
+        }
+        if (strlen($raw) > $max) {
+            return rtrim(substr($raw, 0, $max - 1)) . '…';
+        }
+        return $raw;
+    }
+
+    /** JSON-LD BreadcrumbList for non-home URLs. Homepage is omitted. */
+    private static function breadcrumbList(array $doc): ?array {
+        $rawPath = (string)($doc['path'] ?? '');
+        $path = trim($rawPath, '/');
+        if ($path === '') {
+            return null;
+        }
+        $pageTitle = trim((string)($doc['title'] ?? ''));
+        $canonical = (string)($doc['canonical'] ?? self::absoluteUrl($rawPath === '' ? '/' : $rawPath));
+        $items = [
+            [
+                '@type'    => 'ListItem',
+                'position' => 1,
+                'name'     => 'Home',
+                'item'     => self::siteUrl() . '/',
+            ],
+        ];
+        if ($path === 'blog' || str_starts_with($path, 'blog/')) {
+            $items[] = [
+                '@type'    => 'ListItem',
+                'position' => 2,
+                'name'     => 'Blog',
+                'item'     => self::absoluteUrl('/blog'),
+            ];
+            if ($path !== 'blog') {
+                $items[] = [
+                    '@type'    => 'ListItem',
+                    'position' => 3,
+                    'name'     => $pageTitle !== '' ? $pageTitle : basename($path),
+                    'item'     => $canonical,
+                ];
+            }
+        } elseif ($path === 'podcast' || str_starts_with($path, 'podcast/')) {
+            $items[] = [
+                '@type'    => 'ListItem',
+                'position' => 2,
+                'name'     => 'Podcast',
+                'item'     => self::absoluteUrl('/podcast'),
+            ];
+            if ($path !== 'podcast') {
+                $items[] = [
+                    '@type'    => 'ListItem',
+                    'position' => 3,
+                    'name'     => $pageTitle !== '' ? $pageTitle : basename($path),
+                    'item'     => $canonical,
+                ];
+            }
+        } else {
+            $items[] = [
+                '@type'    => 'ListItem',
+                'position' => 2,
+                'name'     => $pageTitle !== '' ? $pageTitle : str_replace(['-', '_'], ' ', $path),
+                'item'     => $canonical,
+            ];
+        }
+        return [
+            '@type'           => 'BreadcrumbList',
+            'itemListElement' => $items,
+        ];
     }
 
     public static function buildRobotsTxt(array $seo): string {
@@ -654,10 +886,7 @@ class Seo {
         if (!empty($seo['sitemap_include_pages'])) {
             foreach (PageRepo::list() as $p) {
                 $fn = $p['filename'] ?? '';
-                if (str_starts_with($fn, '_') || in_array($fn, [
-                    'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single',
-                    'search-page', 'search-results',
-                ], true)) {
+                if (str_starts_with($fn, '_') || in_array($fn, self::TEMPLATE_FILENAMES, true)) {
                     continue;
                 }
                 $full = PageRepo::get($fn);
@@ -874,6 +1103,11 @@ class Seo {
         if (empty($seo['sitemap_enabled'])) {
             $add('sitemap', 'warn', 'Sitemap is disabled', 'Enable sitemap.xml under Forma already does this', '');
         }
+        if (empty($seo['llms_enabled'])) {
+            $add('llms', 'info', 'llms.txt is off', 'Turn it back on under Advanced — robots, sitemap, titles', 'index.php?section=settings&sub=seo');
+        } elseif (empty($seo['llms_auto']) && trim((string)($seo['llms_manual'] ?? '')) === '') {
+            $add('llms_empty', 'warn', 'llms.txt auto is off and the manual file is empty', 'Paste a file under Advanced, or turn Auto-generate llms.txt back on', 'index.php?section=settings&sub=seo');
+        }
         $faviconPath = trim((string)($seo['favicon'] ?? ''));
         if ($faviconPath !== '' && !self::uploadPathExists($faviconPath)) {
             $add('favicon_missing', 'fail', 'Favicon path does not exist on disk', $faviconPath, '');
@@ -912,11 +1146,7 @@ class Seo {
 
         $titles = [];
         $descs = [];
-        $skip = [
-            '_404', '_403', '_500',
-            'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single',
-            'search-page', 'search-results',
-        ];
+        $skip = self::TEMPLATE_FILENAMES;
 
         foreach (PageRepo::list() as $p) {
             $fn = $p['filename'] ?? '';

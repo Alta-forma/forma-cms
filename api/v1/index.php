@@ -63,6 +63,7 @@ try {
             'public'  => [
                 'robots'  => '/robots.txt',
                 'sitemap' => '/sitemap.xml',
+                'llms'    => '/llms.txt',
                 'feed_rss'=> '/feed.xml',
                 'feed_json'=> '/feed.json',
             ],
@@ -322,6 +323,7 @@ try {
             'health' => Seo::healthReport(),
             'robots_txt' => Seo::robotsTxt(),
             'sitemap_xml' => Seo::sitemapXml(),
+            'llms_txt' => Seo::llmsTxt(),
             'sitemap_url' => Seo::siteUrl() . '/sitemap.xml',
             'redirects' => RedirectRepo::list(),
         ]);
@@ -338,6 +340,7 @@ try {
             'robots_auto','robots_index','robots_follow',
             'sitemap_auto','sitemap_enabled','sitemap_include_pages',
             'sitemap_include_posts','sitemap_include_podcast','sitemap_include_images',
+            'llms_auto','llms_enabled',
             'title_suffix', 'json_ld_website','json_ld_organization',
         ] as $boolKey) {
             if (array_key_exists($boolKey, $value)) {
@@ -354,6 +357,7 @@ try {
             'health' => Seo::healthReport(),
             'robots_txt' => Seo::robotsTxt($merged),
             'sitemap_xml' => Seo::sitemapXml($merged),
+            'llms_txt' => Seo::llmsTxt($merged),
         ]);
     }
 

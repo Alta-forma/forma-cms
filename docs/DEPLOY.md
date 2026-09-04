@@ -38,7 +38,7 @@ DreamHost FastCGI often strips `Authorization`. Forma’s generated `.htaccess` 
 Need `mod_rewrite`. After first boot, Settings → Server should produce a root `.htaccess` that:
 
 - Serves `fallback/*.html` first when HTML cache is on (`fallback/.enabled`)
-- Always sends `/up`, `/admin`, `/api`, `/search`, `/robots.txt`, `/sitemap.xml`, and feeds to PHP
+- Always sends `/up`, `/admin`, `/api`, `/search`, `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and feeds to PHP
 - Denies web access to `database/`, `lib/`, `mcp/`, `tools/`
 
 If a leftover static `robots.txt` is sitting in the web root, delete it so Forma can generate it.

@@ -109,6 +109,18 @@ try {
         echo Seo::sitemapXml();
         exit;
     }
+    if ($path === '/llms.txt') {
+        $seo = Seo::settings();
+        if (empty($seo['llms_enabled'])) {
+            http_response_code(404);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo "Not found\n";
+            exit;
+        }
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo Seo::llmsTxt($seo);
+        exit;
+    }
 
     // Dynamic feeds
     if ($path === '/feed.xml' || $path === '/blog/feed' || $path === '/feeds/blog.xml') {

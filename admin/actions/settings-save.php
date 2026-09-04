@@ -44,7 +44,7 @@ if ($section === 'site') {
     $current['static_fallback'] = !empty($_POST['static_fallback']);
 } elseif ($section === 'seo') {
     foreach ([
-        'robots_extra', 'robots_manual', 'sitemap_manual', 'noindex_paths',
+        'robots_extra', 'robots_manual', 'sitemap_manual', 'llms_manual', 'noindex_paths',
         'title_separator', 'default_og_image', 'favicon', 'apple_touch_icon',
         'twitter_site', 'twitter_card', 'google_site_verification', 'bing_site_verification',
         'google_analytics',
@@ -53,7 +53,7 @@ if ($section === 'site') {
         'schema_postal', 'schema_country', 'schema_hours', 'schema_price_range', 'place_id', 'gbp_url', 'review_url', 'maps_embed_url',
     ] as $k) {
         if (isset($_POST[$k])) {
-            $current[$k] = in_array($k, ['robots_manual', 'sitemap_manual', 'same_as', 'schema_hours'], true)
+            $current[$k] = in_array($k, ['robots_manual', 'sitemap_manual', 'llms_manual', 'same_as', 'schema_hours'], true)
                 ? (string)$_POST[$k]
                 : trim((string)$_POST[$k]);
         }
@@ -62,6 +62,7 @@ if ($section === 'site') {
         'robots_auto', 'robots_index', 'robots_follow',
         'sitemap_auto', 'sitemap_enabled', 'sitemap_include_pages',
         'sitemap_include_posts', 'sitemap_include_podcast', 'sitemap_include_images',
+        'llms_auto', 'llms_enabled',
         'title_suffix', 'json_ld_website',
     ] as $k) {
         $current[$k] = !empty($_POST[$k]);
