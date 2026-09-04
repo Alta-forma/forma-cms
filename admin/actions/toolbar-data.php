@@ -55,15 +55,19 @@ try {
             break;
 
         case 'snippets':
+            $stock = ['search' => true, 'search-ui' => true, 'error-ui' => true];
             $out = [];
-            foreach (SnippetRepo::list() as $s) {
+            foreach (Database::get()->query('SELECT filename, shortcode, content FROM snippets ORDER BY filename') as $s) {
+                $code = (string)($s['shortcode'] ?? '');
                 $out[] = [
                     'filename'  => $s['filename'],
-                    'shortcode' => $s['shortcode'],
-                    'insert'    => '[[' . $s['shortcode'] . ']]',
+                    'shortcode' => $code,
+                    'insert'    => '[[' . $code . ']]',
+                    'content'   => (string)($s['content'] ?? ''),
+                    'stock'     => !empty($stock[$code]),
                 ];
             }
-            echo json_encode(['items' => $out]);
+            echo json_encode(['items' => $out, 'reserved' => ['seo']]);
             break;
 
         default:

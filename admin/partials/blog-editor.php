@@ -144,7 +144,7 @@ $summary = trim(($title ?: $filename ?: 'new post') . ($slug ? " · /blog/{$slug
 
     <div class="form-group" style="flex:1;min-height:0;display:flex;flex-direction:column">
         <label>Body (Markdown)</label>
-        <textarea name="body" class="code-editor" data-mode="markdown"><?php echo h($body); ?></textarea>
+        <textarea name="body" class="code-editor" data-mode="markdown" data-chips="1"><?php echo h($body); ?></textarea>
     </div>
 </form>
 <footer>

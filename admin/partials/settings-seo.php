@@ -347,7 +347,7 @@ fx_settings_scroll_open();
 
 <div class="settings-card">
     <h3><i class="fas fa-file-alt"></i> Per page / post</h3>
-    <p class="card-sub" style="margin-bottom:0">Each editor still has SEO title, description, featured image, and robots. Site defaults fill in the gaps.</p>
+    <p class="card-sub" style="margin-bottom:0">Each editor still has SEO title, description, featured image, and robots. Site defaults fill in the gaps. Full HTML templates can put an <strong>SEO chip</strong> (<code>[[seo]]</code>) in <code>&lt;head&gt;</code> — that’s where Forma emits the tag block. One chip on <code>blog-single</code> covers every post. No chip still means tags are injected automatically; delete the chip to turn them off.</p>
 </div>
 <?php
 fx_settings_scroll_close();

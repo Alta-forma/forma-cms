@@ -24,62 +24,94 @@
     toolbar.querySelectorAll('.dropdown.active').forEach((d) => d.classList.remove('active'));
   }
 
-  function modal(title, fieldsHtml, onSubmit) {
+  function modal(opts, fieldsHtml, onSubmit) {
+    const icon = (opts && opts.icon) || 'fa-plus';
+    const title = (opts && opts.title) || '';
+    const submitLabel = (opts && opts.submitLabel) || 'Create &amp; insert';
     const backdrop = document.createElement('div');
     backdrop.className = 'fx-modal-backdrop';
     backdrop.innerHTML =
-      '<div class="fx-modal" role="dialog">' +
-      '<h3>' + title + '</h3>' +
+      '<div class="fx-modal" role="dialog" aria-modal="true" aria-label="' + title + '">' +
+      '<button type="button" class="fx-modal-close" data-cancel aria-label="Close"><i class="fas fa-xmark"></i></button>' +
+      '<div class="fx-modal-header">' +
+      '<div class="fx-modal-icon"><i class="fas ' + icon + '"></i></div>' +
+      '<div><div class="fx-modal-kicker">New</div><h3>' + title + '</h3></div>' +
+      '</div>' +
       '<form id="fx-quick-form">' + fieldsHtml +
       '<div class="fx-modal-actions">' +
-      '<button type="button" class="delete-btn" data-cancel style="min-width:auto;padding:6px 12px">Cancel</button>' +
-      '<button type="submit" class="standard-btn" style="min-width:auto;padding:6px 12px">Create &amp; insert</button>' +
+      '<button type="button" class="standard-btn subtle-btn" data-cancel>Cancel</button>' +
+      '<button type="submit" class="standard-btn"><span data-btn-label>' + submitLabel + '</span></button>' +
       '</div></form></div>';
     document.body.appendChild(backdrop);
     const form = backdrop.querySelector('#fx-quick-form');
-    backdrop.querySelector('[data-cancel]').onclick = () => backdrop.remove();
-    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const submitLabelEl = submitBtn.querySelector('[data-btn-label]');
+    let closed = false;
+    function close() {
+      if (closed) return;
+      closed = true;
+      backdrop.classList.add('is-closing');
+      setTimeout(() => backdrop.remove(), 120);
+      document.removeEventListener('keydown', onKeydown);
+    }
+    function onKeydown(e) {
+      if (e.key === 'Escape') close();
+    }
+    document.addEventListener('keydown', onKeydown);
+    backdrop.querySelectorAll('[data-cancel]').forEach((el) => { el.onclick = close; });
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      submitLabelEl.innerHTML = isLoading
+        ? '<i class="fas fa-spinner"></i> Saving…'
+        : submitLabel;
+    }
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      onSubmit(new FormData(form), () => backdrop.remove());
+      if (submitBtn.disabled) return;
+      setLoading(true);
+      onSubmit(new FormData(form), close, () => setLoading(false));
     });
     form.querySelector('input,textarea')?.focus();
   }
 
   function quickAdd(kind, cm, toolbar) {
     if (kind === 'page') {
-      modal('Quick add page',
-        '<div class="form-group"><label>Filename</label><input name="filename" required placeholder="about"></div>' +
-        '<div class="form-group"><label>Title</label><input name="title" placeholder="About"></div>' +
-        '<div class="form-group"><label>Slug</label><input name="slug" placeholder="/about"></div>',
-        (fd, done) => {
+      modal({ icon: 'fa-file-alt', title: 'Quick add page', submitLabel: 'Create &amp; insert' },
+        '<div class="form-group"><label>Filename</label><input name="filename" required placeholder="about" autocomplete="off">' +
+        '<p class="hint">Lowercase, no spaces — becomes <code>about.html</code>.</p></div>' +
+        '<div class="form-group"><label>Title</label><input name="title" placeholder="About" autocomplete="off"></div>' +
+        '<div class="form-group"><label>Slug</label><input name="slug" placeholder="/about" autocomplete="off">' +
+        '<p class="hint">The public URL path. Defaults to the filename.</p></div>',
+        (fd, done, fail) => {
           fd.append('kind', 'page');
           fd.append('csrf_token', csrf());
-          postQuick(fd, cm, toolbar, done);
+          postQuick(fd, cm, toolbar, done, fail);
         });
     } else if (kind === 'post') {
-      modal('Quick add post',
-        '<div class="form-group"><label>Filename</label><input name="filename" required placeholder="my-post"></div>' +
-        '<div class="form-group"><label>Title</label><input name="title" required placeholder="My post"></div>',
-        (fd, done) => {
+      modal({ icon: 'fa-blog', title: 'Quick add post', submitLabel: 'Create &amp; insert' },
+        '<div class="form-group"><label>Filename</label><input name="filename" required placeholder="my-post" autocomplete="off"></div>' +
+        '<div class="form-group"><label>Title</label><input name="title" required placeholder="My post" autocomplete="off"></div>',
+        (fd, done, fail) => {
           fd.append('kind', 'post');
           fd.append('csrf_token', csrf());
-          postQuick(fd, cm, toolbar, done);
+          postQuick(fd, cm, toolbar, done, fail);
         });
     } else if (kind === 'snippet') {
-      modal('Quick add snippet',
-        '<div class="form-group"><label>Filename</label><input name="filename" required placeholder="cta-box"></div>' +
-        '<div class="form-group"><label>Shortcode</label><input name="shortcode" required placeholder="cta"></div>' +
+      modal({ icon: 'fa-code', title: 'Quick add snippet', submitLabel: 'Create &amp; insert' },
+        '<div class="form-group"><label>Filename</label><input name="filename" required placeholder="cta-box" autocomplete="off"></div>' +
+        '<div class="form-group"><label>Shortcode</label><input name="shortcode" required placeholder="cta" autocomplete="off">' +
+        '<p class="hint">Insert anywhere with <code>[[cta]]</code>.</p></div>' +
         '<div class="form-group"><label>Content</label><textarea name="content" rows="4"><p>New snippet</p></textarea></div>',
-        (fd, done) => {
+        (fd, done, fail) => {
           fd.append('kind', 'snippet');
           fd.append('csrf_token', csrf());
-          postQuick(fd, cm, toolbar, done);
+          postQuick(fd, cm, toolbar, done, fail);
         });
     }
   }
 
-  function postQuick(fd, cm, toolbar, done) {
+  function postQuick(fd, cm, toolbar, done, fail) {
     fetch('actions/toolbar-quick-add.php', { method: 'POST', body: fd, headers: { 'X-CSRF-Token': csrf() } })
       .then((r) => r.json())
       .then((data) => {
@@ -88,7 +120,10 @@
         done();
         loadAll(toolbar, cm);
       })
-      .catch((err) => alert(err.message || 'Quick add failed'));
+      .catch((err) => {
+        if (fail) fail();
+        alert(err.message || 'Quick add failed');
+      });
   }
 
   function loadType(type, toolbar, cm, render) {
@@ -137,7 +172,14 @@
       wireInsert(content, btn, cmInst, tb);
     });
     loadType('snippets', toolbar, cm, (content, items, btn, cmInst, tb) => {
-      let html = '<div class="dropdown-header">Snippets</div>';
+      const ta = cmInst && cmInst.getTextArea && cmInst.getTextArea();
+      const canSeo = ta && ta.hasAttribute('data-seo-head');
+      let html = '';
+      if (canSeo) {
+        html += '<div class="dropdown-header">System</div>';
+        html += '<div class="dropdown-item" data-insert-block="seo"><i class="fas fa-search"></i> SEO head</div>';
+      }
+      html += '<div class="dropdown-header">Snippets</div>';
       html += '<div class="dropdown-item add-new" data-quick="snippet"><i class="fas fa-plus"></i> Quick add…</div>';
       items.forEach((it) => {
         html += '<div class="dropdown-item" data-insert="' + esc(it.insert) + '"><i class="fas fa-code"></i> ' + esc(it.filename) + ' <span style="opacity:.5">[[' + esc(it.shortcode) + ']]</span></div>';
@@ -151,6 +193,17 @@
     content.querySelectorAll('[data-insert]').forEach((el) => {
       el.addEventListener('click', () => {
         insertAtCursor(el.getAttribute('data-insert'), cm);
+        closeDropdowns(toolbar);
+      });
+    });
+    content.querySelectorAll('[data-insert-block]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const code = el.getAttribute('data-insert-block');
+        if (window.FormaChips && window.FormaChips.insertBlock) {
+          window.FormaChips.insertBlock(cm, code);
+        } else {
+          insertAtCursor('\n[[' + code + ']]\n', cm);
+        }
         closeDropdowns(toolbar);
       });
     });

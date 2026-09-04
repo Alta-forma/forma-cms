@@ -17,6 +17,9 @@ class SnippetRepo {
         if ($filename === '' || $shortcode === '') {
             throw new InvalidArgumentException('Filename and shortcode are required');
         }
+        if (strcasecmp($shortcode, 'seo') === 0) {
+            throw new InvalidArgumentException('[[seo]] is reserved for the HTML head slot');
+        }
         Database::get()->execute(
             'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)
              ON CONFLICT(filename) DO UPDATE SET

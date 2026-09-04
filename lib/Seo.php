@@ -3,6 +3,10 @@
  * Forma SEO — sitewide settings, per-document meta, robots.txt, sitemap.xml, llms.txt, health.
  */
 class Seo {
+    /** Reserved shortcode — not a Snippets row. PHP replaces it with headHtml(). */
+    public const SLOT = 'seo';
+    public const SLOT_TOKEN = '[[seo]]';
+
     public const PAGE_META_KEYS = [
         'seo_title', 'seo_description', 'og_title', 'og_description',
         'og_image', 'featured_image', 'canonical', 'robots', 'twitter_card', 'schema_type',
@@ -225,6 +229,7 @@ class Seo {
             'robots'      => $meta['robots'] ?? self::defaultRobotsDirective($seo),
             'twitter_card'=> $meta['twitter_card'] ?? ($seo['twitter_card'] ?? 'summary_large_image'),
             'schema_type' => $meta['schema_type'] ?? '',
+            'seo_head'    => self::normalizeHeadMode($meta['seo_head'] ?? 'auto'),
             'type'        => 'website',
             'path'        => $path,
             'filename'    => $page['filename'] ?? '',
@@ -254,10 +259,11 @@ class Seo {
             'published_at'=> $row['published_at'] ?? null,
             'updated_at'  => $row['updated_at'] ?? null,
             'author'      => $row['author'] ?? '',
+            'seo_head'    => self::templateHeadMode('blog-single'),
         ], $seo, $site);
     }
 
-    public static function forSimple(string $path, string $title, string $description = '', string $ogImage = '', string $type = 'website'): array {
+    public static function forSimple(string $path, string $title, string $description = '', string $ogImage = '', string $type = 'website', string $headTemplate = ''): array {
         $site = Database::get()->getSetting('site');
         $seo  = self::settings();
         return self::normalize([
@@ -271,6 +277,7 @@ class Seo {
             'twitter_card' => $seo['twitter_card'] ?? 'summary_large_image',
             'type' => $type,
             'path' => $path,
+            'seo_head' => $headTemplate !== '' ? self::templateHeadMode($headTemplate) : 'auto',
         ], $seo, $site);
     }
 
@@ -296,7 +303,72 @@ class Seo {
             'twitter_card'=> $meta['twitter_card'] ?? ($seo['twitter_card'] ?? 'summary_large_image'),
             'type'        => 'website',
             'path'        => '/blog',
+            'seo_head'    => self::templateHeadMode('blog-archive'),
         ], $seo, $site);
+    }
+
+    public static function htmlHasSlot(string $html): bool {
+        return str_contains($html, self::SLOT_TOKEN);
+    }
+
+    public static function normalizeHeadMode(string $mode): string {
+        $mode = strtolower(trim($mode));
+        return in_array($mode, ['auto', 'slot', 'off'], true) ? $mode : 'auto';
+    }
+
+    /** seo_head META on a template page (blog-single, search-page, …). */
+    public static function templateHeadMode(string $filename): string {
+        if (!class_exists('PageRepo')) {
+            return 'auto';
+        }
+        $row = PageRepo::get($filename);
+        if (!$row) {
+            return 'auto';
+        }
+        $meta = PageRepo::extractMeta($row['content'] ?? '');
+        return self::normalizeHeadMode((string)($meta['seo_head'] ?? 'auto'));
+    }
+
+    /**
+     * Sticky head mode from the stored file.
+     * auto  — never had [[seo]]; still inject after <head> (legacy)
+     * slot  — token is in the file; emit only there
+     * off   — had a slot and it was removed; do not inject
+     *
+     * @param array<string,string> $metaPatch
+     * @return list<string>
+     */
+    public static function syncHeadSlot(string $oldContent, string $newContent, array &$metaPatch): array {
+        $warnings = [];
+        $oldMeta = class_exists('PageRepo') ? PageRepo::extractMeta($oldContent) : [];
+        $prev = self::normalizeHeadMode((string)($oldMeta['seo_head'] ?? 'auto'));
+        $has = self::htmlHasSlot($newContent);
+        $had = self::htmlHasSlot($oldContent);
+        if ($has) {
+            $metaPatch['seo_head'] = 'slot';
+            if ($prev === 'off') {
+                $warnings[] = 'seo_slot_restored';
+            } elseif ($prev === 'auto' && !$had) {
+                $warnings[] = 'seo_slot_pinned';
+            }
+        } elseif ($had || $prev === 'slot') {
+            $metaPatch['seo_head'] = 'off';
+            $warnings[] = 'seo_slot_removed';
+        } elseif ($prev === 'off') {
+            $metaPatch['seo_head'] = 'off';
+        } else {
+            $metaPatch['seo_head'] = 'auto';
+        }
+        return $warnings;
+    }
+
+    public static function warningMessage(string $code): string {
+        $map = [
+            'seo_slot_removed' => 'SEO slot removed — Forma will not emit <head> tags on this template',
+            'seo_slot_restored' => 'SEO slot restored',
+            'seo_slot_pinned' => 'SEO chip added — head tags emit at [[seo]]',
+        ];
+        return $map[$code] ?? $code;
     }
 
     private static function defaultRobotsDirective(array $seo): string {
@@ -333,6 +405,7 @@ class Seo {
         $doc['favicon'] = (string)($seo['favicon'] ?? '');
         $doc['apple_touch_icon'] = (string)($seo['apple_touch_icon'] ?? '');
         $doc['site_seo'] = $seo;
+        $doc['seo_head'] = self::normalizeHeadMode((string)($doc['seo_head'] ?? 'auto'));
         return $doc;
     }
 
@@ -588,6 +661,15 @@ class Seo {
         ];
         foreach ($patterns as $p) {
             $html = (string)preg_replace($p, '', $html);
+        }
+        $slotCount = 0;
+        $html = str_replace(self::SLOT_TOKEN, $block, $html, $slotCount);
+        if ($slotCount > 0) {
+            return $html;
+        }
+        $mode = self::normalizeHeadMode((string)($doc['seo_head'] ?? 'auto'));
+        if ($mode === 'off' || $mode === 'slot') {
+            return $html;
         }
         if (preg_match('/<head([^>]*)>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
             $pos = $m[0][1] + strlen($m[0][0]);
@@ -1142,6 +1224,50 @@ class Seo {
         }
         if (trim((string)($seo['google_analytics'] ?? '')) === '') {
             $add('analytics', 'info', 'No Analytics / Tag Manager ID', 'Paste a G- or GTM- ID under Google', '');
+        }
+
+        $slotOff = [];
+        $slotAuto = 0;
+        foreach (PageRepo::list() as $p) {
+            $fn = (string)($p['filename'] ?? '');
+            $full = PageRepo::get($fn);
+            if (!$full) {
+                continue;
+            }
+            $raw = (string)($full['content'] ?? '');
+            $body = PageRepo::stripMeta($raw);
+            if (!preg_match('/<(!DOCTYPE|html|head)[\s>]/i', $body)) {
+                continue;
+            }
+            $meta = PageRepo::extractMeta($raw);
+            $mode = self::normalizeHeadMode((string)($meta['seo_head'] ?? 'auto'));
+            if (self::htmlHasSlot($raw)) {
+                continue;
+            }
+            if ($mode === 'off' || $mode === 'slot') {
+                $slotOff[] = $fn;
+            } else {
+                $slotAuto++;
+            }
+        }
+        if ($slotOff) {
+            $first = $slotOff[0];
+            $add(
+                'seo_slot_off',
+                'warn',
+                'SEO slot off on: ' . implode(', ', $slotOff),
+                'Insert the SEO chip in the page editor — Forma will not emit <head> tags on these templates',
+                'index.php?section=pages&file=' . rawurlencode($first)
+            );
+        }
+        if ($slotAuto > 0) {
+            $add(
+                'seo_slot_auto',
+                'info',
+                $slotAuto . ' HTML page(s) still use automatic SEO injection',
+                'Add an SEO chip after <head> if you want to move or turn off those tags. Until then Forma still injects them.',
+                'index.php?section=pages'
+            );
         }
 
         $titles = [];

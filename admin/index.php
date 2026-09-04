@@ -115,6 +115,7 @@ if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' 
 
     <div id="fx-toast" class="toast" data-show="0">Saved</div>
     <div id="fx-upload-toasts" class="fx-upload-toasts" aria-live="polite" aria-relevant="additions"></div>
+    <script src="<?php echo htmlspecialchars($fxAsset('js/editor-chips.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
     <script src="<?php echo htmlspecialchars($fxAsset('js/editor-toolbar.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
     <script src="<?php echo htmlspecialchars($fxAsset('js/admin.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 </body>

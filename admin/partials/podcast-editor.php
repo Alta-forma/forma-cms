@@ -72,7 +72,7 @@ $summary = trim(($title ?: ($epId ?: 'new episode')) . ($publishedAt ? ' · ' . 
 
     <div class="form-group" style="flex:1;min-height:0;display:flex;flex-direction:column">
         <label>Show notes (Markdown)</label>
-        <textarea name="show_notes" class="code-editor" data-mode="markdown"><?php echo h($row['show_notes'] ?? ''); ?></textarea>
+        <textarea name="show_notes" class="code-editor" data-mode="markdown" data-chips="1"><?php echo h($row['show_notes'] ?? ''); ?></textarea>
     </div>
 </form>
 <footer>

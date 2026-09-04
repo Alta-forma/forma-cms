@@ -144,6 +144,9 @@ class Render {
                     if ($escaped) {
                         return $stash('[[' . $code . ']]');
                     }
+                    if ($code === 'seo') {
+                        return $m[0];
+                    }
                     if (!isset($map[$code])) {
                         return $m[0];
                     }
@@ -169,6 +172,19 @@ class Render {
         $content = $protect($content);
         for ($i = 0; $i < 4 && str_contains($content, '[['); $i++) {
             $content = $protect($expandPass($content));
+        }
+        if (str_contains($content, '[[')) {
+            $content = (string)preg_replace_callback(
+                '/\[\[([a-zA-Z0-9_-]+)\]\]/',
+                static function (array $m) use ($map): string {
+                    $code = $m[1];
+                    if ($code === 'seo' || !isset($map[$code])) {
+                        return $m[0];
+                    }
+                    return '<!--forma:unexpanded [[' . $code . ']]-->';
+                },
+                $content
+            );
         }
         if ($protected) {
             $content = str_replace(array_keys($protected), array_values($protected), $content);
@@ -312,7 +328,9 @@ HTML;
             '/podcast',
             $podcastCtx['title'],
             $podcastCtx['description'],
-            $podcastCtx['cover_art'] ?? ''
+            $podcastCtx['cover_art'] ?? '',
+            'website',
+            'podcast-archive'
         ));
     }
 
@@ -348,7 +366,9 @@ HTML;
             '/podcast/' . $row['episode_id'],
             $row['title'] ?: $row['episode_id'],
             $row['description'] ?? '',
-            ($row['episode_art'] ?: ($podcastCtx['cover_art'] ?? ''))
+            ($row['episode_art'] ?: ($podcastCtx['cover_art'] ?? '')),
+            'website',
+            'podcast-single'
         ));
     }
 
@@ -380,7 +400,7 @@ HTML;
         ];
         $html = self::renderTwig($content, array_merge(self::siteContext(), $ctx));
         $html = self::injectGenerator(self::expandShortcodes($html, $ctx));
-        $doc = Seo::forSimple('/search', 'Search' . ($query !== '' ? ' — ' . $query : ''));
+        $doc = Seo::forSimple('/search', 'Search' . ($query !== '' ? ' — ' . $query : ''), '', '', 'website', 'search-page');
         $doc['robots'] = 'noindex,follow';
         return Seo::applyToHtml($html, $doc);
     }
@@ -474,6 +494,7 @@ TWIG;
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Search — {{ site.title }}</title>
+[[seo]]
 [[site-head]]
 </head>
 <body class="forma-chrome forma-search">
@@ -552,6 +573,7 @@ HTML;
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{$num} — {$title}</title>
+[[seo]]
 [[site-head]]
 [[error-ui]]
 </head>

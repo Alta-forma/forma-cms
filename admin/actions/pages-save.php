@@ -22,7 +22,12 @@ try {
     $_GET['file'] = $row['filename'] ?? $filename;
     require ADMIN_DIR . '/partials/_helpers.php';
     require ADMIN_DIR . '/partials/pages-list.php';
-    echo fx_toast_oob('Page saved');
+    $warns = $row['_warnings'] ?? [];
+    $msg = 'Page saved';
+    if ($warns) {
+        $msg .= ' · ' . Seo::warningMessage((string)$warns[0]);
+    }
+    echo fx_toast_oob($msg);
     // Also refresh editor active state via oob optional — list is enough
 } catch (Throwable $e) {
     http_response_code(400);

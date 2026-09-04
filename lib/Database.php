@@ -335,6 +335,7 @@ title: Home
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>My Site — Powered by Forma</title>
+[[seo]]
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui,-apple-system,sans-serif;color:#1a1a1a;line-height:1.6}
@@ -378,6 +379,7 @@ HTML;
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ podcast.title }} — {{ site.title }}</title>
+[[seo]]
 <style>body{font-family:system-ui,sans-serif;max-width:42rem;margin:2rem auto;padding:0 1.5rem;line-height:1.6}</style>
 </head>
 <body>
@@ -400,6 +402,7 @@ TWIG;
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ episode.title }} — {{ podcast.title }}</title>
+[[seo]]
 <style>body{font-family:system-ui,sans-serif;max-width:42rem;margin:2rem auto;padding:0 1.5rem;line-height:1.6}</style>
 </head>
 <body>

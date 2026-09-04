@@ -17,12 +17,12 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 
 | Piece | Where | Notes |
 |-------|--------|--------|
-| Pages | `pages` table | HTML/Twig or Markdown. Optional `<!--META … -->` for slug + SEO |
-| Posts | `blog_posts` | Markdown. Public only if `published_at <= now` |
-| Snippets | `snippets` | Insert with `[[shortcode]]` in page/post HTML |
+| Pages | `pages` table | HTML/Twig or Markdown. Optional `<!--META … -->` for slug + SEO. Full HTML templates should contain `[[seo]]` on its own line in `<head>`. |
+| Posts | `blog_posts` | Markdown. Public only if `published_at <= now`. Head tags come from `blog-single`’s `[[seo]]` slot plus this post’s `seo_json`. |
+| Snippets | `snippets` | Insert with `[[shortcode]]` in page/post HTML. `[[seo]]` is reserved (not a snippet). Nesting max 4; cycles become an HTML comment. |
 | Uploads | `/uploads` | Media files; use media API |
 | Settings | `settings` JSON sections | `site`, `seo`, `blog`, `podcast`, `cache`, … |
-| SEO | Settings → SEO + per doc | Auto meta/favicon/schema; health dashboard; image sitemap; redirects; `/robots.txt` + `/sitemap.xml` + `/llms.txt` |
+| SEO | Settings → SEO + per doc + `[[seo]]` | Auto meta/favicon/schema. Pages that never had `[[seo]]` still auto-inject. After the slot is pinned, deleting it turns head tags off (`warnings: ["seo_slot_removed"]` on PUT). |
 | Uptime | `GET /up` + `fallback/` | Heartbeat JSON incl. `fallback` status. If `/up` dies but `/fallback/php-ok.json` is 200, PHP/FastCGI is down. |
 | HTML cache | Settings → Cache (`cache.static_fallback`) | Every save writes real `.html` under `fallback/`; Apache serves those files first (see `fallback/.enabled`). Paths without a built file fall through to PHP — SQLite is always the source of truth, `fallback/` is a derived cache you can delete and rebuild with "Rebuild HTML cache". |
 | Search | `GET /search?q=…` + `[[search]]` snippet | SQLite FTS5 (LIKE fallback) over pages/posts/episodes. Always PHP, never published as a file. htmx fragment via `HX-Request: true`. To write the shortcode as text, use a code fence / `<code>` or `[[!search]]`. Descriptions, titles, and meta never expand shortcodes. |
@@ -67,6 +67,7 @@ AltaForma: bump `version.php`, merge to `main`, `./tools/release.sh`. Full check
 - Don’t rsync hotfixes to every vhost. **forma-cms.me only.** Other installs (Eden, Friends, alta-forma.com, …) click Settings → Forma core.
 - Don’t scrape `/admin` HTML when the API works.
 - Don’t delete `home`, `_404`, `_403`, `_500`.
+- Don’t remove `[[seo]]` from a template unless you mean to stop emitting `<head>` SEO on that template.
 - Don’t commit tokens.
 - Don’t assume unpublished posts are public — they 404 by design.
 - Don’t edit files under `fallback/` directly — they’re regenerated from SQLite on every save, or all at once via "Rebuild HTML cache" / `StaticFallback::publishAll()`.

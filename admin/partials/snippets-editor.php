@@ -30,7 +30,7 @@ $summary = trim(($row['filename'] ?? 'new') . (!empty($row['shortcode']) ? ' · 
     </div>
 
     <div class="form-group" style="flex:1;min-height:0;display:flex;flex-direction:column">
-        <textarea name="content" class="code-editor" data-mode="htmlmixed"><?php echo h($row['content'] ?? ''); ?></textarea>
+        <textarea name="content" class="code-editor" data-mode="htmlmixed" data-chips="1"><?php echo h($row['content'] ?? ''); ?></textarea>
     </div>
 </form>
 <footer>

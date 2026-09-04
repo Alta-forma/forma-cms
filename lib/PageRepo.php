@@ -85,6 +85,13 @@ class PageRepo {
             }
             $metaPatch['slug'] = $slugNorm;
         }
+
+        $existingRow = self::get($filename);
+        $oldContent = is_array($existingRow) ? (string)($existingRow['content'] ?? '') : '';
+        $warnings = [];
+        if (class_exists('Seo')) {
+            $warnings = Seo::syncHeadSlot($oldContent, $content, $metaPatch);
+        }
         if ($metaPatch) {
             $meta = self::extractMeta($content);
             if (empty($meta['title']) && empty($metaPatch['title'])) {
@@ -94,7 +101,6 @@ class PageRepo {
         }
 
         $slug = self::slugFromContent($content, $filename);
-        $existingRow = self::get($filename);
         $oldSlug = $existingRow['slug'] ?? null;
 
         $db = Database::get();
@@ -121,6 +127,9 @@ class PageRepo {
             Search::indexPage($saved);
         }
 
+        if ($warnings) {
+            $saved['_warnings'] = $warnings;
+        }
         return $saved;
     }
 

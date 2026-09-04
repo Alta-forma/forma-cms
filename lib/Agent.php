@@ -105,11 +105,11 @@ class Agent {
     public static function helpDocument(): array {
         $how = [
             'storage' => 'Single SQLite file (database/forma.db). Portable.',
-            'pages' => 'HTML/Twig or Markdown in pages table. Full HTML docs are served as-is; META block holds slug + SEO fields.',
-            'posts' => 'Markdown blog posts. Public only when published_at <= now. SEO in seo_json.',
-            'snippets' => 'Reusable HTML/Twig fragments via [[shortcode]] in content.',
+            'pages' => 'HTML/Twig or Markdown in pages table. Full HTML docs are served as-is; META block holds slug + SEO fields. Put [[seo]] in <head> (its own line) to pin where Forma emits title/OG/JSON-LD. Deleting [[seo]] after pinning turns head tags off for that template (warning: seo_slot_removed). Pages that never had the token still auto-inject after <head>.',
+            'posts' => 'Markdown blog posts. Public only when published_at <= now. SEO in seo_json. Head tags come from the blog-single template’s [[seo]] slot (one chip covers every post).',
+            'snippets' => 'Reusable HTML/Twig fragments via [[shortcode]] in content. [[seo]] is reserved (not a snippet). Nested snippets expand up to 4 levels; cycles leave an HTML comment instead of hanging.',
             'uploads' => 'Files in /uploads; referenced as uploads/filename.',
-            'seo' => 'Sitewide Settings→SEO. Public /robots.txt + /sitemap.xml + /llms.txt auto-generated (or manual bodies). Meta tags + JSON-LD (incl. breadcrumbs) on render.',
+            'seo' => 'Sitewide Settings→SEO. Per-URL <head> is generated at [[seo]] (or auto-injected). Public /robots.txt + /sitemap.xml + /llms.txt auto-generated (or manual bodies). JSON-LD includes breadcrumbs.',
             'admin' => 'htmx admin at /admin/. Agents should prefer this API over scraping admin HTML.',
             'uptime' => 'GET /up (no auth) JSON {ok,php,version,ts,fallback}. Static stamp: /fallback/php-ok.json. If stamp is 200 but /up is “No input file specified”, PHP/FastCGI is down.',
             'html_cache' => 'Settings→Cache "HTML cache" (cache.static_fallback) writes every page/post/episode to fallback/*.html on every save; Apache serves those files directly (see fallback.marker in /up). Paths without a built file fall through to a live PHP render. "Rebuild HTML cache" rebuilds everything + the search index in one pass.',

@@ -53,6 +53,20 @@ $summary = trim(($filename ?: 'new') . ' · ' . ($slug ?: '/') . ' · ' . strtou
         </button>
         <div class="meta-panel-body">
             <?php
+            $seoHeadMode = Seo::normalizeHeadMode($meta['seo_head'] ?? 'auto');
+            $seoHasSlot = Seo::htmlHasSlot($content);
+            // "Off" means SEO tags truly won't be injected: mode is off, or mode is
+            // stuck on "slot" (previously pinned) but the [[seo]] token isn't in the
+            // content right now. A healthy pinned slot (mode=slot + token present)
+            // is NOT off — don't warn about it.
+            $seoOff = $seoHeadMode === 'off' || ($seoHeadMode === 'slot' && !$seoHasSlot);
+            ?>
+            <div class="fx-seo-status<?php echo $seoOff ? ' is-warn' : ' is-info'; ?>" data-seo-status<?php echo $seoHasSlot ? ' hidden' : ''; ?>>
+                <i class="fas fa-search"></i>
+                <span class="fx-seo-status-text"><?php echo h($seoOff ? 'SEO is off for this page.' : 'SEO auto-inserts after <head>.'); ?></span>
+                <button type="button" class="fx-seo-status-btn" data-seo-status-btn>Insert</button>
+            </div>
+            <?php
             $feat = $meta['featured_image'] ?? ($meta['og_image'] ?? '');
             $previewTitle = $meta['seo_title'] ?? ($meta['title'] ?? 'Page title');
             $previewDesc = $meta['seo_description'] ?? ($meta['description'] ?? '');
@@ -117,11 +131,16 @@ $summary = trim(($filename ?: 'new') . ' · ' . ($slug ?: '/') . ' · ' . strtou
     </div>
 
     <div class="form-group" style="flex:1;min-height:0;display:flex;flex-direction:column">
-        <textarea name="content" class="code-editor" data-mode="<?php echo h($mode); ?>"><?php echo h($content); ?></textarea>
+        <textarea name="content" class="code-editor" data-mode="<?php echo h($mode); ?>" data-chips="1" data-seo-head="<?php echo h($meta['seo_head'] ?? 'auto'); ?>"><?php echo h($content); ?></textarea>
     </div>
 </form>
 <footer>
     <div class="buttons">
+        <button type="button" class="fx-page-alert" data-page-alert
+                title="<?php echo h($seoOff ? 'SEO is off for this page — click to turn it back on' : ''); ?>"
+                <?php echo $seoOff ? '' : 'hidden'; ?>>
+            <i class="fas fa-exclamation"></i>
+        </button>
         <div class="button-group">
             <button type="submit" form="page-form" class="standard-btn" id="btn-save">
                 <i class="small fas fa-save"></i> Save

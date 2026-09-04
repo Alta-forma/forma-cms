@@ -146,8 +146,10 @@ try {
                 $body['slug'] ?? null,
                 $extra
             );
+            $warnings = $row['_warnings'] ?? [];
+            unset($row['_warnings']);
             Agent::audit($token, 'pages.save', $rel, $filename);
-            Agent::json(['success' => true, 'page' => $row]);
+            Agent::json(['success' => true, 'page' => $row, 'warnings' => $warnings]);
         }
         if ($method === 'DELETE') {
             Agent::requireScope($token, 'content:write');

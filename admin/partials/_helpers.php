@@ -13,11 +13,23 @@ function fx_toast_oob(string $message = 'Saved'): string {
     return '<div id="fx-toast" class="toast show" data-show="1" hx-swap-oob="true">' . h($message) . '</div>';
 }
 
-/** Sticky security / hosting nags. Pass $oob on htmx action responses so the bar updates without a reload. */
+/** Floating security / hosting chip. Pass $oob on htmx action responses so it updates without a reload. */
 function fx_admin_alerts_html(bool $oob = false): string {
     $alerts = HostingCheck::adminAlerts();
     $attr = $oob ? ' hx-swap-oob="true"' : '';
-    $html = '<div id="fx-admin-alerts" class="fx-admin-alerts"' . $attr . '>';
+    if (!$alerts) {
+        return '<div id="fx-admin-alerts" class="fx-alert-chip is-empty"' . $attr . ' hidden></div>';
+    }
+    $n = count($alerts);
+    $label = $n === 1 ? '1 issue' : $n . ' issues';
+    $html = '<div id="fx-admin-alerts" class="fx-alert-chip"' . $attr . '>'
+        . '<button type="button" class="fx-alert-chip-btn" aria-expanded="false" aria-controls="fx-alert-chip-panel">'
+        . '<i class="fas fa-shield-halved" aria-hidden="true"></i>'
+        . '<span class="fx-alert-chip-count">' . (int)$n . '</span>'
+        . '<span class="fx-alert-chip-label">' . h($label) . '</span>'
+        . '</button>'
+        . '<div id="fx-alert-chip-panel" class="fx-alert-chip-panel">'
+        . '<div class="fx-alert-chip-panel-inner">';
     foreach ($alerts as $a) {
         $href = (string)($a['href'] ?? 'index.php?section=settings&sub=server');
         $cta = (string)($a['cta'] ?? 'Fix this');
@@ -32,7 +44,7 @@ function fx_admin_alerts_html(bool $oob = false): string {
             . h($cta) . '</a>'
             . '</div>';
     }
-    return $html . '</div>';
+    return $html . '</div></div></div>';
 }
 
 /** Toggle switch row: label + optional hint on the left, switch on the right. */

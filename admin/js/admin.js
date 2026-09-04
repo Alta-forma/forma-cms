@@ -4,13 +4,6 @@
 (function () {
   var RING = 2 * Math.PI * 15.5; // r=15.5 in 36×36 viewBox
 
-  function layoutAlerts() {
-    var el = document.getElementById('fx-admin-alerts');
-    var h = el ? el.offsetHeight : 0;
-    document.body.classList.toggle('has-fx-alerts', h > 0);
-    document.documentElement.style.setProperty('--fx-alert-h', h + 'px');
-  }
-
   function csrfToken() {
     var m = document.body && document.body.getAttribute('hx-headers');
     if (!m) return '';
@@ -336,7 +329,10 @@
           lineNumbers: true,
           lineWrapping: true,
           tabSize: 2,
+          indentUnit: 2,
+          smartIndent: true,
           indentWithTabs: false,
+          extraKeys: { Enter: 'newlineAndIndent' },
           viewportMargin: Infinity
         });
       } catch (err) {
@@ -354,6 +350,7 @@
       }
     });
     if (window.FormaToolbar) window.FormaToolbar.mount(root || document);
+    if (window.FormaChips) window.FormaChips.mount(root || document);
   }
 
   function wireMetaPanels(root) {
@@ -791,7 +788,6 @@
     wireMetaPanels(evt.detail.elt);
     wireSeoPreviews(evt.detail.elt);
     wireMediaFields(evt.detail.elt);
-    layoutAlerts();
     var toast = document.getElementById('fx-toast');
     if (toast && toast.dataset.show === '1') {
       toast.classList.add('show');
@@ -803,6 +799,22 @@
   }
 
   document.body.addEventListener('click', function (e) {
+    var chipBtn = e.target.closest && e.target.closest('.fx-alert-chip-btn');
+    if (chipBtn) {
+      e.preventDefault();
+      var chip = chipBtn.closest('.fx-alert-chip');
+      if (!chip) return;
+      var open = !chip.classList.contains('is-open');
+      chip.classList.toggle('is-open', open);
+      chipBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      return;
+    }
+    var chip = document.getElementById('fx-admin-alerts');
+    if (chip && !chip.contains(e.target)) {
+      chip.classList.remove('is-open');
+      var b = chip.querySelector('.fx-alert-chip-btn');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    }
     if (e.target.closest('[data-blog-preview]')) {
       e.preventDefault();
       openBlogPreview();
@@ -829,7 +841,6 @@
     wireMetaPanels(document);
     wireSeoPreviews(document);
     wireMediaFields(document);
-    layoutAlerts();
   });
   document.body.addEventListener('htmx:beforeRequest', function (evt) {
     beforeRequest(evt);
