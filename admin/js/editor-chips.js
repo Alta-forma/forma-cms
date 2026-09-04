@@ -257,6 +257,48 @@
     cm._fxMarks = [];
   }
 
+  /** Server-rendered status row inside the Page details meta-panel — mirrors seoStatusRow below. */
+  function metaStatusRow(cm) {
+    if (cm._fxMetaRow) return cm._fxMetaRow;
+    var ta = cm.getTextArea && cm.getTextArea();
+    var form = ta && ta.closest('form');
+    var row = form && form.querySelector('[data-meta-status]');
+    if (!row) return null;
+    var btn = row.querySelector('[data-meta-status-btn]');
+    if (btn && !btn._fxWired) {
+      btn._fxWired = true;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        insertMetaBlock(cm);
+        cm.focus();
+      });
+    }
+    cm._fxMetaRow = row;
+    return row;
+  }
+
+  function renderMetaStatus(cm) {
+    var ta = cm.getTextArea && cm.getTextArea();
+    if (!ta || ta.getAttribute('data-chips') !== '1') return;
+    var row = metaStatusRow(cm);
+    if (!row) return;
+    row.hidden = !!findMetaBlock(cm.getValue());
+  }
+
+  /** Pin a starter <!--META--> block, seeded from the current Filename/Slug fields. */
+  function insertMetaBlock(cm) {
+    if (findMetaBlock(cm.getValue())) return;
+    var ta = cm.getTextArea && cm.getTextArea();
+    var form = ta && ta.closest('form');
+    var filename = (form && form.querySelector('#filename') && form.querySelector('#filename').value.trim()) || '';
+    var slug = (form && form.querySelector('#slug') && form.querySelector('#slug').value.trim()) || (filename ? '/' + filename : '/');
+    var lines = ['<!--META', 'slug: ' + (slug || '/'), 'title: ' + (filename || 'New Page'), '-->', ''];
+    cm._fxQuiet = true;
+    cm.replaceRange(lines.join('\n'), { line: 0, ch: 0 });
+    cm._fxQuiet = false;
+    paint(cm);
+  }
+
   /** Server-rendered status row inside the SEO meta-panel — plain DOM, not a CodeMirror widget. */
   function seoStatusRow(cm) {
     if (cm._fxSeoRow) return cm._fxSeoRow;
@@ -327,13 +369,17 @@
       if (cm._fxAlert) cm._fxAlert.hidden = true;
       return;
     }
+    // Same trigger as the status row: no [[seo]] chip in the file at all,
+    // whether it was ever pinned (mode=slot/off) or never inserted (mode=auto).
     var has = cm.getValue().indexOf('[[seo]]') !== -1;
     var mode = ta.getAttribute('data-seo-head') || 'auto';
     var off = !has && (cm._fxSeoRemoved || mode === 'off' || mode === 'slot');
     var el = pageAlertEl(cm);
     if (!el) return;
-    el.hidden = !off;
-    if (off) el.title = 'SEO is off for this page — click to turn it back on';
+    el.hidden = has;
+    el.title = off
+      ? 'SEO is off for this page — click to turn it back on'
+      : "SEO isn't pinned on this page — click to add it";
   }
 
   function headPos(cm) {
@@ -417,6 +463,7 @@
       });
       cm._fxMarks.push(mk);
     });
+    renderMetaStatus(cm);
     renderSeoStatus(cm);
     renderPageAlert(cm);
   }

@@ -24,6 +24,12 @@ $summary = trim(($filename ?: 'new') . ' · ' . ($slug ?: '/') . ' · ' . strtou
             <i class="fas fa-chevron-down chev"></i>
         </button>
         <div class="meta-panel-body">
+            <?php $metaHasBlock = (bool)preg_match('/^\s*<!--META\b/s', $content); ?>
+            <div class="fx-seo-status is-info" data-meta-status<?php echo $metaHasBlock ? ' hidden' : ''; ?>>
+                <i class="fas fa-sliders"></i>
+                <span class="fx-seo-status-text">Page details aren't pinned in this file yet.</span>
+                <button type="button" class="fx-seo-status-btn" data-meta-status-btn>Insert</button>
+            </div>
             <div class="form-group">
                 <label for="filename">Filename</label>
                 <input type="text" id="filename" name="filename" required value="<?php echo h($filename); ?>">
@@ -137,8 +143,8 @@ $summary = trim(($filename ?: 'new') . ' · ' . ($slug ?: '/') . ' · ' . strtou
 <footer>
     <div class="buttons">
         <button type="button" class="fx-page-alert" data-page-alert
-                title="<?php echo h($seoOff ? 'SEO is off for this page — click to turn it back on' : ''); ?>"
-                <?php echo $seoOff ? '' : 'hidden'; ?>>
+                title="<?php echo h($seoOff ? 'SEO is off for this page — click to turn it back on' : "SEO isn't pinned on this page — click to add it"); ?>"
+                <?php echo $seoHasSlot ? 'hidden' : ''; ?>>
             <i class="fas fa-exclamation"></i>
         </button>
         <div class="button-group">

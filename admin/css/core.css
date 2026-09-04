@@ -830,8 +830,15 @@ select {
     background: #84cc16;
     color: #14110a;
 }
+/* Nesting-issue (cycle/depth) chips — overrides sys/stock/user color, high-contrast red/white. */
 .fx-cm-chip.has-bang {
-    box-shadow: 0 0 0 1px #fb7185;
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.28);
+}
+.fx-cm-chip.has-bang .fx-cm-chip-label {
+    color: #fff;
 }
 .fx-cm-chip-bang {
     display: inline-flex;
@@ -840,8 +847,8 @@ select {
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    background: #fb7185;
-    color: #fff;
+    background: #fff;
+    color: #dc2626;
     font-size: 0.7em;
     font-weight: 800;
 }
@@ -857,6 +864,11 @@ select {
     color: var(--text-muted);
     font-size: 0.8rem;
     flex: none;
+}
+/* Author rules beat the UA [hidden] default regardless of specificity —
+   without this, JS setting row.hidden = true silently does nothing. */
+.fx-seo-status[hidden] {
+    display: none;
 }
 .fx-seo-status i {
     opacity: 0.6;
@@ -949,7 +961,7 @@ select {
     color: var(--text-muted, #a3a3a3);
 }
 .fx-chip-pop-bang {
-    color: #fde68a !important;
+    color: #ef4444 !important;
 }
 .fx-chip-pop .switch-row {
     margin: 0;
