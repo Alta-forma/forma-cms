@@ -85,6 +85,8 @@ $summary = trim(($title ?: $filename ?: 'new post') . ($slug ? " · /blog/{$slug
             $previewImage = $feat;
             $previewUrl = Seo::absoluteUrl('/blog/' . ltrim((string)($slug ?? ''), '/'));
             require __DIR__ . '/_seo-preview.php';
+            $healthIssues = $row ? Seo::quickHealth(Seo::forPost($row))['issues'] : [];
+            require __DIR__ . '/_seo-health.php';
             ?>
             <div class="form-group">
                 <label>SEO title <span class="char-count" data-count-for="seo_title"></span></label>

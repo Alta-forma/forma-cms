@@ -174,11 +174,11 @@
     loadType('snippets', toolbar, cm, (content, items, btn, cmInst, tb) => {
       const ta = cmInst && cmInst.getTextArea && cmInst.getTextArea();
       const canSeo = ta && ta.hasAttribute('data-seo-head');
-      let html = '';
+      let html = '<div class="dropdown-header">System</div>';
       if (canSeo) {
-        html += '<div class="dropdown-header">System</div>';
         html += '<div class="dropdown-item" data-insert-block="seo"><i class="fas fa-search"></i> SEO head</div>';
       }
+      html += '<div class="dropdown-item" data-insert-faq><i class="fas fa-circle-question"></i> FAQ block</div>';
       html += '<div class="dropdown-header">Snippets</div>';
       html += '<div class="dropdown-item add-new" data-quick="snippet"><i class="fas fa-plus"></i> Quick add…</div>';
       items.forEach((it) => {
@@ -207,6 +207,12 @@
         closeDropdowns(toolbar);
       });
     });
+    content.querySelectorAll('[data-insert-faq]').forEach((el) => {
+      el.addEventListener('click', () => {
+        insertFaqBlock(cm);
+        closeDropdowns(toolbar);
+      });
+    });
     content.querySelectorAll('[data-quick]').forEach((el) => {
       el.addEventListener('click', () => {
         const kind = el.getAttribute('data-quick');
@@ -218,6 +224,28 @@
         }
       });
     });
+  }
+
+  /**
+   * Starter FAQ accordion: [[faq-ui]] (styling) + two example Q&A pairs as
+   * native <details class="fx-faq-item">. This exact shape — a data-fx-faq
+   * wrapper around fx-faq-item <details>/<summary> blocks — is what
+   * Seo::extractFaqItems() scans to auto-generate FAQPage JSON-LD. Editing
+   * the visible text is the only step; the schema stays in sync automatically.
+   */
+  function insertFaqBlock(cm) {
+    const block = '\n[[faq-ui]]\n' +
+      '<div class="fx-faq" data-fx-faq>\n' +
+      '  <details class="fx-faq-item" open>\n' +
+      '    <summary>Question one goes here?</summary>\n' +
+      '    <div class="fx-faq-a"><p>Answer one goes here.</p></div>\n' +
+      '  </details>\n' +
+      '  <details class="fx-faq-item">\n' +
+      '    <summary>Question two goes here?</summary>\n' +
+      '    <div class="fx-faq-a"><p>Answer two goes here.</p></div>\n' +
+      '  </details>\n' +
+      '</div>\n';
+    insertAtCursor(block, cm);
   }
 
   function pickUpload(cm, toolbar) {

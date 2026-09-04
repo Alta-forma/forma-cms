@@ -91,6 +91,7 @@ class PageRepo {
         $warnings = [];
         if (class_exists('Seo')) {
             $warnings = Seo::syncHeadSlot($oldContent, $content, $metaPatch);
+            $warnings = array_merge($warnings, Seo::validateCustomSchema($content));
         }
         if ($metaPatch) {
             $meta = self::extractMeta($content);

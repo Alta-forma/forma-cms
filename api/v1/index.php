@@ -105,7 +105,18 @@ try {
     if ($rel === '/pages' && $method === 'GET') {
         Agent::requireScope($token, 'content:read');
         Agent::audit($token, 'pages.list', $rel);
-        Agent::json(['pages' => PageRepo::list()]);
+        $pages = PageRepo::list();
+        foreach ($pages as &$p) {
+            $full = PageRepo::get($p['filename'] ?? '');
+            if (!$full) {
+                continue;
+            }
+            $health = Seo::quickHealth(Seo::forPage($full), (string)($full['content'] ?? ''));
+            $p['seo_ok'] = $health['ok'];
+            $p['seo_issues'] = $health['issues'];
+        }
+        unset($p);
+        Agent::json(['pages' => $pages]);
     }
 
     if (preg_match('#^/pages/([a-zA-Z0-9._-]+)$#', $rel, $m)) {
@@ -163,7 +174,14 @@ try {
     if ($rel === '/posts' && $method === 'GET') {
         Agent::requireScope($token, 'content:read');
         Agent::audit($token, 'posts.list', $rel);
-        Agent::json(['posts' => BlogRepo::list(false)]);
+        $posts = BlogRepo::list(false);
+        foreach ($posts as &$p) {
+            $health = Seo::quickHealth(Seo::forPost($p));
+            $p['seo_ok'] = $health['ok'];
+            $p['seo_issues'] = $health['issues'];
+        }
+        unset($p);
+        Agent::json(['posts' => $posts]);
     }
 
     if (preg_match('#^/posts/([a-zA-Z0-9._-]+)$#', $rel, $m)) {
@@ -183,8 +201,10 @@ try {
             $data = $body;
             $data['filename'] = $filename;
             $row = BlogRepo::save($data);
+            $warnings = $row['_warnings'] ?? [];
+            unset($row['_warnings']);
             Agent::audit($token, 'posts.save', $rel, $filename);
-            Agent::json(['success' => true, 'post' => $row]);
+            Agent::json(['success' => true, 'post' => $row, 'warnings' => $warnings]);
         }
         if ($method === 'DELETE') {
             Agent::requireScope($token, 'content:write');

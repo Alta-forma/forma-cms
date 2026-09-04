@@ -142,6 +142,13 @@ class BlogRepo {
             Search::indexPost($saved);
         }
 
+        if ($saved && class_exists('Seo')) {
+            $warnings = Seo::validateCustomSchema((string)$body);
+            if ($warnings) {
+                $saved['_warnings'] = $warnings;
+            }
+        }
+
         return $saved;
     }
 

@@ -152,7 +152,12 @@ Copy `tools/watch-sites.example.txt` → `tools/watch-sites.txt` and cron / Laun
 ## SEO
 
 Admin → **Settings → SEO**: health dashboard, favicon/social defaults, schema (Person/Org/LocalBusiness), auto robots/sitemap (with images), redirects. Per-page SEO is optional — titles/descriptions/images fall back automatically.  
-Per-page / per-post SEO panels override title, description, OG image, canonical, and robots. Meta tags are injected on every public render.
+Per-page / per-post SEO panels override title, description, OG image, canonical, and robots. Meta tags are injected on every public render. Each page/post editor also shows a contextual **Page health** list (title/description length, missing image, `[[seo]]` status) right where you're editing — not just in the central health dashboard.
+
+**JSON-LD** covers `WebSite`, `Person`/`Organization`/`LocalBusiness`, `BlogPosting`, `BreadcrumbList`, and `PodcastEpisode`/`PodcastSeries` (podcast unlock) automatically. Two more are generated from visible content instead of settings:
+
+- **FAQ** — wrap Q&A pairs in `<div data-fx-faq><details class="fx-faq-item"><summary>Question</summary><div class="fx-faq-a"><p>Answer</p></div></details>…</div>` (toolbar → Snippets → "FAQ block" inserts a starter) plus the `[[faq-ui]]` snippet once for the accordion styling. `FAQPage` JSON-LD is built from that markup — one copy of the text, nothing to keep in sync.
+- **Custom JSON-LD** — for anything else (Event, Recipe, Course, …), drop `<script type="application/ld+json" data-fx-schema>{"@type":"Event",…}</script>` in the content. Validated on save (bad JSON or a missing `@type` comes back as a warning and is dropped, not published) and merged into the single generated `<script>` in `<head>`.
 
 ## Licenses
 

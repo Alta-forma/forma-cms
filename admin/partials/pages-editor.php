@@ -79,6 +79,8 @@ $summary = trim(($filename ?: 'new') . ' · ' . ($slug ?: '/') . ' · ' . strtou
             $previewImage = $feat;
             $previewUrl = Seo::absoluteUrl($slug ?: '/');
             require __DIR__ . '/_seo-preview.php';
+            $healthIssues = $row ? Seo::quickHealth(Seo::forPage($row), $content)['issues'] : [];
+            require __DIR__ . '/_seo-health.php';
             ?>
             <div class="form-group">
                 <label>SEO title <span class="char-count" data-count-for="seo_title"></span></label>

@@ -263,6 +263,106 @@ class Seo {
         ], $seo, $site);
     }
 
+    public static function forPodcastArchive(array $podcastCtx): array {
+        $site = Database::get()->getSetting('site');
+        $seo  = self::settings();
+        $title = (string)($podcastCtx['title'] ?: ($site['title'] ?? 'Podcast'));
+        $desc = (string)($podcastCtx['description'] ?? '');
+        $image = trim((string)($podcastCtx['cover_art'] ?? ''));
+        return self::normalize([
+            'title' => $title,
+            'description' => $desc !== '' ? $desc : (string)($site['description'] ?? ''),
+            'og_title' => $title,
+            'og_description' => $desc,
+            'og_image' => $image !== '' ? $image : ($seo['default_og_image'] ?? ''),
+            'canonical' => '/podcast',
+            'robots' => self::defaultRobotsDirective($seo),
+            'twitter_card' => $seo['twitter_card'] ?? 'summary_large_image',
+            'type' => 'website',
+            'path' => '/podcast',
+            'seo_head' => self::templateHeadMode('podcast-archive'),
+            'podcast_series' => [
+                'name' => $title,
+                'description' => $desc,
+                'image' => $image !== '' ? self::absoluteUrl($image) : '',
+                'url' => self::absoluteUrl('/podcast'),
+            ],
+        ], $seo, $site);
+    }
+
+    public static function forPodcastEpisode(array $episode, array $podcastCtx): array {
+        $site = Database::get()->getSetting('site');
+        $seo  = self::settings();
+        $episodeId = (string)($episode['episode_id'] ?? '');
+        $path = '/podcast/' . $episodeId;
+        $title = (string)($episode['title'] ?: ($episodeId ?: 'Episode'));
+        $desc = (string)($episode['description'] ?? '');
+        $image = trim((string)($episode['episode_art'] ?? '')) ?: trim((string)($podcastCtx['cover_art'] ?? ''));
+        $audioFile = trim((string)($episode['audio_file'] ?? ''));
+        $seriesTitle = (string)($podcastCtx['title'] ?: ($site['title'] ?? 'Podcast'));
+        return self::normalize([
+            'title' => $title,
+            'description' => $desc !== '' ? $desc : (string)($site['description'] ?? ''),
+            'og_title' => $title,
+            'og_description' => $desc,
+            'og_image' => $image,
+            'canonical' => $path,
+            'robots' => self::defaultRobotsDirective($seo),
+            'twitter_card' => $seo['twitter_card'] ?? 'summary_large_image',
+            'type' => 'website',
+            'path' => $path,
+            'seo_head' => self::templateHeadMode('podcast-single'),
+            'podcast_episode' => [
+                'name' => $title,
+                'description' => $desc,
+                'url' => self::absoluteUrl($path),
+                'image' => $image !== '' ? self::absoluteUrl($image) : '',
+                'audio_url' => $audioFile !== '' && function_exists('forma_uploads_web_prefix')
+                    ? self::absoluteUrl(forma_uploads_web_prefix() . basename($audioFile))
+                    : '',
+                'duration_iso' => self::isoDuration((string)($episode['duration'] ?? '')),
+                'episode_number' => (int)($episode['episode_number'] ?? 0),
+                'season_number' => (int)($episode['season_number'] ?? 0),
+                'published_at' => $episode['published_at'] ?? null,
+                'series_name' => $seriesTitle,
+                'series_url' => self::absoluteUrl('/podcast'),
+            ],
+        ], $seo, $site);
+    }
+
+    /** "HH:MM:SS" / "MM:SS" / "SS" -> ISO-8601 duration (schema.org AudioObject.duration). */
+    private static function isoDuration(string $hms): string {
+        $hms = trim($hms);
+        if ($hms === '' || !preg_match('/^\d{1,3}(:\d{1,2}){0,2}$/', $hms)) {
+            return '';
+        }
+        $parts = array_map('intval', explode(':', $hms));
+        $h = 0;
+        $m = 0;
+        $s = 0;
+        if (count($parts) === 3) {
+            [$h, $m, $s] = $parts;
+        } elseif (count($parts) === 2) {
+            [$m, $s] = $parts;
+        } else {
+            $s = $parts[0];
+        }
+        if (!$h && !$m && !$s) {
+            return '';
+        }
+        $out = 'PT';
+        if ($h) {
+            $out .= $h . 'H';
+        }
+        if ($m) {
+            $out .= $m . 'M';
+        }
+        if ($s || (!$h && !$m)) {
+            $out .= $s . 'S';
+        }
+        return $out;
+    }
+
     public static function forSimple(string $path, string $title, string $description = '', string $ogImage = '', string $type = 'website', string $headTemplate = ''): array {
         $site = Database::get()->getSetting('site');
         $seo  = self::settings();
@@ -363,12 +463,16 @@ class Seo {
     }
 
     public static function warningMessage(string $code): string {
+        [$base, $n] = array_pad(explode(':', $code, 2), 2, '');
         $map = [
             'seo_slot_removed' => 'SEO slot removed — Forma will not emit <head> tags on this template',
             'seo_slot_restored' => 'SEO slot restored',
             'seo_slot_pinned' => 'SEO chip added — head tags emit at [[seo]]',
+            'custom_schema_invalid_json' => 'Custom JSON-LD block' . ($n !== '' ? " #{$n}" : '') . ' is not valid JSON — it will be dropped, not published',
+            'custom_schema_missing_type' => 'Custom JSON-LD block' . ($n !== '' ? " #{$n}" : '') . ' has no "@type" — schema.org requires one, it will be dropped',
+            'custom_schema_malformed_tag' => 'Found data-fx-schema but the <script type="application/ld+json"> tag looks malformed',
         ];
-        return $map[$code] ?? $code;
+        return $map[$base] ?? $code;
     }
 
     private static function defaultRobotsDirective(array $seo): string {
@@ -629,6 +733,81 @@ class Seo {
             $graph[] = $article;
         }
 
+        if (!empty($doc['podcast_series'])) {
+            $ps = $doc['podcast_series'];
+            $series = [
+                '@type' => 'PodcastSeries',
+                'name' => $ps['name'] ?? '',
+                'url' => $ps['url'] ?? '',
+            ];
+            if (!empty($ps['description'])) {
+                $series['description'] = $ps['description'];
+            }
+            if (!empty($ps['image'])) {
+                $series['image'] = $ps['image'];
+            }
+            $graph[] = $series;
+        }
+
+        if (!empty($doc['podcast_episode'])) {
+            $pe = $doc['podcast_episode'];
+            $episode = [
+                '@type' => 'PodcastEpisode',
+                'name' => $pe['name'] ?? '',
+                'url' => $pe['url'] ?? '',
+            ];
+            if (!empty($pe['description'])) {
+                $episode['description'] = $pe['description'];
+            }
+            if (!empty($pe['image'])) {
+                $episode['image'] = $pe['image'];
+            }
+            if (!empty($pe['episode_number'])) {
+                $episode['episodeNumber'] = $pe['episode_number'];
+            }
+            if (!empty($pe['season_number'])) {
+                $episode['seasonNumber'] = $pe['season_number'];
+            }
+            if (!empty($pe['published_at'])) {
+                $episode['datePublished'] = date('c', (int)$pe['published_at']);
+            }
+            if (!empty($pe['series_name'])) {
+                $episode['partOfSeries'] = [
+                    '@type' => 'PodcastSeries',
+                    'name' => $pe['series_name'],
+                    'url' => $pe['series_url'] ?? self::absoluteUrl('/podcast'),
+                ];
+            }
+            if (!empty($pe['audio_url'])) {
+                $audio = ['@type' => 'AudioObject', 'contentUrl' => $pe['audio_url']];
+                if (!empty($pe['duration_iso'])) {
+                    $audio['duration'] = $pe['duration_iso'];
+                }
+                $episode['associatedMedia'] = $audio;
+            }
+            $graph[] = $episode;
+        }
+
+        if (!empty($doc['_faq_items'])) {
+            $qas = [];
+            foreach ($doc['_faq_items'] as $item) {
+                $qas[] = [
+                    '@type' => 'Question',
+                    'name' => $item['q'],
+                    'acceptedAnswer' => ['@type' => 'Answer', 'text' => $item['a']],
+                ];
+            }
+            if ($qas) {
+                $graph[] = ['@type' => 'FAQPage', 'mainEntity' => $qas];
+            }
+        }
+
+        if (!empty($doc['_custom_schema'])) {
+            foreach ($doc['_custom_schema'] as $node) {
+                $graph[] = $node;
+            }
+        }
+
         $crumbs = self::breadcrumbList($doc);
         if ($crumbs) {
             $graph[] = $crumbs;
@@ -643,7 +822,138 @@ class Seo {
         return json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
+    /**
+     * Scan rendered HTML for `data-fx-faq` accordion blocks and pull clean
+     * Q/A pairs for FAQPage JSON-LD. The visible <details class="fx-faq-item">
+     * markup (seeded by the faq-ui snippet + toolbar "FAQ block" insert) is
+     * the only source of truth — there's no separate FAQ data to keep in sync,
+     * and Google requires the JSON-LD to match what's actually on the page.
+     *
+     * @return list<array{q:string,a:string}>
+     */
+    public static function extractFaqItems(string $html): array {
+        if (!str_contains($html, 'fx-faq-item')) {
+            return [];
+        }
+        $items = [];
+        if (preg_match_all(
+            '/<details\b[^>]*\bclass=(["\'])[^"\']*\bfx-faq-item\b[^"\']*\1[^>]*>(.*?)<\/details>/is',
+            $html,
+            $m
+        )) {
+            foreach ($m[2] as $inner) {
+                if (!preg_match('/<summary\b[^>]*>(.*?)<\/summary>(.*)$/is', $inner, $qm)) {
+                    continue;
+                }
+                $q = self::plainTextSnippet(html_entity_decode(strip_tags($qm[1]), ENT_QUOTES, 'UTF-8'), 300);
+                $aRaw = (string)preg_replace('/<(br|\/p|\/div|\/li)\b[^>]*>/i', "\n", $qm[2]);
+                $a = trim(html_entity_decode(strip_tags($aRaw), ENT_QUOTES, 'UTF-8'));
+                $a = (string)preg_replace('/[ \t]+/', ' ', $a);
+                $a = trim((string)preg_replace('/\n{3,}/', "\n\n", $a));
+                if ($q === '' || $a === '') {
+                    continue;
+                }
+                $items[] = ['q' => $q, 'a' => $a];
+            }
+        }
+        return $items;
+    }
+
+    /**
+     * Scan rendered HTML for `<script type="application/ld+json" data-fx-schema>`
+     * blocks — the per-page custom JSON-LD escape hatch. Accepts a single node,
+     * a bare array of nodes, or {"@graph":[...]}. Nodes without "@type" are
+     * dropped (schema.org requires it and it's the #1 way to catch a typo/paste
+     * error before it ships broken structured data).
+     *
+     * These scripts are always stripped from the body by applyToHtml() —
+     * whether valid or not — because the real ones get re-emitted, merged,
+     * inside the single generated <script> block in <head>.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function extractCustomSchema(string $html): array {
+        if (!str_contains($html, 'data-fx-schema')) {
+            return [];
+        }
+        $nodes = [];
+        if (preg_match_all(
+            '/<script\b[^>]*\btype=(["\'])application\/ld\+json\1[^>]*\bdata-fx-schema\b[^>]*>(.*?)<\/script>/is',
+            $html,
+            $m
+        )) {
+            foreach ($m[2] as $raw) {
+                $decoded = json_decode(trim($raw), true);
+                if (!is_array($decoded)) {
+                    continue;
+                }
+                if (isset($decoded['@graph']) && is_array($decoded['@graph'])) {
+                    foreach ($decoded['@graph'] as $node) {
+                        if (is_array($node) && !empty($node['@type'])) {
+                            $nodes[] = $node;
+                        }
+                    }
+                } elseif (array_is_list($decoded)) {
+                    foreach ($decoded as $node) {
+                        if (is_array($node) && !empty($node['@type'])) {
+                            $nodes[] = $node;
+                        }
+                    }
+                } elseif (!empty($decoded['@type'])) {
+                    unset($decoded['@context']);
+                    $nodes[] = $decoded;
+                }
+            }
+        }
+        return $nodes;
+    }
+
+    /**
+     * Validate `data-fx-schema` blocks at save time so a broken/typo'd JSON-LD
+     * block surfaces as a warning immediately instead of silently doing
+     * nothing on the live page. Returns human warning strings (empty = clean).
+     *
+     * @return list<string>
+     */
+    public static function validateCustomSchema(string $html): array {
+        if (!str_contains($html, 'data-fx-schema')) {
+            return [];
+        }
+        $warnings = [];
+        if (preg_match_all(
+            '/<script\b[^>]*\btype=(["\'])application\/ld\+json\1[^>]*\bdata-fx-schema\b[^>]*>(.*?)<\/script>/is',
+            $html,
+            $m
+        )) {
+            foreach ($m[2] as $i => $raw) {
+                $decoded = json_decode(trim($raw), true);
+                if (!is_array($decoded)) {
+                    $warnings[] = 'custom_schema_invalid_json:' . ($i + 1);
+                    continue;
+                }
+                $nodes = isset($decoded['@graph']) && is_array($decoded['@graph'])
+                    ? $decoded['@graph']
+                    : (array_is_list($decoded) ? $decoded : [$decoded]);
+                foreach ($nodes as $node) {
+                    if (!is_array($node) || empty($node['@type'])) {
+                        $warnings[] = 'custom_schema_missing_type:' . ($i + 1);
+                        break;
+                    }
+                }
+            }
+        } elseif (str_contains($html, 'data-fx-schema')) {
+            $warnings[] = 'custom_schema_malformed_tag';
+        }
+        return $warnings;
+    }
+
     public static function applyToHtml(string $html, array $doc): string {
+        if (!isset($doc['_faq_items'])) {
+            $doc['_faq_items'] = self::extractFaqItems($html);
+        }
+        if (!isset($doc['_custom_schema'])) {
+            $doc['_custom_schema'] = self::extractCustomSchema($html);
+        }
         $block = self::headHtml($doc);
         $patterns = [
             '/<title\b[^>]*>.*?<\/title>/is',
@@ -1154,6 +1464,63 @@ class Seo {
         if ($img === '' && trim((string)($seo['default_og_image'] ?? '')) === '') {
             $add('image_missing', 'warn', "{$kind} “{$label}” has no featured image (and no site default)", 'Set a default social image once in SEO settings', $href);
         }
+    }
+
+    /**
+     * Cheap, single-document health check — title/description length + presence,
+     * social image, and (for full HTML docs) whether the [[seo]] slot is actually
+     * emitting tags. Safe to run per-row in a list endpoint or in an editor.
+     *
+     * This intentionally skips the cross-page duplicate-title/description checks
+     * that healthReport() does — those need the whole site loaded at once.
+     *
+     * @param array $doc normalized doc from forPage()/forPost()/forSimple()
+     * @param string|null $rawContent full page source (pass for pages to also check the SEO slot)
+     */
+    public static function quickHealth(array $doc, ?string $rawContent = null): array {
+        $issues = [];
+        $add = static function (string $field, string $severity, string $message) use (&$issues): void {
+            $issues[] = ['field' => $field, 'severity' => $severity, 'message' => $message];
+        };
+
+        $title = trim((string)($doc['title'] ?? ''));
+        if ($title === '') {
+            $add('title', 'warn', 'No title set');
+        } elseif (mb_strlen($title) > 60) {
+            $add('title', 'warn', 'Title is ' . mb_strlen($title) . ' chars (aim ≤60)');
+        }
+
+        $desc = trim((string)($doc['description'] ?? ''));
+        if ($desc === '') {
+            $add('desc', 'warn', 'No meta description');
+        } elseif (mb_strlen($desc) > 160) {
+            $add('desc', 'warn', 'Description is ' . mb_strlen($desc) . ' chars (aim ≤160)');
+        } elseif (mb_strlen($desc) < 50) {
+            $add('desc', 'info', 'Description is short (' . mb_strlen($desc) . ' chars)');
+        }
+
+        if (trim((string)($doc['og_image'] ?? '')) === '') {
+            $add('image', 'info', 'No social image (site default may cover this)');
+        }
+
+        if ($rawContent !== null && class_exists('PageRepo')) {
+            $meta = PageRepo::extractMeta($rawContent);
+            $mode = self::normalizeHeadMode((string)($meta['seo_head'] ?? 'auto'));
+            $body = PageRepo::stripMeta($rawContent);
+            $looksFullDoc = (bool)preg_match('/<(!DOCTYPE|html|head)[\s>]/i', $body);
+            if ($looksFullDoc && !self::htmlHasSlot($rawContent) && ($mode === 'off' || $mode === 'slot')) {
+                $add('slot', 'warn', 'SEO tags are off for this page');
+            }
+        }
+
+        $ok = true;
+        foreach ($issues as $i) {
+            if ($i['severity'] !== 'info') {
+                $ok = false;
+                break;
+            }
+        }
+        return ['ok' => $ok, 'issues' => $issues];
     }
 
     public static function healthReport(): array {

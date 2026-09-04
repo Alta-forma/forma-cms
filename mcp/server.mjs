@@ -3,7 +3,7 @@
  * Forma MCP — full Agent API surface for Cursor.
  * Env: FORMA_X_URL, FORMA_X_TOKEN
  */
-import { writeFileSync } from "fs";
+import { writeFileSync, readFileSync } from "fs";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -234,6 +234,36 @@ const tools = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "formax_list_redirects",
+    description: "List all 301/302 redirects",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "formax_save_redirect",
+    description: "Create or update a redirect. Pass id to update an existing one.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "number", description: "Omit to create a new redirect" },
+        from_path: { type: "string", description: "e.g. /old-page" },
+        to_url: { type: "string", description: "Absolute URL or path to send visitors to" },
+        status: { type: "number", description: "301, 302, 307, or 308 (default 301)" },
+        enabled: { type: "boolean" },
+        note: { type: "string" },
+      },
+      required: ["from_path", "to_url"],
+    },
+  },
+  {
+    name: "formax_delete_redirect",
+    description: "Delete a redirect by id",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "number" } },
+      required: ["id"],
+    },
+  },
+  {
     name: "formax_update_seo",
     description: "Update sitewide SEO. Mostly automatic (robots/sitemap/meta). Optional: favicon, default_og_image, schema_type (person|organization|local_business), place_id, same_as.",
     inputSchema: {
@@ -329,6 +359,25 @@ const tools = [
       required: ["path"],
     },
   },
+  {
+    name: "formax_import_site",
+    description:
+      "Restore/migrate from a full site package zip on the local filesystem (as produced by formax_export_site). Requires settings:write. Careful: replace_database defaults to true.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Local filesystem path to the .zip to upload" },
+        replace_database: { type: "boolean", description: "Default true — overwrite database/forma.db" },
+        merge_uploads: { type: "boolean", description: "Default true — merge uploads/ instead of wiping" },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "formax_health",
+    description: "Filesystem sanity check — catches bad uploads / nested folders (lib/lib, admin/admin) after a manual FTP deploy",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
 
 const server = new Server(
@@ -421,6 +470,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "formax_update_seo":
       result = await api("PUT", "/seo", a);
       break;
+    case "formax_list_redirects":
+      result = await api("GET", "/redirects");
+      break;
+    case "formax_save_redirect":
+      result = await api("PUT", "/redirects", a);
+      break;
+    case "formax_delete_redirect":
+      result = await api("DELETE", `/redirects/${encodeURIComponent(a.id)}`);
+      break;
+    case "formax_health":
+      result = await api("GET", "/health");
+      break;
     case "formax_list_episodes":
       result = await api("GET", "/episodes");
       break;
@@ -459,6 +520,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const buf = Buffer.from(await res.arrayBuffer());
       writeFileSync(out, buf);
       result = { ok: true, path: out, bytes: buf.length };
+      break;
+    }
+    case "formax_import_site": {
+      if (!BASE || !TOKEN) throw new Error("Set FORMA_X_URL and FORMA_X_TOKEN");
+      const src = String(a.path || "");
+      if (!src) throw new Error("path is required");
+      const bin = readFileSync(src);
+      const form = new FormData();
+      form.append("package", new Blob([bin]), "site.zip");
+      if (a.replace_database !== undefined) form.append("replace_database", String(!!a.replace_database));
+      if (a.merge_uploads !== undefined) form.append("merge_uploads", String(!!a.merge_uploads));
+      const res = await fetch(`${BASE}/api/v1/import/site`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "X-Forma-Token": TOKEN, Accept: "application/json" },
+        body: form,
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      result = data;
       break;
     }
     default:

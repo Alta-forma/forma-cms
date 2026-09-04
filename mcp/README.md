@@ -42,10 +42,13 @@ Restart Cursor MCP. First tool to call: **`formax_help`**.
 | media list / upload (base64) / delete | content:read / media:write |
 | settings get / update | content:read / settings:write |
 | `formax_get_seo` / `formax_update_seo` | content:read / settings:write |
+| `formax_list_redirects` / `formax_save_redirect` / `formax_delete_redirect` | content:read / settings:write |
 | episodes list / update / delete | content:read / podcast:write |
 | `formax_flush_cache` | settings:write |
 | `formax_export` | backup:read (JSON, no binaries) |
 | `formax_export_site` | backup:read — writes local `.zip` (DB + uploads + manifest) |
+| `formax_import_site` | settings:write — uploads a local `.zip` (restore/migrate) |
+| `formax_health` | content:read — filesystem sanity check |
 
 ## Security
 

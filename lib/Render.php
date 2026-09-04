@@ -324,14 +324,7 @@ HTML;
             $html .= '<div style="text-align:center;padding:1rem;opacity:.55;font-size:.8rem;">Powered by Forma Podcast</div>';
         }
         $html = self::injectGenerator(self::expandShortcodes($html));
-        return Seo::applyToHtml($html, Seo::forSimple(
-            '/podcast',
-            $podcastCtx['title'],
-            $podcastCtx['description'],
-            $podcastCtx['cover_art'] ?? '',
-            'website',
-            'podcast-archive'
-        ));
+        return Seo::applyToHtml($html, Seo::forPodcastArchive($podcastCtx));
     }
 
     public static function renderPodcastEpisode(array $row): string {
@@ -362,14 +355,7 @@ HTML;
             $html .= '<div style="text-align:center;padding:1rem;opacity:.55;font-size:.8rem;">Powered by Forma Podcast</div>';
         }
         $html = self::injectGenerator(self::expandShortcodes($html));
-        return Seo::applyToHtml($html, Seo::forSimple(
-            '/podcast/' . $row['episode_id'],
-            $row['title'] ?: $row['episode_id'],
-            $row['description'] ?? '',
-            ($row['episode_art'] ?: ($podcastCtx['cover_art'] ?? '')),
-            'website',
-            'podcast-single'
-        ));
+        return Seo::applyToHtml($html, Seo::forPodcastEpisode($row, $podcastCtx));
     }
 
     // ---- Search ------------------------------------------------------------
@@ -535,6 +521,34 @@ TWIG;
             ],
         ];
         return $pages[$code] ?? $pages[404];
+    }
+
+    /**
+     * Accordion styling for the FAQ authoring contract: a `data-fx-faq` wrapper
+     * around native <details class="fx-faq-item"><summary>…</summary>…</details>
+     * blocks. Native <details> already opens/closes with zero JS — this is
+     * purely visual (chevron rotation, spacing, focus state). The same visible
+     * markup is what Seo::extractFaqItems() reads to build FAQPage JSON-LD, so
+     * there's only ever one copy of the questions/answers to keep in sync.
+     */
+    public static function defaultFaqUiSnippet(): string {
+        return <<<'HTML'
+<style id="forma-faq-ui">
+.fx-faq{display:flex;flex-direction:column;gap:.7rem;margin:1.5rem 0}
+.fx-faq-item{border:1px solid var(--stroke,rgba(255,255,255,.12));border-radius:1rem;background:rgba(255,255,255,.03);overflow:hidden;transition:border-color .2s ease,background .2s ease}
+.fx-faq-item + .fx-faq-item{margin-top:0}
+.fx-faq-item[open]{border-color:var(--stroke-gold,rgba(252,190,52,.35));background:rgba(252,190,52,.04)}
+.fx-faq-item summary{list-style:none;cursor:pointer;padding:1.1rem 1.3rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-weight:600;font-size:1.02rem;color:var(--text,#f5f5f7)}
+.fx-faq-item summary::-webkit-details-marker{display:none}
+.fx-faq-item summary::after{content:"+";flex:none;width:1.4rem;height:1.4rem;display:flex;align-items:center;justify-content:center;font-size:1.3rem;line-height:1;color:var(--gold,#fcbe34);transition:transform .2s ease}
+.fx-faq-item[open] summary::after{transform:rotate(45deg)}
+.fx-faq-item summary:focus-visible{outline:2px solid var(--gold,#fcbe34);outline-offset:2px;border-radius:.4rem}
+.fx-faq-a{padding:0 1.3rem 1.15rem;color:var(--muted,rgba(245,245,247,.72));font-size:.98rem;line-height:1.65}
+.fx-faq-a p{margin:0 0 .7rem}
+.fx-faq-a p:last-child{margin-bottom:0}
+.fx-faq-a ul,.fx-faq-a ol{margin:0 0 .7rem 1.2rem}
+</style>
+HTML;
     }
 
     public static function defaultErrorUiSnippet(): string {

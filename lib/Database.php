@@ -474,6 +474,16 @@ HTML;
             );
         }
 
+        if (!$this->queryOne("SELECT 1 FROM snippets WHERE filename = 'faq-ui'")) {
+            if (!class_exists('Render', false)) {
+                require_once ROOT_DIR . '/lib/Render.php';
+            }
+            $this->execute(
+                'INSERT INTO snippets (filename, shortcode, content) VALUES (?, ?, ?)',
+                ['faq-ui', 'faq-ui', Render::defaultFaqUiSnippet()]
+            );
+        }
+
         if (!$this->queryOne('SELECT 1 FROM blog_posts WHERE filename = ?', ['welcome'])) {
             $body = "## Welcome to Forma\n\nThis is a **sample post**. Edit or delete it in **Admin → Blog**.\n";
             $this->execute(

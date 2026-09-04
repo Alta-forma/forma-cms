@@ -28,7 +28,12 @@ try {
     $_GET['file'] = $row['filename'] ?? '';
     require ADMIN_DIR . '/partials/_helpers.php';
     require ADMIN_DIR . '/partials/blog-list.php';
-    echo fx_toast_oob('Post saved · feed updated');
+    $warns = $row['_warnings'] ?? [];
+    $msg = 'Post saved · feed updated';
+    if ($warns) {
+        $msg = 'Post saved · ' . Seo::warningMessage((string)$warns[0]);
+    }
+    echo fx_toast_oob($msg);
 } catch (Throwable $e) {
     http_response_code(400);
     echo '<div class="file-list-content" id="blog-list"><div class="file-item" style="color:var(--error)">'

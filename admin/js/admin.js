@@ -820,6 +820,23 @@
       openBlogPreview();
       return;
     }
+    var fixBtn = e.target.closest('[data-fix-field]');
+    if (fixBtn) {
+      e.preventDefault();
+      var scope = fixBtn.closest('form') || document;
+      var field = scope.querySelector('[data-seo-field="' + fixBtn.getAttribute('data-fix-field') + '"]');
+      if (field) {
+        var panel = field.closest('.meta-panel');
+        if (panel && panel.classList.contains('collapsed')) {
+          panel.classList.remove('collapsed');
+          var toggle = panel.querySelector('.meta-panel-toggle');
+          if (toggle) toggle.setAttribute('aria-expanded', 'true');
+        }
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.focus({ preventScroll: true });
+      }
+      return;
+    }
     var trigger = e.target.closest('[data-file-trigger]');
     if (trigger) {
       var wrap = trigger.closest('.fx-file-pick');
