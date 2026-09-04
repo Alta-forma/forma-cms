@@ -378,6 +378,7 @@ HTML;
     public static function renderSearchPage(array $results, string $query): string {
         $fragment = self::renderSearchResultsFragment($results, $query);
         $tpl = Database::get()->queryOne("SELECT content FROM pages WHERE filename = 'search-page'");
+        $meta = $tpl ? PageRepo::extractMeta($tpl['content'] ?? '') : [];
         $content = $tpl ? PageRepo::stripMeta($tpl['content']) : self::defaultSearchPageTemplate();
         $ctx = [
             'results_html' => $fragment,
@@ -386,8 +387,14 @@ HTML;
         ];
         $html = self::renderTwig($content, array_merge(self::siteContext(), $ctx));
         $html = self::injectGenerator(self::expandShortcodes($html, $ctx));
-        $doc = Seo::forSimple('/search', 'Search' . ($query !== '' ? ' — ' . $query : ''), '', '', 'website', 'search-page');
-        $doc['robots'] = 'noindex,follow';
+        // Honor the search-page's own META (seo_title/seo_description/og_image/…) instead of
+        // always falling back to the sitewide description — the query suffix still applies.
+        $baseTitle = $meta['seo_title'] ?? 'Search';
+        $title = $baseTitle . ($query !== '' ? ' — ' . $query : '');
+        $desc = (string)($meta['seo_description'] ?? '');
+        $image = (string)($meta['og_image'] ?? $meta['featured_image'] ?? '');
+        $doc = Seo::forSimple('/search', $title, $desc, $image, 'website', 'search-page');
+        $doc['robots'] = $meta['robots'] ?? 'noindex,follow';
         return Seo::applyToHtml($html, $doc);
     }
 
