@@ -22,6 +22,7 @@ Deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · **Ship updates:** [docs/RELEASE.md](
 - Clean RSS (podcasts are a paid unlock)
 - Agent-friendly: scoped HTTPS API, no shell
 - SEO-first: `/robots.txt`, `/sitemap.xml`, `/llms.txt`, Open Graph / Twitter / JSON-LD, Settings → SEO
+- Nags, doesn't just log: a sticky admin bar calls out a default password or bad hosting until you fix it
 
 ## Requirements
 
@@ -64,6 +65,17 @@ DreamHost / Apache / Nginx: [docs/DEPLOY.md](docs/DEPLOY.md).
 ## Admin
 
 Top nav loads sections via htmx into `#main`. Editors use CodeMirror; save/delete return HTML fragments (no JSON admin SPA).
+
+`[[shortcode]]` tokens and the reserved `[[seo]]` slot render as inline chips instead of raw text, and the leading `<!--META-->` block collapses into its own "Page details" chip — the editor stays readable even when a page is full of snippets. Quick-add (page / post / snippet) opens as an OS-style modal.
+
+## Security
+
+Every admin screen carries a **non-dismissible red bar** until these are fixed:
+
+- Default `admin` / `admin` login still works
+- A hosting check is failing (world-writable `database/`/`uploads`/`feeds`/`fallback`, `display_errors` on, leftover `install.php`, missing `.htaccess`, …)
+
+Forma also drops a deny-PHP `.htaccess` into `uploads/` on write, so an uploaded `.php` file can never execute even if someone gets a bad file past the upload filter. Full diagnostics: Settings → Server (`HostingCheck::run()`); `GET /api/v1/health` gives agents a lightweight filesystem check (bad upload paths, nested `lib/lib`-style folders from a bad manual deploy).
 
 ## Public routes
 
@@ -120,7 +132,7 @@ php tools/formax.php posts
 php tools/formax.php export-site
 ```
 
-4. MCP: see [`mcp/README.md`](mcp/README.md) — full CRUD for pages, posts, snippets, media, settings, SEO, episodes
+4. MCP: see [`mcp/README.md`](mcp/README.md) — full CRUD for pages, posts, snippets, media, settings, SEO, redirects, episodes, plus a filesystem `health` check and site export/import
 
 Tokens are stored hashed. HTTPS required for non-local requests when `security.agent_https_only` is true.
 
@@ -158,6 +170,8 @@ Per-page / per-post SEO panels override title, description, OG image, canonical,
 
 - **FAQ** — wrap Q&A pairs in `<div data-fx-faq><details class="fx-faq-item"><summary>Question</summary><div class="fx-faq-a"><p>Answer</p></div></details>…</div>` (toolbar → Snippets → "FAQ block" inserts a starter) plus the `[[faq-ui]]` snippet once for the accordion styling. `FAQPage` JSON-LD is built from that markup — one copy of the text, nothing to keep in sync.
 - **Custom JSON-LD** — for anything else (Event, Recipe, Course, …), drop `<script type="application/ld+json" data-fx-schema>{"@type":"Event",…}</script>` in the content. Validated on save (bad JSON or a missing `@type` comes back as a warning and is dropped, not published) and merged into the single generated `<script>` in `<head>`.
+
+Redirects (301/302/307/308) live under Settings → SEO too, or `GET/PUT /api/v1/redirects` + `DELETE /api/v1/redirects/{id}` for agents. `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row, so an agent can scan for what needs SEO work without fetching every document.
 
 ## Licenses
 

@@ -71,12 +71,14 @@ Settings → Cache → **Enable HTML cache** writes real `.html` under `fallback
 
 ## After install
 
-1. Change the admin password
+1. Change the admin password — a non-dismissible red bar stays on every admin screen until you do (Settings → Access)
 2. Settings → SEO (site name, default share image, schema)
-3. Settings → Server (confirm rewrite / Authorization)
+3. Settings → Server (confirm rewrite / Authorization). Same nag bar also fires here for world-writable `database/`/`uploads`/`feeds`/`fallback`, `display_errors` on, a leftover `install.php`, or a missing `.htaccess` — run `chmod -R 775 database uploads feeds` again if permissions drifted from a manual upload/FTP deploy
 4. Settings → Backup → download a site package before you get brave
 5. Later CMS versions: Settings → Update (after this install is on 0.2.0+)
 6. Optional: [Buy Forma Podcast — $39](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General
+
+Forma also writes a deny-PHP `.htaccess` into `uploads/` automatically (any request for `*.php`/`*.phtml`/`*.phar` there 403s), so a bad file that slips past the upload filter still can't execute.
 
 ## What this repo does not contain
 

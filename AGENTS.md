@@ -30,6 +30,7 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 | Custom JSON-LD | `<script type="application/ld+json" data-fx-schema>` in content | Escape hatch for schema.org types Forma has no UI for (Event, Recipe, Course…). Validated on save (bad JSON / missing `@type` → warning, dropped, not published) and merged into the one generated `<script>` in `<head>`; the raw tag is stripped from the body. Accepts one object, an array, or `{"@graph":[…]}`. |
 | Redirects | `redirects` table | 301/302/307/308. `GET/PUT /api/v1/redirects`, `DELETE /api/v1/redirects/{id}`. Can't target `/admin` or `/api`. |
 | SEO health | `GET /api/v1/seo` → `health` | Sitewide report (dupes, missing favicon/description, schema fields, `[[seo]]` slot status per template). `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row for a cheap "what needs work" scan without fetching every doc. |
+| Hosting / security nags | `HostingCheck::adminAlerts()`, admin-only | A red bar on every admin screen for a still-default `admin`/`admin` password or a failing hosting check (world-writable `database`/`uploads`/`feeds`/`fallback`, `display_errors` on, leftover `install.php`, missing `.htaccess`). No API surface for the full report — that's Settings → Server only. `GET /api/v1/health` is the lighter, agent-facing filesystem check (bad upload paths, nested `lib/lib`/`admin/admin` from a bad manual deploy). Fix perms with `chmod 755` dirs / `640` the db file — never `chmod -R 777`. |
 
 ## Auth
 
