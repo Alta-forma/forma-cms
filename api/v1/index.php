@@ -507,6 +507,10 @@ function self_agent_store_media(array $file): array {
         throw new RuntimeException('Could not store upload');
     }
     @unlink($file['tmp_name']);
+    // tempnam() creates the source at mode 0600; rename() preserves that mode, which
+    // leaves Apache unable to serve the file directly (403) when PHP runs as a different
+    // user than the static-file-serving process. Normalize to a world-readable file.
+    @chmod($dest, 0644);
     return [
         'filename' => $destName,
         'url'      => forma_uploads_web_url($destName),

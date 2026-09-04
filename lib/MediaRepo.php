@@ -52,6 +52,9 @@ class MediaRepo {
         if (!move_uploaded_file($file['tmp_name'], $dest)) {
             throw new RuntimeException('Could not store upload');
         }
+        // Belt-and-suspenders: some SAPIs leave the moved file at a restrictive mode
+        // (e.g. 0600) that Apache can't read when serving it directly. See self_agent_store_media().
+        @chmod($dest, 0644);
         return [
             'filename' => $destName,
             'url'      => forma_uploads_web_url($destName),
