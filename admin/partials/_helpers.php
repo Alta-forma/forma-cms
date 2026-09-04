@@ -47,6 +47,49 @@ function fx_admin_alerts_html(bool $oob = false): string {
     return $html . '</div></div></div>';
 }
 
+/**
+ * The three-pane list+editor shell shared by pages.php / blog.php /
+ * snippets.php: a left .file-list with an "Add new" row above the list
+ * partial, and a right .editor-container pre-loaded with either the
+ * requested ?file= or a content-type-specific default (home for Pages,
+ * "first item" for Blog/Snippets — hence $defaultFile is a closure rather
+ * than this helper reaching into BlogRepo/SnippetRepo itself).
+ *
+ * podcast.php/podcast-unlocked.php and uploads.php don't use this: podcast
+ * has no "Add new" row (episodes come from the RSS import), and uploads
+ * has a dropzone instead of a file-list, so they keep their own markup.
+ */
+function fx_list_editor_shell(
+    string $addLabel,
+    string $newHxGet,
+    string $editorId,
+    string $listPartial,
+    string $editorPartial,
+    callable $defaultFile
+): void {
+    ?>
+    <div class="section-container">
+        <div class="file-list">
+            <div class="file-item new-file"
+                 hx-get="<?php echo h($newHxGet); ?>"
+                 hx-target="#<?php echo h($editorId); ?>"
+                 hx-swap="innerHTML">
+                <i class="fas fa-plus"></i> <?php echo h($addLabel); ?>
+            </div>
+            <?php require __DIR__ . '/' . $listPartial; ?>
+        </div>
+        <div class="editor-container" id="<?php echo h($editorId); ?>">
+            <?php
+            if (!isset($_GET['file'])) {
+                $_GET['file'] = $defaultFile();
+            }
+            require __DIR__ . '/' . $editorPartial;
+            ?>
+        </div>
+    </div>
+    <?php
+}
+
 /** Toggle switch row: label + optional hint on the left, switch on the right. */
 function fx_switch(string $name, bool $checked, string $label, string $hint = ''): string {
     $id = 'sw-' . preg_replace('/[^a-z0-9_-]/i', '-', $name);

@@ -1,41 +1,77 @@
 /* ==========================================================================
-   Forma — Admin panel
+   Forma — Admin panel stylesheet
+   ==========================================================================
+   No build step, no framework: plain CSS loaded once by admin/index.php
+   (cache-busted with ?v=<mtime>, see $fxAsset()). Sections below are ordered
+   to match the UI top-to-bottom / outside-in: shell → forms/buttons →
+   the three-pane list+editor screens (pages/blog/uploads/snippets) →
+   editor add-ons (toolbar, chips, SEO status) → modals → settings screens.
+
+   Each section names the admin/partials/*.php and admin/js/*.js files that
+   render the matching markup, so you know where to look before adding a
+   class here. Table of contents:
+
+     1.  Tokens (custom properties)
+     2.  Base / reset
+     3.  Login page
+     4.  Layout shell (header, nav, footer)
+     5.  Admin alert chip (hosting/security nag)
+     6.  Forms & fields
+     7.  Buttons
+     8.  File list (three-pane list column)
+     9.  Editor shell (CodeMirror host)
+     10. Editor toolbar (insert-menu dropdowns)
+     11. Meta panel, editor chips & inline SEO status
+     12. Modals (quick-add + generic fx-modal system)
+     13. Media field & media picker
+     14. Blog live preview
+     15. Uploads & dropzone
+     16. Settings design system
+     17. SEO panel (health, previews, redirects)
+     18. Save toast
+     19. Responsive
+     20. Print
    ========================================================================== */
 
 /* ==========================================================================
-   CSS CUSTOM PROPERTIES (VARIABLES)
+   1. TOKENS
    ========================================================================== */
 :root {
-    /* Primary Colors */
+    /* Brand / primary action color (buttons, active nav, focus rings) */
     --primary: #fcbe34;
     --primary-end: #e6a912;
     --primary-dark: #d99e00;
-    --accent: #fcbe34;
-    --accent-hover: #e6a912;
-    --accent-text: #121212;
-    
-    /* Background Colors */
+
+    /* Surfaces */
     --bg: #1e1e1e;
     --bg-end: #252526;
     --footer-bg: #2d2d2d;
-    --footer-bg-end: #252526;
-    
-    /* Text Colors */
+
+    /* Text */
     --text: #d4d4d4;
     --text-muted: #888888;
-    --text-color: #d4d4d4;
-    --input-bg: #1e1e1e;
-    --accent-color: #fcbe34;
-    
-    /* UI Colors */
+
+    /* Structure */
     --border: #3e3e42;
     --hover-bg: rgba(255, 255, 255, 0.1);
+
+    /* Hard error (form validation, destructive actions, security nag) */
     --error: #f44336;
     --error-end: #d32f2f;
+
+    /* Status trio — pass/warn/fail chips, hosting checks, SEO health,
+       cache cards. Kept distinct from --error, which is reserved for the
+       stronger "this is broken" red used in forms and the nag bar.
+       rgba() tints of these same hues appear throughout at various alphas
+       for card glows/backgrounds; those stay literal since the alpha is
+       hand-tuned per component. */
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --fail: #f87171;
 }
 
 /* ==========================================================================
-   BASE STYLES
+   2. BASE / RESET
    ========================================================================== */
 body {
     margin: 0;
@@ -47,17 +83,14 @@ body {
     overflow: hidden;
 }
 
-/* Utility Classes */
+/* Utility */
 .small {
     font-size: 0.8em;
 }
 
-.ml-auto {
-    margin-left: auto;
-}
-
 /* ==========================================================================
-   LOGIN PAGE STYLES
+   3. LOGIN PAGE
+   Rendered by: admin/login.php
    ========================================================================== */
 .login-container {
     position: absolute;
@@ -71,7 +104,6 @@ body {
     width: 100%;
     max-width: 400px;
 }
-
 .login-container h1 {
     text-align: center;
     margin: 0 0 2rem;
@@ -88,7 +120,6 @@ body {
     letter-spacing: 0.04em;
     margin: 0 0 2rem;
 }
-
 .login-default-warn {
     margin: 0 0 1.25rem;
     padding: 0.75rem 0.9rem;
@@ -103,7 +134,6 @@ body {
 .login-default-warn code {
     color: #fff;
 }
-
 .login-btn {
     width: 100%;
     padding: 0.85rem;
@@ -122,22 +152,19 @@ body {
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     transition: background 0.2s, color 0.2s;
 }
-
 .login-btn i {
     font-size: 1.2rem;
 }
-
-.login-btn:hover, 
+.login-btn:hover,
 .login-btn:focus {
     background: var(--primary-end);
     color: #121212;
 }
 
 /* ==========================================================================
-   LAYOUT COMPONENTS
+   4. LAYOUT SHELL
+   Rendered by: admin/index.php (header/nav/footer chrome around #main)
    ========================================================================== */
-
-/* Main Layout Structure */
 .main-container {
     position: fixed;
     top: 56px;
@@ -148,6 +175,8 @@ body {
     overflow: hidden;
 }
 
+/* Wraps each section partial's list+editor pair (pages.php, blog.php,
+   uploads.php, snippets.php, podcast.php, settings.php). */
 .section-container {
     display: flex;
     position: absolute;
@@ -158,7 +187,6 @@ body {
     background: var(--bg);
 }
 
-/* Header & Navigation */
 header {
     height: 56px;
     background: var(--bg-end);
@@ -172,7 +200,131 @@ header {
     right: 0;
     z-index: 1000;
 }
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
 
+/* Top nav pill (Pages / Blog / Uploads / Snippets / Settings) */
+.button-group {
+    display: inline-flex;
+    overflow-x: auto;
+    padding: 4px;
+    max-width: calc(100vw - 100px);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    align-items: center;
+    height: 36px;
+}
+.button-group button {
+    padding: 8px 16px;
+    min-width: 150px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    position: relative;
+    transition: all 0.2s ease;
+    margin: 0;
+}
+.button-group button:first-child {
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    padding-left: 20px;
+}
+.button-group button:last-child {
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+    padding-right: 20px;
+}
+.button-group button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.button-group button.active {
+    background: var(--primary);
+    color: #121212;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+/* Thin separators between pills, hidden next to the active (colored) one */
+.button-group button:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: var(--border);
+}
+.button-group button.active::after,
+.button-group button.active + button::after {
+    display: none;
+}
+
+#app-close-btn {
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 20px;
+}
+#app-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+#app-close-btn i {
+    font-size: 1.2rem;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    box-sizing: border-box;
+    background: var(--footer-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 20px;
+    z-index: 10;
+}
+footer .buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    max-width: 100%;
+}
+footer .button-group {
+    max-width: 100%;
+    height: auto;
+}
+footer .button-group button {
+    min-width: 0;
+}
+
+/* ==========================================================================
+   5. ADMIN ALERT CHIP
+   Bottom-left sticky nag for HostingCheck::adminAlerts() — default password
+   / failing hosting checks. Rendered by fx_admin_alerts_html() in
+   admin/partials/_helpers.php; toggled open/closed in admin/js/admin.js.
+   ========================================================================== */
 .fx-alert-chip {
     position: fixed;
     left: 16px;
@@ -225,6 +377,8 @@ header {
     transform: translateY(-1px);
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
 }
+/* Collapse/expand via grid-template-rows so height animates without JS
+   measuring — 0fr/1fr trick, opens on click (is-open) or hover. */
 .fx-alert-chip-panel {
     width: 100%;
     display: grid;
@@ -287,153 +441,17 @@ header {
     border-color: var(--error) !important;
 }
 
-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-}
-
-/* Navigation Button Group */
-.button-group {
-    display: inline-flex;
-    overflow-x: auto;
-    padding: 4px;
-    max-width: calc(100vw - 100px);
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 24px;
-    border: 1px solid var(--border);
-    align-items: center;
-    height: 36px;
-}
-
-.button-group button {
-    padding: 8px 16px;
-    min-width: 150px;
-    background: transparent;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    white-space: nowrap;
-    position: relative;
-    transition: all 0.2s ease;
-    margin: 0;
-}
-
-.button-group button:first-child {
-    border-top-left-radius: 20px;
-    border-bottom-left-radius: 20px;
-    padding-left: 20px;
-}
-
-.button-group button:last-child {
-    border-top-right-radius: 20px;
-    border-bottom-right-radius: 20px;
-    padding-right: 20px;
-}
-
-.button-group button:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.button-group button.active {
-    background: var(--primary);
-    color: #121212;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* Button separators */
-.button-group button:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 20%;
-    height: 60%;
-    width: 1px;
-    background: var(--border);
-}
-
-.button-group button.active::after,
-.button-group button.active + button::after {
-    display: none;
-}
-
-/* App Close Button */
-#app-close-btn {
-    width: 36px;
-    height: 36px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 20px;
-}
-
-#app-close-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-#app-close-btn i {
-    font-size: 1.2rem;
-}
-
-/* Footer */
-footer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 56px;
-    box-sizing: border-box;
-    background: var(--footer-bg);
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0 20px;
-    z-index: 10;
-}
-
-footer .buttons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    max-width: 100%;
-}
-
-footer .button-group {
-    max-width: 100%;
-    height: auto;
-}
-
-footer .button-group button {
-    min-width: 0;
-}
-
 /* ==========================================================================
-   FORM ELEMENTS
+   6. FORMS & FIELDS
+   Shared by every editor form (pages/blog/snippets/podcast/uploads/settings).
    ========================================================================== */
-
-/* Form Structure */
 .field {
     margin-bottom: 1rem;
 }
-
 .form-group {
     margin-bottom: 20px;
     width: 100%;
 }
-
 .form-group:last-child {
     margin-bottom: 0;
     flex: 1;
@@ -441,7 +459,6 @@ footer .button-group button {
     display: flex;
     flex-direction: column;
 }
-
 .form-row {
     display: flex;
     gap: 20px;
@@ -451,7 +468,6 @@ footer .button-group button {
     min-width: 0;
     box-sizing: border-box;
 }
-
 .form-row .form-group {
     flex: 1 1 0;
     margin-bottom: 0;
@@ -461,13 +477,6 @@ footer .button-group button {
     max-width: 100%;
 }
 
-.form-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* Form Labels */
 label {
     display: block;
     margin-bottom: 0.5rem;
@@ -475,7 +484,6 @@ label {
     color: var(--text);
 }
 
-/* Input Fields */
 input[type="text"],
 input[type="password"],
 input[type="email"],
@@ -494,7 +502,6 @@ select {
     box-sizing: border-box;
     transition: border-color 0.2s;
 }
-
 input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="email"]:focus,
@@ -506,36 +513,12 @@ select:focus {
     border-color: var(--primary);
     outline: none;
 }
-
-/* Select Dropdown Styling */
 select {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23d4d4d4' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 1rem center;
     padding-right: 2.5rem;
-}
-
-/* Special Input Components */
-.shortcode-input {
-    display: flex;
-    align-items: center;
-    background: var(--bg-end);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-}
-
-.shortcode-input input {
-    border: none;
-    background: transparent;
-    flex: 1;
-}
-
-.shortcode-prefix, 
-.shortcode-suffix {
-    padding: 0.75rem;
-    color: var(--text-muted);
-    user-select: none;
 }
 
 .filename-edit {
@@ -549,21 +532,21 @@ select {
     color: var(--text);
 }
 
-/* Form Hints */
+/* Single source of truth for .hint — do not add a second definition
+   elsewhere in this file; components that need a tweak should scope it
+   (e.g. `.fx-modal .form-group .hint { margin-top: .4rem }`) rather than
+   redeclaring the base rule. */
 .hint {
+    display: block;
     font-size: 0.8rem;
-    color: var(--text);
-    opacity: 0.7;
-    margin-top: 0.25rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
 }
 
 /* ==========================================================================
-   BUTTON COMPONENTS
+   7. BUTTONS
    ========================================================================== */
-
-/* Standard Buttons */
-.standard-btn,
-.btn-save {
+.standard-btn {
     padding: 8px 16px;
     background: transparent;
     border: 2px solid var(--border);
@@ -576,28 +559,31 @@ select {
     font-size: 0.9rem;
     transition: all 0.2s ease;
 }
-
-.standard-btn:hover:not(:disabled),
-.btn-save:hover:not(:disabled) {
+.standard-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
     border-color: var(--primary);
     color: var(--primary);
 }
-
-.standard-btn:disabled,
-.btn-save:disabled {
+.standard-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
-
-.standard-btn i,
-.btn-save i {
+.standard-btn i {
     font-size: 1rem;
 }
+/* Lower-emphasis variant, e.g. "Cancel" next to a primary submit */
+.standard-btn.subtle-btn {
+    background: rgba(255,255,255,.035);
+    border-color: var(--border);
+    color: var(--text-muted);
+}
+.standard-btn.subtle-btn:hover {
+    color: var(--primary);
+    border-color: rgba(252,190,52,.45);
+    background: rgba(252,190,52,.07);
+}
 
-/* Delete Buttons */
-.delete-btn,
-.btn-delete {
+.delete-btn {
     padding: 8px 16px;
     background: transparent;
     border: 2px solid var(--error);
@@ -610,47 +596,22 @@ select {
     font-size: 0.9rem;
     transition: all 0.2s ease;
 }
-
-.delete-btn:hover:not(:disabled),
-.btn-delete:hover:not(:disabled) {
+.delete-btn:hover:not(:disabled) {
     background: var(--error);
     color: white;
 }
-
-.delete-btn:disabled,
-.btn-delete:disabled {
+.delete-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
-
-.delete-btn i,
-.btn-delete i {
+.delete-btn i {
     font-size: 1rem;
 }
 
-/* Toggle Buttons */
-.toggle-btn {
-    background: transparent;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.toggle-btn i {
-    transition: transform 0.3s ease;
-}
-
 /* ==========================================================================
-   FILE LIST COMPONENT
+   8. FILE LIST
+   The left-hand list pane shared by pages/blog/uploads/snippets/podcast —
+   admin/partials/{pages,blog,uploads,snippets,podcast}-list.php.
    ========================================================================== */
 .file-list {
     width: 250px;
@@ -661,14 +622,11 @@ select {
     flex-direction: column;
     overflow: hidden;
 }
-
 .file-list-content {
     overflow-y: auto;
     flex-grow: 1;
     padding: 10px;
 }
-
-/* File Items */
 .file-item {
     padding: 10px;
     cursor: pointer;
@@ -682,26 +640,24 @@ select {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-
 .file-item:hover {
     background: var(--hover-bg);
 }
-
 .file-item.active {
     background: var(--primary);
     color: #121212;
 }
-
 .file-item.active i {
     color: #121212 !important;
 }
-
 .file-item i {
     width: 20px;
     text-align: center;
 }
-
-/* New File Button */
+.file-item.htmx-request {
+    opacity: .6;
+}
+/* "+ New" row pinned above the list */
 .file-item.new-file {
     background: var(--primary);
     color: #121212;
@@ -714,31 +670,34 @@ select {
     align-items: center;
     gap: 8px;
 }
-
 .file-item.new-file:hover {
     background: var(--primary-dark);
     transform: translateY(-1px);
 }
-
-/* File Type Icons */
+/* File type icon tinting (uploads list) */
 .file-item i.fa-file-image { color: #4CAF50; }
 .file-item i.fa-file-audio { color: #2196F3; }
 .file-item i.fa-file-video { color: #F44336; }
 .file-item i.fa-file-alt { color: #9E9E9E; }
 .file-item i.fa-file-code { color: #FF9800; }
 
-/* File Meta Information */
-.file-item-meta {
-    font-size: 0.8em;
-    color: var(--text-muted);
-    margin-left: 5px;
+.settings-nav .file-item {
+    cursor: pointer;
+}
+
+/* Small inline badge, e.g. "draft" / "(md)" next to a list row title */
+.status-pill {
+    font-size: .75rem;
+    opacity: .7;
+    margin-left: .35rem;
 }
 
 /* ==========================================================================
-   EDITOR COMPONENTS
+   9. EDITOR SHELL
+   The right-hand pane hosting a CodeMirror instance — pages-editor.php,
+   blog-editor.php, snippets-editor.php, podcast-editor.php, uploads.php
+   (text preview), settings-server.php (.htaccess editor).
    ========================================================================== */
-
-/* Editor Container */
 .editor-container {
     flex: 1;
     min-width: 0;
@@ -748,7 +707,6 @@ select {
     overflow: hidden;
     position: relative;
 }
-
 .editor-form {
     flex: 1;
     display: flex;
@@ -759,7 +717,8 @@ select {
     overflow-y: auto;
 }
 
-/* CodeMirror Integration */
+/* CodeMirror 5 host + a few overrides of its own generated DOM (the
+   CodeMirror-* classes below come from the library, not our markup). */
 .CodeMirror {
     flex: 1;
     height: auto !important;
@@ -768,29 +727,185 @@ select {
     border: 1px solid var(--border);
     border-radius: 4px;
     line-height: 1.6;
+    /* Anchors the absolutely-positioned .editor-toolbar (section 10) */
+    position: relative;
 }
 .CodeMirror pre.CodeMirror-line,
 .CodeMirror pre.CodeMirror-line-like {
     padding: 2px 4px 2px 0;
 }
-
 .CodeMirror-scroll {
     min-height: 200px;
 }
-
 .CodeMirror-gutters {
     background: var(--bg-end) !important;
     border-right: 1px solid var(--border) !important;
 }
-
 .CodeMirror-linenumber {
     color: #666 !important;
 }
-
+/* Overlay mode added in editor-chips.js (addIndentGuide); CodeMirror
+   prefixes overlay tokens with "cm-", so the returned token name
+   'fx-indent' becomes this class in the rendered DOM. */
 .cm-fx-indent {
     box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.07);
 }
 
+.code-editor {
+    position: relative;
+}
+.text-editor {
+    margin-top: 20px;
+}
+
+/* ==========================================================================
+   10. EDITOR TOOLBAR
+   The floating "Pages / Blog / Uploads / Snippets" insert-menu docked to
+   the top-right of every CodeMirror instance. Built by
+   admin/js/editor-toolbar.js (createToolbar / loadAll / wireInsert).
+   ========================================================================== */
+.editor-toolbar {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 999;
+    display: flex;
+    gap: 5px;
+    background: var(--bg-end);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.editor-toolbar .dropdown {
+    position: relative;
+    display: inline-block;
+}
+.editor-toolbar .dropdown .toolbar-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.editor-toolbar .dropdown .toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.editor-toolbar .dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    min-width: 200px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 20;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.editor-toolbar .dropdown.active .dropdown-content {
+    display: block;
+}
+.editor-toolbar .dropdown-content .dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.editor-toolbar .dropdown-content .dropdown-item:hover {
+    background: var(--bg-end);
+}
+.editor-toolbar .dropdown-content .dropdown-item i {
+    color: var(--primary);
+    font-size: 0.9rem;
+    width: 16px;
+    text-align: center;
+}
+.editor-toolbar .dropdown-content .dropdown-header {
+    padding: 8px 12px;
+    font-weight: bold;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 5px;
+}
+.editor-toolbar .dropdown-item.add-new {
+    color: var(--primary);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+}
+.editor-toolbar .toolbar-upload-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.15);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+.editor-toolbar .toolbar-upload-btn:hover {
+    color: var(--primary);
+    background: rgba(255,255,255,.08);
+}
+
+/* ==========================================================================
+   11. META PANEL, EDITOR CHIPS & INLINE SEO STATUS
+   The collapsible "Page details" panel + the CodeMirror chip rendering for
+   [[shortcode]] tokens and the [[seo]] slot. Built by admin/js/admin.js
+   (wireMetaPanels) and admin/js/editor-chips.js (paint/mount).
+   ========================================================================== */
+.meta-panel {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    background: var(--bg-end);
+}
+.meta-panel-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    font-size: .95rem;
+    text-align: left;
+}
+.meta-panel-toggle:hover {
+    background: rgba(255,255,255,.04);
+}
+.meta-panel-toggle .chev {
+    transition: transform .15s;
+    opacity: .7;
+}
+.meta-panel.collapsed .chev {
+    transform: rotate(-90deg);
+}
+.meta-panel.collapsed .meta-panel-body {
+    display: none;
+}
+.meta-panel-body {
+    padding: 0 1rem 1rem;
+}
+.meta-panel-summary {
+    color: var(--text-muted);
+    font-size: .8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 55%;
+}
+
+/* Shortcode/[[seo]]/<!--META--> chips rendered as atomic CodeMirror marks */
 .fx-cm-chip {
     display: inline-flex;
     align-items: center;
@@ -814,17 +929,20 @@ select {
     font-size: 0.72em;
     line-height: 1;
 }
+/* System chips: [[seo]] and the <!--META--> block */
 .fx-cm-chip-sys {
     border-color: #ffd24a;
     background: #ffd24a;
     color: #14110a;
     box-shadow: 0 0 10px rgba(252, 190, 52, 0.45);
 }
+/* Stock snippet ([[search]], [[search-ui]], [[error-ui]], [[faq-ui]]) */
 .fx-cm-chip-stock {
     border-color: #60a5fa;
     background: #3b82f6;
     color: #fff;
 }
+/* User-authored snippet */
 .fx-cm-chip-user {
     border-color: #a3e635;
     background: #84cc16;
@@ -852,6 +970,43 @@ select {
     font-size: 0.7em;
     font-weight: 800;
 }
+
+/* Popover shown when a chip is clicked (openPop / openMetaPop) */
+.fx-chip-pop {
+    position: fixed;
+    z-index: 1800;
+    width: min(22rem, calc(100vw - 1.5rem));
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-end, #1a1a1a);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    color: var(--text);
+}
+.fx-chip-pop-kicker {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted, #a3a3a3);
+    margin-bottom: 0.25rem;
+}
+.fx-chip-pop-title {
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+}
+.fx-chip-pop p {
+    margin: 0 0 0.75rem;
+    font-size: 0.82rem;
+    color: var(--text-muted, #a3a3a3);
+}
+.fx-chip-pop-bang {
+    color: #ef4444 !important;
+}
+.fx-chip-pop .switch-row {
+    margin: 0;
+}
+
+/* Status row inside the SEO meta-panel ("SEO auto-inserts after <head>") */
 .fx-seo-status {
     display: flex;
     align-items: center;
@@ -890,12 +1045,12 @@ select {
     color: #facc15;
 }
 .fx-seo-status.is-warn {
-    border-color: #fbbf24;
+    border-color: var(--warn);
     background: rgba(245, 158, 11, 0.16);
 }
 .fx-seo-status.is-warn i {
     opacity: 1;
-    color: #fbbf24;
+    color: var(--warn);
 }
 .fx-seo-status-btn {
     border: 1px solid var(--border);
@@ -912,6 +1067,7 @@ select {
     color: var(--text);
     background: rgba(255, 255, 255, 0.08);
 }
+
 /* Per-document SEO health — same visual language as fx-seo-status, but a
    stacked list of specific issues right where the editor already is. */
 .fx-page-health {
@@ -939,11 +1095,11 @@ select {
     flex: 1;
 }
 .fx-page-health-item.is-warn {
-    border-color: #fbbf24;
+    border-color: var(--warn);
     background: rgba(245, 158, 11, 0.14);
 }
 .fx-page-health-item.is-warn i {
-    color: #fbbf24;
+    color: var(--warn);
 }
 .fx-page-health-item.is-info {
     border-color: var(--border);
@@ -960,7 +1116,7 @@ select {
     color: var(--text-muted);
 }
 .fx-page-health-item.is-ok i {
-    color: #4ade80;
+    color: var(--ok);
 }
 .fx-page-health-fix {
     border: 1px solid var(--border);
@@ -978,6 +1134,9 @@ select {
     color: var(--text);
     background: rgba(255, 255, 255, 0.08);
 }
+
+/* Amber footer badge — same "SEO off" condition as the status row, surfaced
+   next to Save too (renderPageAlert in editor-chips.js). */
 .fx-page-alert {
     display: inline-flex;
     align-items: center;
@@ -987,9 +1146,9 @@ select {
     flex: none;
     padding: 0;
     border-radius: 50%;
-    border: 1px solid #fbbf24;
+    border: 1px solid var(--warn);
     background: rgba(251, 191, 36, 0.16);
-    color: #fbbf24;
+    color: var(--warn);
     font-size: 0.85rem;
     cursor: pointer;
 }
@@ -999,605 +1158,18 @@ select {
 .fx-page-alert[hidden] {
     display: none;
 }
-.fx-chip-pop {
-    position: fixed;
-    z-index: 1800;
-    width: min(22rem, calc(100vw - 1.5rem));
-    padding: 0.9rem 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--bg-end, #1a1a1a);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-    color: var(--text);
-}
-.fx-chip-pop-kicker {
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted, #a3a3a3);
-    margin-bottom: 0.25rem;
-}
-.fx-chip-pop-title {
-    font-weight: 700;
-    margin-bottom: 0.4rem;
-}
-.fx-chip-pop p {
-    margin: 0 0 0.75rem;
-    font-size: 0.82rem;
-    color: var(--text-muted, #a3a3a3);
-}
-.fx-chip-pop-bang {
-    color: #ef4444 !important;
-}
-.fx-chip-pop .switch-row {
-    margin: 0;
-}
-
-/* Content Editor Areas */
-.code-editor,
-.content-editor {
-    position: relative;
-}
-
-.text-editor {
-    margin-top: 20px;
-}
-
-.editor-actions {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
 
 /* ==========================================================================
-   EDITOR TOOLBAR
+   12. MODALS
+   One shared "fx-modal" system for: quick-add (editor-toolbar.js modal()),
+   the media picker (admin.js openMediaPicker()), and any future dialog.
+   Always build new dialogs on fx-modal-backdrop > fx-modal so they inherit
+   this styling instead of starting a fourth parallel system.
    ========================================================================== */
-.editor-toolbar {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 999;
-    display: flex;
-    gap: 5px;
-    background: var(--bg-end);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Toolbar Dropdowns */
-.editor-toolbar .dropdown {
-    position: relative;
-    display: inline-block;
-}
-
-.editor-toolbar .dropdown .toolbar-btn {
-    background: transparent;
-    border: none;
-    color: var(--text);
-    padding: 6px 10px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.editor-toolbar .dropdown .toolbar-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* Dropdown Content */
-.editor-toolbar .dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    min-width: 200px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    z-index: 20;
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.editor-toolbar .dropdown.active .dropdown-content {
-    display: block;
-}
-
-/* Dropdown Items */
-.editor-toolbar .dropdown-content .dropdown-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.editor-toolbar .dropdown-content .dropdown-item:hover {
-    background: var(--bg-end);
-}
-
-.editor-toolbar .dropdown-content .dropdown-item i {
-    color: var(--primary);
-    font-size: 0.9rem;
-    width: 16px;
-    text-align: center;
-}
-
-/* Dropdown Headers and Separators */
-.editor-toolbar .dropdown-content .dropdown-header {
-    padding: 8px 12px;
-    font-weight: bold;
-    color: var(--primary);
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 5px;
-}
-
-.editor-toolbar .dropdown-content .dropdown-subheader {
-    padding: 4px 12px;
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: var(--text);
-    opacity: 0.7;
-    cursor: default;
-}
-
-.editor-toolbar .dropdown-content .dropdown-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 5px 0;
-}
-
-/* ==========================================================================
-   FRONT MATTER COMPONENT
-   ========================================================================== */
-
-/* Front Matter Section */
-.front-matter-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.front-matter-content {
-    transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
-    overflow: hidden;
-    max-height: 500px;
-    opacity: 1;
-}
-
-.front-matter-collapsed .front-matter-content {
-    max-height: 0;
-    opacity: 0;
-}
-
-.front-matter-collapsed .toggle-btn i {
-    transform: rotate(180deg);
-}
-
-/* ==========================================================================
-   FILE UPLOAD & PREVIEW COMPONENTS
-   ========================================================================== */
-
-/* Dropzone Styling */
-.dropzone {
-    position: relative;
-    height: 100%;
-    min-height: 300px;
-    text-align: center;
-    background: var(--bg-end);
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.dz-message {
-    color: var(--text);
-    position: relative;
-    z-index: 1;
-    background: var(--bg-end);
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.dz-message i {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: var(--primary);
-}
-
-.dz-message h3 {
-    margin: 0 0 8px 0;
-}
-
-.dz-message p {
-    margin: 0 0 20px 0;
-    color: #888;
-}
-
-.dz-message .browse-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: var(--primary);
-    color: #121212;
-    border: none;
-    border-radius: 4px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-}
-
-.dz-message .browse-btn i {
-    font-size: 1em;
-    margin: 0;
-    color: inherit;
-}
-.dz-message .browse-btn:hover {
-    background: var(--primary-dark);
-    color: #121212;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.dz-message .browse-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* File Preview */
-.file-preview {
-    background: var(--bg-end);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 20px;
-}
-
-.preview-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.preview-header h3 {
-    margin: 0;
-    color: var(--text);
-}
-
-.preview-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.preview-content {
-    margin-bottom: 20px;
-    background: var(--bg);
-    border-radius: 4px;
-}
-
-.preview-content img,
-.preview-content video,
-.preview-content audio {
-    max-width: 100%;
-    border-radius: 4px;
-}
-
-.no-preview {
-    padding: 20px;
-    text-align: center;
-    color: var(--text-muted);
-}
-
-/* ==========================================================================
-   MODAL COMPONENTS
-   ========================================================================== */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: var(--bg);
-    border-radius: 8px;
-    width: 80%;
-    max-width: 800px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.modal-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 {
-    margin: 0;
-    color: var(--text);
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    color: var(--text);
-    font-size: 24px;
-    cursor: pointer;
-}
-
-.modal-body {
-    padding: 16px;
-    overflow-y: auto;
-}
-
-/* File Browser for Modals */
-.file-browser {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 15px;
-    max-height: 60vh;
-    overflow-y: auto;
-    padding: 10px;
-}
-
-.file-browser-item {
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.file-browser-item:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.file-browser-item img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    display: block;
-}
-
-.file-browser-item .filename {
-    padding: 8px;
-    font-size: 0.8rem;
-    background: var(--bg-end);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* ==========================================================================
-   STATUS & NOTIFICATION ELEMENTS
-   ========================================================================== */
-.loading, 
-.no-items, 
-.error, 
-.loading-state, 
-.no-files {
-    padding: 20px;
-    text-align: center;
-}
-
-.error {
-    color: var(--error);
-}
-
-.loading-state i, 
-.no-files i {
-    margin-right: 8px;
-}
-
-.no-files {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text-muted);
-}
-
-.no-files i {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-}
-
-.no-files p {
-    margin: 8px 0;
-}
-
-.no-files .hint {
-    font-size: 0.9em;
-    opacity: 0.7;
-}
-
-/* ==========================================================================
-   SECTION TRANSITIONS & ANIMATIONS
-   ========================================================================== */
-.section-content {
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    display: none;
-}
-
-.section-content.active {
-    opacity: 1;
-    transform: translateY(0);
-    display: block;
-}
-
-/* ==========================================================================
-   RESPONSIVE DESIGN
-   ========================================================================== */
-
-/* Mobile and Tablet Adjustments */
-@media (max-width: 768px) {
-    .button-group {
-        max-width: calc(100vw - 60px);
-    }
-    
-    .button-group button {
-        min-width: 120px;
-        font-size: 0.8rem;
-    }
-    
-    .file-list {
-        width: 200px;
-        min-width: 200px;
-    }
-    
-    .editor-form {
-        padding: 15px;
-    }
-    
-    .form-row {
-        flex-direction: column;
-        gap: 15px;
-    }
-}
-
-@media (max-width: 480px) {
-    header {
-        padding: 0 10px;
-    }
-    
-    .button-group button {
-        min-width: 100px;
-        padding: 6px 12px;
-    }
-    
-    .file-list {
-        width: 180px;
-        min-width: 180px;
-    }
-}
-
-/* ==========================================================================
-   PRINT STYLES
-   ========================================================================== */
-@media print {
-    body {
-        background: white;
-        color: black;
-    }
-    
-    header,
-    footer,
-    .file-list,
-    .editor-toolbar {
-        display: none;
-    }
-    
-    .editor-container {
-        position: static;
-        padding: 0;
-    }
-} /* Forma htmx extras */
-.toast{position:fixed;bottom:72px;right:20px;background:var(--primary);color:#121212;padding:.6rem 1rem;border-radius:4px;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s;pointer-events:none}
-.toast.show{opacity:1}
-
-.fx-upload-toasts{
-  position:fixed;right:20px;bottom:72px;z-index:2100;display:flex;flex-direction:column-reverse;gap:.55rem;
-  max-width:min(22rem,calc(100vw - 2.5rem));pointer-events:none;
-}
-.fx-upload-toast{
-  pointer-events:auto;display:flex;align-items:center;gap:.75rem;
-  background:#2a2a2c;border:1px solid var(--border);border-radius:10px;
-  padding:.7rem .85rem .7rem .7rem;color:var(--text);
-  box-shadow:0 14px 36px rgba(0,0,0,.38);
-  animation:fx-upload-in .22s ease-out;
-}
-.fx-upload-toast.is-out{opacity:0;transform:translateY(8px);transition:opacity .22s,transform .22s}
-.fx-upload-toast.is-fail{border-color:rgba(244,67,54,.45)}
-.fx-upload-toast-body{min-width:0;flex:1}
-.fx-upload-toast-name{
-  display:block;font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:16rem;
-}
-.fx-upload-toast-status{display:block;font-size:.75rem;color:var(--text-muted);margin-top:.12rem}
-.fx-upload-toast.is-fail .fx-upload-toast-status{color:#f87171}
-.fx-upload-ring{width:2.15rem;height:2.15rem;flex-shrink:0;transform-origin:50% 50%}
-.fx-upload-ring .track{stroke:rgba(255,255,255,.12);stroke-width:3}
-.fx-upload-ring .fill{stroke:var(--primary);stroke-width:3;stroke-linecap:round;transform:rotate(-90deg);transform-origin:18px 18px}
-.fx-upload-ring.is-spin{animation:fx-ring-spin .9s linear infinite}
-.fx-upload-ring.is-done .fill{stroke:var(--primary)}
-.fx-upload-ring.is-fail .fill{stroke:#f87171}
-.dropzone.is-uploading{opacity:.92}
-.fx-file-hidden{
-  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
-  clip:rect(0,0,0,0);white-space:nowrap;border:0;opacity:0;
-}
-@keyframes fx-upload-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes fx-ring-spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){
-  .fx-upload-toast,.fx-upload-toast.is-out,.fx-upload-ring.is-spin{animation:none;transition:none}
-}
-.status-pill{font-size:.75rem;opacity:.7;margin-left:.35rem}
-.file-item.htmx-request{opacity:.6}
-.editor-form .CodeMirror{flex:1;height:100%;border:1px solid var(--border);border-radius:4px}
-.hint{display:block;font-size:.8rem;color:var(--text-muted);margin-top:.35rem}
-.settings-nav .file-item{cursor:pointer}
-.upload-drop{border:2px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;margin:1rem}
-.upload-drop.dragover{border-color:var(--primary);background:rgba(252,190,52,.08)}
-.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;padding:1rem;overflow:auto}
-.media-card{border:1px solid var(--border);border-radius:6px;padding:.5rem;cursor:pointer;text-align:center;font-size:.8rem}
-.media-card.active,.media-card:hover{border-color:var(--primary)}
-.media-card img{max-width:100%;max-height:80px;object-fit:cover}
-.locked-banner{padding:2rem;text-align:center;color:var(--text-muted)}
-.agent-token-once{background:#2d2d2d;border:1px solid var(--primary);padding:1rem;border-radius:6px;font-family:monospace;word-break:break-all;margin:1rem 0}
-
-/* Meta collapse */
-.meta-panel { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 1rem; background: var(--bg-end); }
-.meta-panel-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1rem; background: transparent; border: none; color: var(--text); cursor: pointer; font-size: .95rem; text-align: left; }
-.meta-panel-toggle:hover { background: rgba(255,255,255,.04); }
-.meta-panel-toggle .chev { transition: transform .15s; opacity: .7; }
-.meta-panel.collapsed .chev { transform: rotate(-90deg); }
-.meta-panel.collapsed .meta-panel-body { display: none; }
-.meta-panel-body { padding: 0 1rem 1rem; }
-.meta-panel-summary { color: var(--text-muted); font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
-
-/* Hosting checks */
-.hosting-check { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--bg-end); }
-.hosting-check.pass { border-left: 3px solid #4ade80; }
-.hosting-check.warn { border-left: 3px solid #fbbf24; }
-.hosting-check.fail { border-left: 3px solid #f87171; }
-.hosting-check h4 { margin: 0 0 .35rem; font-size: .95rem; }
-.hosting-check .detail { color: var(--text-muted); font-size: .85rem; margin-bottom: .5rem; }
-.hosting-check ul { margin: .35rem 0 0; padding-left: 1.2rem; color: var(--text-muted); font-size: .85rem; }
-.hosting-summary { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.hosting-summary span { padding: .35rem .75rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--border); }
-.hosting-summary .fail { color: #f87171; }
-.hosting-summary .warn { color: #fbbf24; }
-.hosting-summary .pass { color: #4ade80; }
-
-/* Quick-add modal */
 @keyframes fx-modal-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fx-modal-pop { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes fx-spin { to { transform: rotate(360deg); } }
+
 .fx-modal-backdrop {
     position: fixed; inset: 0; background: rgba(8,8,8,.6); z-index: 4000;
     display: flex; align-items: center; justify-content: center; padding: 1.5rem;
@@ -1700,7 +1272,144 @@ select {
 }
 .fx-modal-actions .standard-btn[type="submit"] .fa-spinner { animation: fx-spin .7s linear infinite; }
 
-/* Blog live preview — real blog-single chrome in a resizable frame */
+/* ==========================================================================
+   13. MEDIA FIELD & MEDIA PICKER
+   The reusable "path input + thumbnail + Browse/Upload" control
+   (fx_media_field() helper, wherever a featured/OG image is picked) and
+   the fx-modal-based picker it opens (admin.js openMediaPicker()).
+   ========================================================================== */
+.fx-media-field { width: 100%; max-width: 100%; min-width: 0; }
+.fx-media-field > label { display: block; margin-bottom: .35rem; }
+.fx-media-row {
+    display: flex;
+    align-items: stretch;
+    gap: .5rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+.fx-media-thumb {
+    width: 42px;
+    height: 42px;
+    flex: none;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg) center/cover no-repeat;
+    display: none;
+}
+.fx-media-thumb.has-img { display: block; }
+.fx-media-thumb.is-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: .75rem;
+    background-image: none !important;
+}
+.fx-media-row input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+.fx-media-actions {
+    display: flex;
+    gap: .35rem;
+    flex: none;
+}
+.fx-media-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    padding: 0 .7rem;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: rgba(0,0,0,.2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: .8rem;
+    white-space: nowrap;
+}
+.fx-media-btn:hover { border-color: var(--primary); color: var(--primary); }
+.fx-media-btn.primary {
+    background: rgba(252,190,52,.12);
+    border-color: rgba(252,190,52,.45);
+    color: var(--primary);
+}
+.fx-media-btn.primary:hover { background: rgba(252,190,52,.22); }
+.fx-media-btn i { font-size: .85rem; }
+@media (max-width: 640px) {
+    .fx-media-row { flex-wrap: wrap; }
+    .fx-media-row input[type="text"] { flex: 1 1 100%; order: 1; }
+    .fx-media-thumb { order: 0; }
+    .fx-media-actions { order: 2; width: 100%; }
+    .fx-media-btn { flex: 1; }
+    .fx-media-btn span { display: inline; }
+}
+
+/* Picker dialog (built on the fx-modal system, section 12) */
+.fx-media-modal .fx-modal { max-width: 720px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; }
+.fx-media-modal .fx-modal-body { overflow: auto; flex: 1; min-height: 0; padding-top: .5rem; }
+.fx-media-modal-toolbar {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    margin-bottom: .75rem;
+    flex-wrap: wrap;
+}
+.fx-media-modal-toolbar input[type="search"] {
+    flex: 1 1 180px;
+    min-width: 0;
+    margin: 0;
+}
+.fx-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: .65rem;
+}
+.fx-media-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(0,0,0,.2);
+    cursor: pointer;
+    overflow: hidden;
+    text-align: left;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    transition: border-color .15s, transform .15s;
+}
+.fx-media-item:hover { border-color: var(--primary); transform: translateY(-1px); }
+.fx-media-item .thumb {
+    height: 84px;
+    background: #1a1a1a center/cover no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 1.4rem;
+}
+.fx-media-item .meta {
+    padding: .45rem .5rem;
+    font-size: .72rem;
+    line-height: 1.3;
+}
+.fx-media-item .meta strong {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+.fx-media-item .meta span { color: var(--text-muted); }
+.fx-media-empty { padding: 2rem 1rem; text-align: center; color: var(--text-muted); }
+
+/* ==========================================================================
+   14. BLOG LIVE PREVIEW
+   Real blog-single chrome rendered into a resizable frame — openBlogPreview()
+   in admin/js/admin.js, backed by admin/actions/blog-preview.php.
+   ========================================================================== */
 .fx-preview-backdrop {
     position: fixed;
     inset: 0;
@@ -1789,7 +1498,316 @@ select {
     transition: width .2s ease;
 }
 
-/* Styled file picker (Backup / Import) */
+/* ==========================================================================
+   15. UPLOADS & DROPZONE
+   Rendered by admin/partials/uploads.php; queued/progress UI driven by
+   admin/js/admin.js (uploadFiles/makeListGhost/makeToast).
+   ========================================================================== */
+.dropzone {
+    position: relative;
+    height: 100%;
+    min-height: 300px;
+    text-align: center;
+    background: var(--bg-end);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+}
+.dropzone .dz-message { pointer-events: none; }
+.dropzone .browse-btn { pointer-events: auto; }
+/* Decorative diagonal gradient sweep, idle vs. drag-hover speed */
+.dropzone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, var(--primary) 0%, transparent 50%, transparent 50%, var(--primary) 100%);
+    opacity: 0.1;
+    animation: gradientPulse 2s ease-in-out infinite;
+    background-size: 120% 120%;
+    pointer-events: none;
+}
+.dropzone.dz-drag-hover::before { animation: gradientPulse .6s ease-in-out infinite; opacity: .2; }
+@keyframes gradientPulse {
+    0% { opacity: .1; background-position: 0% 0%; }
+    50% { opacity: .15; background-position: 100% 100%; }
+    100% { opacity: .1; background-position: 0% 0%; }
+}
+
+.dz-message {
+    color: var(--text);
+    position: relative;
+    z-index: 1;
+    background: var(--bg-end);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.dz-message i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--primary);
+}
+.dz-message h3 {
+    margin: 0 0 8px 0;
+}
+.dz-message p {
+    margin: 0 0 20px 0;
+    color: var(--text-muted);
+}
+.dz-message .browse-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--primary);
+    color: #121212;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+.dz-message .browse-btn i {
+    font-size: 1em;
+    margin: 0;
+    color: inherit;
+}
+.dz-message .browse-btn:hover {
+    background: var(--primary-dark);
+    color: #121212;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.dz-message .browse-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Selected-file preview pane (image/audio/video/pdf/text) */
+.preview-content {
+    margin-bottom: 20px;
+    background: var(--bg);
+    border-radius: 4px;
+}
+.preview-content img,
+.preview-content video,
+.preview-content audio {
+    max-width: 100%;
+    border-radius: 4px;
+}
+.no-preview {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* Uploads-section-scoped layout: fills the editor pane instead of the
+   generic padded editor-form, plus a checkerboard stage for images. */
+.uploads-section .editor-container,
+.uploads-section .editor-form {
+    min-width: 0;
+    max-width: 100%;
+}
+.uploads-section .upload-preview-form {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+.uploads-section .upload-asset-head {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    margin-bottom: .25rem;
+}
+.uploads-section .upload-asset-head .form-group { margin-bottom: .85rem; }
+.uploads-section .upload-asset-head .feed-url-row { margin: .15rem 0 0; }
+.uploads-section .upload-asset-head,
+.uploads-section .upload-asset-head .form-group,
+.uploads-section .upload-asset-head .feed-url-row {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.uploads-section .upload-asset-stats {
+    margin-top: .4rem;
+    opacity: 1;
+    color: var(--text-muted);
+}
+.uploads-section .preview-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    min-height: 160px;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background-color: #141414;
+    background-image:
+        linear-gradient(45deg, #1c1c1c 25%, transparent 25%),
+        linear-gradient(-45deg, #1c1c1c 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1c1c1c 75%),
+        linear-gradient(-45deg, transparent 75%, #1c1c1c 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+    padding: 1.25rem;
+    box-sizing: border-box;
+}
+.uploads-section .upload-preview-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    min-height: 160px;
+}
+.uploads-section .preview-content img {
+    max-width: 100%;
+    max-height: calc(100vh - 280px);
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.45);
+}
+.uploads-section .preview-content video,
+.uploads-section .preview-content audio {
+    width: 100%;
+    max-width: 720px;
+    border-radius: 6px;
+}
+.uploads-section .pdf-frame {
+    width: 100%;
+    max-width: 100%;
+    flex: 1;
+    min-height: 240px;
+    height: 100%;
+}
+.uploads-section .pdf-frame iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 240px;
+    border: 0;
+    border-radius: 6px;
+    background: #111;
+}
+.uploads-section .no-preview {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.uploads-section .upload-text-editor {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    margin-top: 0;
+}
+.uploads-section .upload-text-editor .CodeMirror {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 200px;
+    height: auto !important;
+}
+
+/* List rows for files mid-upload (ghost rows) — makeListGhost() */
+.uploads-section .upload-item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+}
+.uploads-section .upload-item.is-ghost {
+    pointer-events: none;
+    cursor: wait;
+    opacity: .78;
+}
+.uploads-section .upload-item.is-ghost-fail {
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 1;
+}
+.uploads-section .upload-ghost-icon {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.uploads-section .upload-ghost-icon .fx-upload-ring {
+    width: 28px;
+    height: 28px;
+    position: relative;
+    z-index: 1;
+}
+.uploads-section .upload-ghost-icon .is-ghost-thumb {
+    position: absolute;
+    inset: 0;
+    opacity: .42;
+}
+.uploads-section .upload-ghost-text {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .05rem;
+}
+.uploads-section .upload-ghost-pct {
+    font-size: .72rem;
+    color: var(--text-muted);
+    line-height: 1.1;
+}
+.uploads-section .upload-item.is-fail .upload-ghost-pct,
+.uploads-section .upload-item.is-ghost-fail .upload-ghost-pct {
+    color: var(--fail);
+}
+.uploads-section .upload-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: var(--bg) center/cover no-repeat;
+    flex: none;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.uploads-section .upload-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.uploads-section .upload-thumb.is-svg img { object-fit: contain; background: #111; }
+.uploads-section .upload-thumb.is-missing::after {
+    content: "\f1c5";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: var(--text-muted);
+    font-size: .85rem;
+}
+.uploads-section .upload-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Styled native file picker (Backup / Import) */
 .fx-file-pick {
     display: flex;
     align-items: center;
@@ -1806,14 +1824,50 @@ select {
     max-width: 22rem;
 }
 .fx-file-name.is-set { color: var(--text); }
+.fx-file-hidden {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0; opacity: 0;
+}
 
-.editor-toolbar .dropdown-item.add-new { color: var(--primary); font-weight: 600; border-bottom: 1px solid var(--border); }
-.editor-toolbar .toolbar-upload-btn { background: transparent; border: 1px solid rgba(255,255,255,.15); color: var(--text-muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; }
-.editor-toolbar .toolbar-upload-btn:hover { color: var(--primary); background: rgba(255,255,255,.08); }
-.CodeMirror { position: relative; }
+/* Toast-style upload progress (bottom-right), independent of the single
+   save .toast (section 18) so multiple uploads can stack. */
+.fx-upload-toasts {
+    position: fixed; right: 20px; bottom: 72px; z-index: 2100;
+    display: flex; flex-direction: column-reverse; gap: .55rem;
+    max-width: min(22rem, calc(100vw - 2.5rem)); pointer-events: none;
+}
+.fx-upload-toast {
+    pointer-events: auto; display: flex; align-items: center; gap: .75rem;
+    background: #2a2a2c; border: 1px solid var(--border); border-radius: 10px;
+    padding: .7rem .85rem .7rem .7rem; color: var(--text);
+    box-shadow: 0 14px 36px rgba(0,0,0,.38);
+    animation: fx-upload-in .22s ease-out;
+}
+.fx-upload-toast.is-out { opacity: 0; transform: translateY(8px); transition: opacity .22s, transform .22s; }
+.fx-upload-toast.is-fail { border-color: rgba(244,67,54,.45); }
+.fx-upload-toast-body { min-width: 0; flex: 1; }
+.fx-upload-toast-name {
+    display: block; font-size: .82rem; font-weight: 600; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 16rem;
+}
+.fx-upload-toast-status { display: block; font-size: .75rem; color: var(--text-muted); margin-top: .12rem; }
+.fx-upload-toast.is-fail .fx-upload-toast-status { color: var(--fail); }
+.fx-upload-ring { width: 2.15rem; height: 2.15rem; flex-shrink: 0; transform-origin: 50% 50%; }
+.fx-upload-ring .track { stroke: rgba(255,255,255,.12); stroke-width: 3; }
+.fx-upload-ring .fill { stroke: var(--primary); stroke-width: 3; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 18px 18px; }
+.fx-upload-ring.is-spin { animation: fx-ring-spin .9s linear infinite; }
+.fx-upload-ring.is-done .fill { stroke: var(--primary); }
+.fx-upload-ring.is-fail .fill { stroke: var(--fail); }
+@keyframes fx-upload-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fx-ring-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .fx-upload-toast, .fx-upload-toast.is-out, .fx-upload-ring.is-spin { animation: none; transition: none; }
+}
 
 /* ==========================================================================
-   SETTINGS DESIGN SYSTEM (Forma)
+   16. SETTINGS DESIGN SYSTEM
+   Shared chrome for every admin/partials/settings-*.php screen: the header,
+   the scrolling shell, the "card" component, switches, badges, tables.
    ========================================================================== */
 .settings-panel-header { display: flex; align-items: center; gap: 1.15rem; margin-bottom: 1.8rem; width: 100%; }
 .settings-panel-header .icon-badge {
@@ -1909,6 +1963,9 @@ select {
     border: none;
     margin: 0;
 }
+
+/* The card: every settings block is one of these. --card-glow tints the
+   radial highlight in the top-right corner per status (pass/warn/fail). */
 .settings-card {
     --card-glow: rgba(252, 190, 52, 0.07);
     position: relative;
@@ -1935,7 +1992,6 @@ select {
     border-color: rgba(251, 191, 36, 0.45);
 }
 .settings-card.card-glow-fail { --card-glow: rgba(248, 113, 113, 0.12); }
-.settings-card.card-glow-blue,
 .settings-card.seo-google-card { --card-glow: rgba(66, 133, 244, 0.12); }
 .settings-card > h3 { margin: 0 0 .25rem; font-size: 1rem; display: flex; align-items: center; gap: .5rem; }
 .settings-card > h3 i { color: var(--primary); font-size: .9rem; width: 18px; text-align: center; }
@@ -2002,16 +2058,6 @@ select {
     min-width: 0;
 }
 .card-actions .standard-btn, .card-actions .delete-btn { min-width: auto; padding: 8px 16px; }
-.standard-btn.subtle-btn {
-    background: rgba(255,255,255,.035);
-    border-color: var(--border);
-    color: var(--text-muted);
-}
-.standard-btn.subtle-btn:hover {
-    color: var(--primary);
-    border-color: rgba(252,190,52,.45);
-    background: rgba(252,190,52,.07);
-}
 
 /* Cache settings: two clear systems with compact status blocks. */
 .cache-card > h3 {
@@ -2061,7 +2107,7 @@ select {
     .cache-status-grid { grid-template-columns: 1fr; }
 }
 
-/* Toggle switches */
+/* Toggle switches (fx_switch() helper) */
 .switch-row {
     display: flex;
     justify-content: space-between;
@@ -2085,18 +2131,89 @@ select {
 .fx-switch input:checked + .track::after { transform: translateX(18px); background: #121212; }
 .fx-switch input:focus-visible + .track { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-/* Status badges & key-value rows */
+/* Status badges & key-value rows (fx_url_pill() and friends) */
 .status-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .75rem; border-radius: 999px; font-size: .8rem; font-weight: 600; border: 1px solid var(--border); }
-.status-badge.ok { color: #4ade80; border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.08); }
-.status-badge.off { color: #f87171; border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.08); }
-.status-badge.warn { color: #fbbf24; border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.08); }
+.status-badge.ok { color: var(--ok); border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.08); }
+.status-badge.off { color: var(--fail); border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.08); }
+.status-badge.warn { color: var(--warn); border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.08); }
 .kv-row { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: .9rem; }
 .kv-row:last-child { border-bottom: none; }
 .kv-row .k { color: var(--text-muted); }
 .kv-row .v { text-align: right; word-break: break-all; }
 .kv-row .v code { background: rgba(0,0,0,.3); padding: .1rem .4rem; border-radius: 4px; font-size: .85em; }
 
-/* SEO health + previews */
+/* Hosting checks (Settings → Server) */
+.hosting-check { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--bg-end); }
+.hosting-check.pass { border-left: 3px solid var(--ok); }
+.hosting-check.warn { border-left: 3px solid var(--warn); }
+.hosting-check.fail { border-left: 3px solid var(--fail); }
+.hosting-check h4 { margin: 0 0 .35rem; font-size: .95rem; }
+.hosting-check .detail { color: var(--text-muted); font-size: .85rem; margin-bottom: .5rem; }
+.hosting-check ul { margin: .35rem 0 0; padding-left: 1.2rem; color: var(--text-muted); font-size: .85rem; }
+.hosting-summary { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.hosting-summary span { padding: .35rem .75rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--border); }
+.hosting-summary .fail { color: var(--fail); }
+.hosting-summary .warn { color: var(--warn); }
+.hosting-summary .pass { color: var(--ok); }
+
+/* Feed URL pill with copy (podcast RSS, sitemap, etc.) */
+.feed-url-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: rgba(0,0,0,.25);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .5rem .75rem;
+    margin: .35rem 0;
+    font-family: monospace;
+    font-size: .82rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.feed-url-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-url-row button,
+.feed-url-row a {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    line-height: 1;
+}
+.feed-url-row button:hover,
+.feed-url-row a:hover { color: var(--primary); background: rgba(255,255,255,.06); }
+
+/* Agent API token table (Settings → Access) */
+.token-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.token-table th { text-align: left; padding: .55rem .6rem; color: var(--text-muted); font-weight: 500; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+.token-table td { padding: .6rem; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
+.token-table tr:last-child td { border-bottom: none; }
+.token-table .scope-pill { display: inline-block; background: rgba(252,190,52,.12); color: var(--primary); border-radius: 4px; padding: .1rem .45rem; font-size: .75rem; margin: 1px 2px 1px 0; font-family: monospace; }
+.token-table tr.revoked { opacity: .4; }
+
+/* Big action tiles (Settings → Backup) */
+.action-tile { display: flex; align-items: center; gap: 1rem; background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: .75rem; text-decoration: none; color: var(--text); transition: border-color .15s, background .15s; cursor: pointer; }
+.action-tile:hover { border-color: var(--primary); background: rgba(252,190,52,.05); }
+.action-tile i.tile-icon { font-size: 1.3rem; color: var(--primary); width: 28px; text-align: center; flex: none; }
+.action-tile .tile-text strong { display: block; font-size: .95rem; }
+.action-tile .tile-text span { color: var(--text-muted); font-size: .82rem; }
+
+.locked-banner { padding: 2rem; text-align: center; color: var(--text-muted); }
+
+/* ==========================================================================
+   17. SEO PANEL
+   Settings → SEO (health score, Google/OG previews, redirects) — see
+   admin/partials/settings-seo.php and lib/Seo.php::quickHealth().
+   ========================================================================== */
 .seo-health-summary { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
 .seo-score {
     font-size: 1.05rem !important;
@@ -2130,10 +2247,12 @@ select {
 }
 .seo-issue { display: flex; align-items: flex-start; gap: .65rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,.15); }
 .seo-issue .lvl { flex: none; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .4rem; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); }
-.seo-issue.level-fail .lvl { color: #f87171; border-color: rgba(248,113,113,.4); }
-.seo-issue.level-warn .lvl { color: #fbbf24; border-color: rgba(251,191,36,.4); }
+.seo-issue.level-fail .lvl { color: var(--fail); border-color: rgba(248,113,113,.4); }
+.seo-issue.level-warn .lvl { color: var(--warn); border-color: rgba(251,191,36,.4); }
 .seo-issue .msg { flex: 1; min-width: 0; }
 .seo-issue .msg strong { display: block; font-size: .88rem; font-weight: 500; }
+
+/* Google/Open Graph result mockups, side by side */
 .seo-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
 @media (max-width: 900px) { .seo-preview { grid-template-columns: 1fr; } }
 .seo-preview-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: .4rem; }
@@ -2148,7 +2267,7 @@ select {
 .og-title { color: #e4e6eb; font-size: .92rem; font-weight: 600; margin-bottom: .2rem; }
 .og-desc { color: #b0b3b8; font-size: .78rem; line-height: 1.35; }
 .char-count { font-weight: 400; color: var(--text-muted); font-size: .78rem; }
-.char-count.over { color: #f87171; }
+.char-count.over { color: var(--fail); }
 
 /* SEO asset cards: make image choices feel like assets, not path inputs. */
 .seo-paste { margin-bottom: 1rem; }
@@ -2240,402 +2359,72 @@ select {
     .seo-media-tile-wide { grid-column: auto; }
 }
 
-/* Media field: text path + Browse / Upload */
-.fx-media-field { width: 100%; max-width: 100%; min-width: 0; }
-.fx-media-field > label { display: block; margin-bottom: .35rem; }
-.fx-media-row {
-    display: flex;
-    align-items: stretch;
-    gap: .5rem;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
+/* ==========================================================================
+   18. SAVE TOAST
+   The single "Saved" toast in admin/index.php (#fx-toast), shown by
+   afterSwap() in admin/js/admin.js. Distinct from the upload toasts
+   (section 15), which stack and carry per-file progress.
+   ========================================================================== */
+.toast {
+    position: fixed; bottom: 72px; right: 20px; background: var(--primary); color: #121212;
+    padding: .6rem 1rem; border-radius: 4px; font-weight: 600; z-index: 2000;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
 }
-.fx-media-thumb {
-    width: 42px;
-    height: 42px;
-    flex: none;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg) center/cover no-repeat;
-    display: none;
-}
-.fx-media-thumb.has-img { display: block; }
-.fx-media-thumb.is-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: .75rem;
-    background-image: none !important;
-}
-.fx-media-row input[type="text"] {
-    flex: 1 1 auto;
-    min-width: 0;
-    margin: 0;
-}
-.fx-media-actions {
-    display: flex;
-    gap: .35rem;
-    flex: none;
-}
-.fx-media-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .35rem;
-    padding: 0 .7rem;
-    min-height: 38px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: rgba(0,0,0,.2);
-    color: var(--text);
-    cursor: pointer;
-    font-size: .8rem;
-    white-space: nowrap;
-}
-.fx-media-btn:hover { border-color: var(--primary); color: var(--primary); }
-.fx-media-btn.primary {
-    background: rgba(252,190,52,.12);
-    border-color: rgba(252,190,52,.45);
-    color: var(--primary);
-}
-.fx-media-btn.primary:hover { background: rgba(252,190,52,.22); }
-.fx-media-btn i { font-size: .85rem; }
-@media (max-width: 640px) {
-    .fx-media-row { flex-wrap: wrap; }
-    .fx-media-row input[type="text"] { flex: 1 1 100%; order: 1; }
-    .fx-media-thumb { order: 0; }
-    .fx-media-actions { order: 2; width: 100%; }
-    .fx-media-btn { flex: 1; }
-    .fx-media-btn span { display: inline; }
-}
-
-/* Media picker modal */
-.fx-media-modal .fx-modal { max-width: 720px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; }
-.fx-media-modal .fx-modal-body { overflow: auto; flex: 1; min-height: 0; padding-top: .5rem; }
-.fx-media-modal-toolbar {
-    display: flex;
-    gap: .5rem;
-    align-items: center;
-    margin-bottom: .75rem;
-    flex-wrap: wrap;
-}
-.fx-media-modal-toolbar input[type="search"] {
-    flex: 1 1 180px;
-    min-width: 0;
-    margin: 0;
-}
-.fx-media-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: .65rem;
-}
-.fx-media-item {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(0,0,0,.2);
-    cursor: pointer;
-    overflow: hidden;
-    text-align: left;
-    padding: 0;
-    color: inherit;
-    font: inherit;
-    transition: border-color .15s, transform .15s;
-}
-.fx-media-item:hover { border-color: var(--primary); transform: translateY(-1px); }
-.fx-media-item .thumb {
-    height: 84px;
-    background: #1a1a1a center/cover no-repeat;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 1.4rem;
-}
-.fx-media-item .meta {
-    padding: .45rem .5rem;
-    font-size: .72rem;
-    line-height: 1.3;
-}
-.fx-media-item .meta strong {
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 500;
-}
-.fx-media-item .meta span { color: var(--text-muted); }
-.fx-media-empty { padding: 2rem 1rem; text-align: center; color: var(--text-muted); }
-
-/* Feed URL pill with copy */
-.feed-url-row {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    background: rgba(0,0,0,.25);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: .5rem .75rem;
-    margin: .35rem 0;
-    font-family: monospace;
-    font-size: .82rem;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-}
-.feed-url-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.feed-url-row button,
-.feed-url-row a {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    line-height: 1;
-}
-.feed-url-row button:hover,
-.feed-url-row a:hover { color: var(--primary); background: rgba(255,255,255,.06); }
-
-/* Agents token table */
-.token-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.token-table th { text-align: left; padding: .55rem .6rem; color: var(--text-muted); font-weight: 500; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
-.token-table td { padding: .6rem; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
-.token-table tr:last-child td { border-bottom: none; }
-.token-table .scope-pill { display: inline-block; background: rgba(252,190,52,.12); color: var(--primary); border-radius: 4px; padding: .1rem .45rem; font-size: .75rem; margin: 1px 2px 1px 0; font-family: monospace; }
-.token-table tr.revoked { opacity: .4; }
-
-/* Big action tiles (backup) */
-.action-tile { display: flex; align-items: center; gap: 1rem; background: rgba(0,0,0,.2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: .75rem; text-decoration: none; color: var(--text); transition: border-color .15s, background .15s; cursor: pointer; }
-.action-tile:hover { border-color: var(--primary); background: rgba(252,190,52,.05); }
-.action-tile i.tile-icon { font-size: 1.3rem; color: var(--primary); width: 28px; text-align: center; flex: none; }
-.action-tile .tile-text strong { display: block; font-size: .95rem; }
-.action-tile .tile-text span { color: var(--text-muted); font-size: .82rem; }
+.toast.show { opacity: 1; }
 
 /* ==========================================================================
-   UPLOADS PREVIEW POLISH (Forma)
+   19. RESPONSIVE
    ========================================================================== */
-.dropzone::before {
-    content: ;
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(45deg, var(--primary) 0%, transparent 50%, transparent 50%, var(--primary) 100%);
-    opacity: 0.1;
-    animation: gradientPulse 2s ease-in-out infinite;
-    background-size: 120% 120%;
-    pointer-events: none;
+@media (max-width: 768px) {
+    .button-group {
+        max-width: calc(100vw - 60px);
+    }
+    .button-group button {
+        min-width: 120px;
+        font-size: 0.8rem;
+    }
+    .file-list {
+        width: 200px;
+        min-width: 200px;
+    }
+    .editor-form {
+        padding: 15px;
+    }
+    .form-row {
+        flex-direction: column;
+        gap: 15px;
+    }
 }
-.dropzone.dz-drag-hover::before { animation: gradientPulse .6s ease-in-out infinite; opacity: .2; }
-@keyframes gradientPulse {
-    0% { opacity: .1; background-position: 0% 0%; }
-    50% { opacity: .15; background-position: 100% 100%; }
-    100% { opacity: .1; background-position: 0% 0%; }
+@media (max-width: 480px) {
+    header {
+        padding: 0 10px;
+    }
+    .button-group button {
+        min-width: 100px;
+        padding: 6px 12px;
+    }
+    .file-list {
+        width: 180px;
+        min-width: 180px;
+    }
 }
-.dropzone { cursor: pointer; }
-.dropzone .dz-message { pointer-events: none; }
-.dropzone .browse-btn { pointer-events: auto; }
 
-.uploads-section .upload-item {
-    display: flex;
-    align-items: center;
-    gap: .55rem;
-}
-.uploads-section .upload-item.is-ghost {
-    pointer-events: none;
-    cursor: wait;
-    opacity: .78;
-}
-.uploads-section .upload-item.is-ghost-fail {
-    pointer-events: auto;
-    cursor: pointer;
-    opacity: 1;
-}
-.uploads-section .upload-ghost-icon {
-    position: relative;
-    width: 28px;
-    height: 28px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.uploads-section .upload-ghost-icon .fx-upload-ring {
-    width: 28px;
-    height: 28px;
-    position: relative;
-    z-index: 1;
-}
-.uploads-section .upload-ghost-icon .is-ghost-thumb {
-    position: absolute;
-    inset: 0;
-    opacity: .42;
-}
-.uploads-section .upload-ghost-text {
-    min-width: 0;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: .05rem;
-}
-.uploads-section .upload-ghost-pct {
-    font-size: .72rem;
-    color: var(--text-muted);
-    line-height: 1.1;
-}
-.uploads-section .upload-item.is-fail .upload-ghost-pct,
-.uploads-section .upload-item.is-ghost-fail .upload-ghost-pct {
-    color: #f87171;
-}
-.uploads-section .upload-thumb {
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
-    background: var(--bg) center/cover no-repeat;
-    flex: none;
-    border: 1px solid var(--border);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.uploads-section .upload-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-.uploads-section .upload-thumb.is-svg img { object-fit: contain; background: #111; }
-.uploads-section .upload-thumb.is-missing::after {
-    content: "\f1c5";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: var(--text-muted);
-    font-size: .85rem;
-}
-.uploads-section .upload-asset-head {
-    display: flex;
-    flex-direction: column;
-    gap: .15rem;
-    margin-bottom: .25rem;
-}
-.uploads-section .upload-asset-head .form-group { margin-bottom: .85rem; }
-.uploads-section .upload-asset-head .feed-url-row { margin: .15rem 0 0; }
-.uploads-section .upload-asset-stats {
-    margin-top: .4rem;
-    opacity: 1;
-    color: var(--text-muted);
-}
-.uploads-section .upload-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-}
-.uploads-section .editor-container,
-.uploads-section .editor-form {
-    min-width: 0;
-    max-width: 100%;
-}
-.uploads-section .upload-preview-form {
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-    overflow-y: auto;
-}
-.uploads-section .upload-asset-head,
-.uploads-section .upload-asset-head .form-group,
-.uploads-section .upload-asset-head .feed-url-row {
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-}
-.uploads-section .preview-content {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-    min-height: 160px;
-    max-width: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background-color: #141414;
-    background-image:
-        linear-gradient(45deg, #1c1c1c 25%, transparent 25%),
-        linear-gradient(-45deg, #1c1c1c 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #1c1c1c 75%),
-        linear-gradient(-45deg, transparent 75%, #1c1c1c 75%);
-    background-size: 18px 18px;
-    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
-    padding: 1.25rem;
-    box-sizing: border-box;
-}
-.uploads-section .upload-preview-stage {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    max-width: 100%;
-    min-height: 160px;
-}
-.uploads-section .preview-content img {
-    max-width: 100%;
-    max-height: calc(100vh - 280px);
-    object-fit: contain;
-    border-radius: 6px;
-    box-shadow: 0 12px 32px rgba(0,0,0,.45);
-}
-.uploads-section .preview-content video,
-.uploads-section .preview-content audio {
-    width: 100%;
-    max-width: 720px;
-    border-radius: 6px;
-}
-.uploads-section .pdf-frame {
-    width: 100%;
-    max-width: 100%;
-    flex: 1;
-    min-height: 240px;
-    height: 100%;
-}
-.uploads-section .pdf-frame iframe {
-    width: 100%;
-    height: 100%;
-    min-height: 240px;
-    border: 0;
-    border-radius: 6px;
-    background: #111;
-}
-.uploads-section .no-preview {
-    padding: 3rem 2rem;
-    text-align: center;
-    color: var(--text-muted);
-    font-style: italic;
-}
-.uploads-section .upload-text-editor {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-    max-width: 100%;
-    margin-top: 0;
-}
-.uploads-section .upload-text-editor .CodeMirror {
-    flex: 1 1 auto;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    min-height: 200px;
-    height: auto !important;
+/* ==========================================================================
+   20. PRINT
+   ========================================================================== */
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+    header,
+    footer,
+    .file-list,
+    .editor-toolbar {
+        display: none;
+    }
+    .editor-container {
+        position: static;
+        padding: 0;
+    }
 }

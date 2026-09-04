@@ -1,6 +1,26 @@
 /**
- * Forma editor chips — [[shortcode]] tokens as widgets in CodeMirror 5.
- * Source of truth stays the textarea. SEO is a reserved [[seo]] slot.
+ * Forma editor chips — [[shortcode]] tokens rendered as pill widgets inside
+ * CodeMirror 5, via cm.markText({replacedWith}). The textarea's plain-text
+ * value stays the source of truth; chips are a display-only overlay that
+ * gets rebuilt (paint()) after every edit and every snippet-list reload.
+ *
+ * Three chip kinds, colored in admin/css/core.css (.fx-cm-chip-*):
+ *   sys    [[seo]] and the leading <!--META--> block (see paintMetaChip)
+ *   stock  built-in snippets: search, search-ui, error-ui, faq-ui
+ *   user   anything else defined in the snippets table
+ * A chip gets `.has-bang` (red) if walkNest() finds a cycle or >4 levels
+ * of snippet nesting — mirrors the [[seo]]-is-reserved / depth rules in
+ * lib/Snippets.php so the editor warns before save, not after.
+ *
+ * Two small "status row" mini-components live here too, each mirroring a
+ * server-rendered [hidden] placeholder in the page's meta-panel rather than
+ * building their own DOM: metaStatusRow()/renderMetaStatus() for the
+ * <!--META--> pin button, seoStatusRow()/renderSeoStatus() for the [[seo]]
+ * pin button. pageAlertEl()/renderPageAlert() drives the amber dot next to
+ * Save (fx-page-alert) using the same "no [[seo]] chip present" condition.
+ *
+ * Mounted by admin.js's mountEditors() for every textarea.code-editor with
+ * data-chips="1"; exposes window.FormaChips = { mount, insertBlock, reload }.
  */
 (function () {
   var STOCK = { search: 1, 'search-ui': 1, 'error-ui': 1 };

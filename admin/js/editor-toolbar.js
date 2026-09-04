@@ -1,5 +1,22 @@
 /**
- * Forma editor toolbar — insert pages/posts/uploads/snippets + quick-add modals.
+ * Forma editor toolbar — the floating insert-menu docked to the top-right
+ * corner of every CodeMirror instance (createToolbar(), positioned by
+ * .editor-toolbar in admin/css/core.css). Four dropdowns (Pages/Blog/
+ * Uploads/Snippets), each lazy-loaded from actions/toolbar-data.php and
+ * re-fetched after every insert/quick-add via loadAll() so a newly created
+ * page shows up immediately in its own dropdown.
+ *
+ * modal() is the one shared "fx-modal" dialog builder in this codebase —
+ * quickAdd() (new page/post/snippet) and pickUpload()'s error alerts both
+ * build on it. admin.js's openMediaPicker() renders the same fx-modal
+ * markup directly instead of calling this modal() helper (it needs a
+ * custom body/footer), but should stay visually identical; see
+ * admin/css/core.css section 12 before adding a *fourth* dialog style.
+ *
+ * Depends on window.FormaChips (insert [[seo]] via the chip system) and
+ * window.FormaUploads (progress UI for drag-in-toolbar uploads); both are
+ * optional — falls back to a bare fetch()/insert if either is absent.
+ * Exposes window.FormaToolbar = { mount }.
  */
 (function () {
   const initialized = new WeakSet();

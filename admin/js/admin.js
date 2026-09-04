@@ -1,5 +1,36 @@
 /**
- * Forma admin – CodeMirror, htmx hooks, meta collapse, hosting health dot.
+ * Forma admin — the glue file. Loaded last (after editor-chips.js and
+ * editor-toolbar.js) by admin/index.php, no build step, no framework.
+ *
+ * Two IIFEs:
+ *
+ *   1. window.FormaUploads — generic XHR file upload with a progress UI.
+ *      Two rendering targets: a stacked toast (makeToast, bottom-right,
+ *      used for htmx-form uploads) and an inline list "ghost" row
+ *      (makeListGhost, used by the Uploads list). Both share bindProgress()
+ *      for the ring/percentage/done/fail states. Consumed by
+ *      editor-toolbar.js (pickUpload) and admin/partials/uploads.php
+ *      (the drag-and-drop form).
+ *
+ *   2. Everything else — mounted per htmx swap via afterSwap()/htmx:load:
+ *        - mountEditors()      CodeMirror 5 init for textarea.code-editor,
+ *                               then hands off to FormaToolbar/FormaChips.
+ *        - wireMetaPanels()    collapsible "Page details" panel + localStorage
+ *                               remembered collapse state.
+ *        - openBlogPreview()   fetches actions/blog-preview.php, renders it
+ *                               in a resizable iframe overlay.
+ *        - wireSeoPreviews()   live Google/OG card mockups + char counters
+ *                               for [data-seo-preview] blocks (Settings→SEO,
+ *                               per-page SEO panels).
+ *        - wireMediaFields()/openMediaPicker()/triggerMediaUpload()
+ *                               the .fx-media-field control (path input +
+ *                               thumbnail + Browse/Upload), and the
+ *                               fx-modal-based picker it opens.
+ *      Plus a handful of document-level click/change delegates at the
+ *      bottom for things that can appear anywhere: the alert chip, blog
+ *      preview trigger, "fix this" SEO buttons, and styled file inputs.
+ *
+ * See admin/css/core.css section headers for the matching style rules.
  */
 (function () {
   var RING = 2 * Math.PI * 15.5; // r=15.5 in 36×36 viewBox
@@ -314,6 +345,9 @@
   });
 })();
 
+/* -------------------------------------------------------------------------
+ * Editors, meta panel, blog preview, SEO previews, media fields, htmx glue.
+ * ---------------------------------------------------------------------- */
 (function () {
   function mountEditors(root) {
     if (typeof CodeMirror === 'undefined') return;
@@ -636,9 +670,8 @@
     backdrop.className = 'fx-modal-backdrop fx-media-modal';
     backdrop.innerHTML =
       '<div class="fx-modal" role="dialog" aria-label="Choose media">' +
-      '<div class="fx-modal-header" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.25rem">' +
-      '<strong>Choose from Uploads</strong>' +
-      '<button type="button" class="modal-close" data-close aria-label="Close">&times;</button></div>' +
+      '<button type="button" class="fx-modal-close" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>' +
+      '<h3>Choose from Uploads</h3>' +
       '<div class="fx-media-modal-toolbar">' +
       '<input type="search" placeholder="Filter files…" data-filter>' +
       '<button type="button" class="fx-media-btn primary" data-upload-here><i class="fas fa-upload"></i><span>Upload new</span></button>' +
@@ -897,7 +930,4 @@
     wireSeoPreviews(evt.detail.elt);
     wireMediaFields(evt.detail.elt);
   });
-
-  window.FormaEditor = { mount: mountEditors };
-  window.FormaMedia = { wire: wireMediaFields, open: openMediaPicker };
 })();
