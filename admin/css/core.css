@@ -89,6 +89,21 @@ body {
     margin: 0 0 2rem;
 }
 
+.login-default-warn {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(244, 67, 54, 0.16);
+    border: 1px solid var(--error);
+    color: #ffcdd2;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    text-align: center;
+    border-radius: 6px;
+}
+.login-default-warn code {
+    color: #fff;
+}
+
 .login-btn {
     width: 100%;
     padding: 0.85rem;
@@ -156,6 +171,53 @@ header {
     left: 0;
     right: 0;
     z-index: 1000;
+}
+
+.fx-admin-alerts {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.fx-admin-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 1.1rem;
+    background: #4a1515;
+    border-bottom: 1px solid var(--error);
+    color: #ffcdd2;
+}
+.fx-admin-alert-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+.fx-admin-alert-copy strong {
+    color: #fff;
+    font-size: 0.92rem;
+}
+.fx-admin-alert-copy span {
+    font-size: 0.82rem;
+    color: #ffcdd2;
+}
+.fx-admin-alert-cta {
+    flex-shrink: 0;
+    min-width: auto !important;
+    padding: 6px 12px !important;
+    font-size: 0.82rem !important;
+    background: var(--error) !important;
+    color: #fff !important;
+    border-color: var(--error) !important;
+}
+body.has-fx-alerts .main-container {
+    top: calc(56px + var(--fx-alert-h, 0px));
 }
 
 nav {

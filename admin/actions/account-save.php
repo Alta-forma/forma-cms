@@ -21,6 +21,10 @@ if ($newPass !== '') {
         echo fx_toast_oob('Password must be 8+ chars');
         exit;
     }
+    if (strtolower($newPass) === 'admin' || strtolower($newPass) === strtolower($newUser)) {
+        echo fx_toast_oob('Pick a password that is not the username and not the stock default');
+        exit;
+    }
     Database::get()->execute(
         'UPDATE users SET username = ?, password_hash = ? WHERE id = ?',
         [$newUser, password_hash($newPass, PASSWORD_DEFAULT), $row['id']]
@@ -29,4 +33,5 @@ if ($newPass !== '') {
     Database::get()->execute('UPDATE users SET username = ? WHERE id = ?', [$newUser, $row['id']]);
 }
 $_SESSION['forma_user'] = $newUser;
+echo fx_admin_alerts_html(true);
 echo fx_toast_oob('Account updated');

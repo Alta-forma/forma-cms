@@ -86,6 +86,43 @@ try {
             throw new RuntimeException('chmod failed — try File Manager or SSH: chmod 640 database/forma.db');
         }
         $message = 'Set database file to chmod 0640';
+    } elseif ($action === 'tighten_permissions') {
+        $dirs = [dirname(DB_FILE), UPLOADS_DIR, FEEDS_DIR, FALLBACK_DIR];
+        $ok = [];
+        $fail = [];
+        foreach ($dirs as $d) {
+            if (!is_dir($d)) {
+                continue;
+            }
+            if (@chmod($d, 0755)) {
+                $ok[] = basename($d) . '/';
+            } else {
+                $fail[] = basename($d) . '/';
+            }
+        }
+        if (is_dir(ROOT_DIR) && HostingCheck::isWorldWritable(ROOT_DIR)) {
+            if (@chmod(ROOT_DIR, 0755)) {
+                $ok[] = 'site root';
+            } else {
+                $fail[] = 'site root';
+            }
+        }
+        if (is_file(DB_FILE)) {
+            if (@chmod(DB_FILE, 0640)) {
+                $ok[] = 'forma.db';
+            } else {
+                $fail[] = 'forma.db';
+            }
+        }
+        Htaccess::ensureUploadsHtaccess();
+        $bits = [];
+        if ($ok) {
+            $bits[] = 'Set 755/640 on ' . implode(', ', $ok);
+        }
+        if ($fail) {
+            $bits[] = 'Could not change ' . implode(', ', $fail) . ' — use SSH or File Manager';
+        }
+        $message = $bits ? implode('. ', $bits) : 'Nothing needed changing.';
     } else {
         throw new RuntimeException('Unknown action');
     }
@@ -95,4 +132,5 @@ try {
 
 require ADMIN_DIR . '/partials/_helpers.php';
 require ADMIN_DIR . '/partials/settings-hosting.php';
+echo fx_admin_alerts_html(true);
 echo fx_toast_oob($message);

@@ -45,6 +45,9 @@ class MediaRepo {
         if (!is_dir(UPLOADS_DIR)) {
             mkdir(UPLOADS_DIR, 0755, true);
         }
+        if (class_exists('Htaccess')) {
+            Htaccess::ensureUploadsHtaccess();
+        }
         $dest = UPLOADS_DIR . '/' . $destName;
         if (!move_uploaded_file($file['tmp_name'], $dest)) {
             throw new RuntimeException('Could not store upload');

@@ -29,6 +29,9 @@ fx_settings_scroll_open();
     <div class="settings-card">
         <h3><i class="fas fa-id-badge"></i> Admin login</h3>
         <p class="card-sub">Your current password is required for any account change.</p>
+        <?php if (Auth::usesDefaultPassword()): ?>
+        <p class="hint" style="color:#ffcdd2;margin:.5rem 0 1rem">This install is still on the default password. The red bar will not go away until you set a real one below.</p>
+        <?php endif; ?>
         <div class="form-group">
             <label>Username</label>
             <input type="text" name="username" value="<?php echo h($user); ?>" required autocomplete="username">

@@ -80,6 +80,21 @@ class Auth {
         $_SESSION['forma_csrf'] = bin2hex(random_bytes(32));
     }
 
+    /** True if any user still has the seeded password "admin". */
+    public static function usesDefaultPassword(): bool {
+        try {
+            $rows = Database::get()->query('SELECT password_hash FROM users');
+        } catch (Throwable $e) {
+            return false;
+        }
+        foreach ($rows as $row) {
+            if (!empty($row['password_hash']) && password_verify('admin', (string)$row['password_hash'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static function logout(): void {
         self::startSession();
         session_unset();

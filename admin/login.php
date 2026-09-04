@@ -60,7 +60,7 @@ $showProductSub = $siteTitle !== FORMA_PRODUCT;
         <p class="login-sub"><?php echo htmlspecialchars(FORMA_PRODUCT); ?></p>
     <?php endif; ?>
     <?php if ($isDefaultPassword): ?>
-        <p style="color:var(--primary);font-size:.9rem;text-align:center">Default login: <code>admin</code> / <code>admin</code> — change it after login.</p>
+        <p class="login-default-warn">Default login is still <code>admin</code> / <code>admin</code>. Change it the second you get in — this site is wide open until you do.</p>
     <?php endif; ?>
     <?php if ($error): ?>
         <p style="color:var(--error);text-align:center"><?php echo htmlspecialchars($error); ?></p>

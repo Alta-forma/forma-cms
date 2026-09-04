@@ -4,6 +4,13 @@
 (function () {
   var RING = 2 * Math.PI * 15.5; // r=15.5 in 36×36 viewBox
 
+  function layoutAlerts() {
+    var el = document.getElementById('fx-admin-alerts');
+    var h = el ? el.offsetHeight : 0;
+    document.body.classList.toggle('has-fx-alerts', h > 0);
+    document.documentElement.style.setProperty('--fx-alert-h', h + 'px');
+  }
+
   function csrfToken() {
     var m = document.body && document.body.getAttribute('hx-headers');
     if (!m) return '';
@@ -784,6 +791,7 @@
     wireMetaPanels(evt.detail.elt);
     wireSeoPreviews(evt.detail.elt);
     wireMediaFields(evt.detail.elt);
+    layoutAlerts();
     var toast = document.getElementById('fx-toast');
     if (toast && toast.dataset.show === '1') {
       toast.classList.add('show');
@@ -821,6 +829,7 @@
     wireMetaPanels(document);
     wireSeoPreviews(document);
     wireMediaFields(document);
+    layoutAlerts();
   });
   document.body.addEventListener('htmx:beforeRequest', function (evt) {
     beforeRequest(evt);

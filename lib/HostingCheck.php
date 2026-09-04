@@ -7,7 +7,7 @@ class HostingCheck {
     private const MIN_PHP = '8.1.0';
 
     /** @return list<array<string,mixed>> */
-    public static function run(Database $db): array {
+    public static function run(Database $db, bool $includeRemote = true): array {
         $checks = [];
 
         $phpOk = version_compare(PHP_VERSION, self::MIN_PHP, '>=');
@@ -137,6 +137,35 @@ class HostingCheck {
             'fix_action' => ($dbExists && !$dbWrite) ? ['id' => 'chmod_database', 'label' => 'Try chmod 0640 on database file'] : null,
         ];
 
+        $worldBad = [];
+        foreach ([
+            ['path' => ROOT_DIR, 'label' => 'site root'],
+            ['path' => dirname(DB_FILE), 'label' => 'database/'],
+            ['path' => DB_FILE, 'label' => 'database/forma.db'],
+            ['path' => UPLOADS_DIR, 'label' => 'uploads/'],
+            ['path' => FEEDS_DIR, 'label' => 'feeds/'],
+            ['path' => FALLBACK_DIR, 'label' => 'fallback/'],
+        ] as $w) {
+            if (self::isWorldWritable($w['path'])) {
+                $worldBad[] = $w['label'];
+            }
+        }
+        $checks[] = [
+            'id'         => 'world_writable',
+            'level'      => $worldBad ? 'fail' : 'pass',
+            'title'      => 'World-writable paths',
+            'detail'     => $worldBad
+                ? implode(', ', $worldBad) . ' — anyone on this server can write them'
+                : 'No other-write bit on Forma’s folders or database',
+            'fix_steps'  => $worldBad ? [
+                'World-writable (chmod 777 / other-write) is how a bad upload becomes a webshell.',
+                'Folders should be 755 (or 775 if PHP runs as a different group). The database file should be 640 or 644.',
+                'On SSH from the site root: chmod 755 database uploads feeds fallback ; chmod 640 database/forma.db',
+                'Never chmod -R 777 anything in a Forma install.',
+            ] : [],
+            'fix_action' => $worldBad ? ['id' => 'tighten_permissions', 'label' => 'Try chmod 755 / 640'] : null,
+        ];
+
         $htPath = ROOT_DIR . '/.htaccess';
         $htOk   = file_exists($htPath);
         $checks[] = [
@@ -244,12 +273,12 @@ class HostingCheck {
             ];
         }
 
-        // Run the pretty-URL self-test early so mod_rewrite can use the result
-        $prettyOk    = null;
+        // Pretty-URL self-test hits the public site — skip on every admin page load.
+        $prettyOk     = null;
         $prettyDetail = '';
         $cfg  = $db->getConfig();
         $siteUrl = trim($cfg['site']['url'] ?? '');
-        if ($siteUrl !== '') {
+        if ($includeRemote && $siteUrl !== '') {
             $testUrl = rtrim($siteUrl, '/') . '/blog';
             $ctx = @stream_context_create([
                 'http' => [
@@ -340,9 +369,9 @@ class HostingCheck {
         if ($disp) {
             $checks[] = [
                 'id'         => 'display_errors',
-                'level'      => 'warn',
-                'title'      => 'display_errors',
-                'detail'     => 'On (errors may leak to visitors)',
+                'level'      => 'fail',
+                'title'      => 'display_errors is on',
+                'detail'     => 'PHP errors can leak paths and queries to visitors',
                 'fix_steps'  => [
                     'For production, set display_errors=Off in php.ini and keep log_errors=On.',
                     'cPanel: MultiPHP INI Editor. Or add php_flag display_errors off in .htaccess if your host allows it.',
@@ -389,7 +418,7 @@ class HostingCheck {
         if (file_exists($installPhp)) {
             $checks[] = [
                 'id'         => 'install_php',
-                'level'      => 'warn',
+                'level'      => 'fail',
                 'title'      => 'install.php still on server',
                 'detail'     => 'Present in site root',
                 'fix_steps'  => [
@@ -476,6 +505,60 @@ class HostingCheck {
         }
 
         return $checks;
+    }
+
+    public static function isWorldWritable(string $path): bool {
+        if ($path === '' || !file_exists($path)) {
+            return false;
+        }
+        $perms = @fileperms($path);
+        if ($perms === false) {
+            return false;
+        }
+        return ($perms & 0002) !== 0;
+    }
+
+    /**
+     * Loud, non-dismissible admin nags. Local checks only (no outbound HTTP).
+     * @return list<array{id:string,level:string,title:string,detail:string,href:string,cta:string}>
+     */
+    public static function adminAlerts(): array {
+        $alerts = [];
+        if (class_exists('Auth') && Auth::usesDefaultPassword()) {
+            $alerts[] = [
+                'id'    => 'default_password',
+                'level' => 'fail',
+                'title' => 'Default password is still active',
+                'detail'=> 'The stock admin / admin login still works. Change it. This bar stays until you do.',
+                'href'  => 'index.php?section=settings&sub=access',
+                'cta'   => 'Change password',
+            ];
+        }
+        try {
+            $checks = self::run(Database::get(), false);
+        } catch (Throwable $e) {
+            return $alerts;
+        }
+        foreach ($checks as $c) {
+            if (($c['level'] ?? '') !== 'fail') {
+                continue;
+            }
+            $id = (string)($c['id'] ?? '');
+            $href = 'index.php?section=settings&sub=server';
+            $cta = 'Open Server';
+            if ($id === 'world_writable') {
+                $cta = 'Fix permissions';
+            }
+            $alerts[] = [
+                'id'     => $id !== '' ? $id : 'hosting',
+                'level'  => 'fail',
+                'title'  => (string)($c['title'] ?? 'Hosting problem'),
+                'detail' => (string)($c['detail'] ?? ''),
+                'href'   => $href,
+                'cta'    => $cta,
+            ];
+        }
+        return $alerts;
     }
 
     /** @param list<array<string,mixed>> $checks */

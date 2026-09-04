@@ -6,6 +6,7 @@ define('ROOT_DIR', dirname(__DIR__));
 require_once ROOT_DIR . '/lib/bootstrap.php';
 Auth::requireAdmin(false);
 Htaccess::ensureDefault();
+Htaccess::ensureUploadsHtaccess();
 
 $section = $_GET['section'] ?? 'pages';
 $podcastLicensed = License::isPodcastLicensed();
@@ -27,6 +28,7 @@ if ($section === 'settings' && empty($_GET['sub']) && !empty($_GET['subsection']
 
 $csrf = Auth::csrf();
 $base = htmlspecialchars(forma_admin_base_href(), ENT_QUOTES, 'UTF-8');
+require_once ADMIN_DIR . '/partials/_helpers.php';
 $fxAsset = static function (string $rel): string {
     $path = ADMIN_DIR . '/' . ltrim($rel, '/');
     $v = is_file($path) ? (string)filemtime($path) : (string)time();
@@ -92,6 +94,8 @@ if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' 
             </a>
         </nav>
     </header>
+
+    <?php echo fx_admin_alerts_html(); ?>
 
     <div class="main-container" id="main">
         <?php

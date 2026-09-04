@@ -13,6 +13,28 @@ function fx_toast_oob(string $message = 'Saved'): string {
     return '<div id="fx-toast" class="toast show" data-show="1" hx-swap-oob="true">' . h($message) . '</div>';
 }
 
+/** Sticky security / hosting nags. Pass $oob on htmx action responses so the bar updates without a reload. */
+function fx_admin_alerts_html(bool $oob = false): string {
+    $alerts = HostingCheck::adminAlerts();
+    $attr = $oob ? ' hx-swap-oob="true"' : '';
+    $html = '<div id="fx-admin-alerts" class="fx-admin-alerts"' . $attr . '>';
+    foreach ($alerts as $a) {
+        $href = (string)($a['href'] ?? 'index.php?section=settings&sub=server');
+        $cta = (string)($a['cta'] ?? 'Fix this');
+        $partial = $href . (str_contains($href, '?') ? '&' : '?') . 'partial=1';
+        $html .= '<div class="fx-admin-alert">'
+            . '<div class="fx-admin-alert-copy">'
+            . '<strong>' . h((string)($a['title'] ?? '')) . '</strong>'
+            . '<span>' . h((string)($a['detail'] ?? '')) . '</span>'
+            . '</div>'
+            . '<a class="standard-btn fx-admin-alert-cta" href="' . h($href) . '"'
+            . ' hx-get="' . h($partial) . '" hx-target="#main" hx-push-url="' . h($href) . '">'
+            . h($cta) . '</a>'
+            . '</div>';
+    }
+    return $html . '</div>';
+}
+
 /** Toggle switch row: label + optional hint on the left, switch on the right. */
 function fx_switch(string $name, bool $checked, string $label, string $hint = ''): string {
     $id = 'sw-' . preg_replace('/[^a-z0-9_-]/i', '-', $name);
