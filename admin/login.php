@@ -4,7 +4,10 @@ require_once ROOT_DIR . '/lib/bootstrap.php';
 Auth::startSession();
 
 if (Auth::user()) {
-    header('Location: ' . rtrim(forma_admin_base_href(), '/') . '/index.php');
+    $destination = !empty($_SESSION['forma_oauth_pending'])
+        ? forma_site_base_path() . '/oauth/authorize?resume=1'
+        : rtrim(forma_admin_base_href(), '/') . '/index.php';
+    header('Location: ' . $destination);
     exit;
 }
 
@@ -17,21 +20,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $db->execute('DELETE FROM login_attempts WHERE attempted_at < ?', [time() - $lockoutWindow]);
-    $attempts = $db->queryOne('SELECT COUNT(*) as c FROM login_attempts WHERE ip = ?', [$ip]);
-
-    if (($attempts['c'] ?? 0) >= $maxAttempts) {
-        $error = 'Too many failed attempts. Please wait 15 minutes.';
+    if (!Auth::verifyCsrf((string)($_POST['csrf_token'] ?? ''))) {
+        $error = 'This sign-in form expired. Please try again.';
     } else {
-        $row = $db->queryOne('SELECT password_hash FROM users WHERE username = ?', [$username]);
-        if ($row && password_verify($password, $row['password_hash'])) {
-            $db->execute('DELETE FROM login_attempts WHERE ip = ?', [$ip]);
-            Auth::login($username);
-            header('Location: ' . rtrim(forma_admin_base_href(), '/') . '/index.php');
-            exit;
+        $db->execute('DELETE FROM login_attempts WHERE attempted_at < ?', [time() - $lockoutWindow]);
+        $attempts = $db->queryOne('SELECT COUNT(*) as c FROM login_attempts WHERE ip = ?', [$ip]);
+
+        if (($attempts['c'] ?? 0) >= $maxAttempts) {
+            $error = 'Too many failed attempts. Please wait 15 minutes.';
+        } else {
+            $row = $db->queryOne('SELECT password_hash FROM users WHERE username = ?', [$username]);
+            if ($row && password_verify($password, $row['password_hash'])) {
+                $db->execute('DELETE FROM login_attempts WHERE ip = ?', [$ip]);
+                Auth::login($username);
+                $destination = !empty($_SESSION['forma_oauth_pending'])
+                    ? forma_site_base_path() . '/oauth/authorize?resume=1'
+                    : rtrim(forma_admin_base_href(), '/') . '/index.php';
+                header('Location: ' . $destination);
+                exit;
+            }
+            $db->execute('INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)', [$ip, time()]);
+            $error = 'Invalid username or password';
         }
-        $db->execute('INSERT INTO login_attempts (ip, attempted_at) VALUES (?, ?)', [$ip, time()]);
-        $error = 'Invalid username or password';
     }
 }
 
@@ -66,6 +76,7 @@ $showProductSub = $siteTitle !== FORMA_PRODUCT;
         <p style="color:var(--error);text-align:center"><?php echo htmlspecialchars($error); ?></p>
     <?php endif; ?>
     <form method="post" action="login.php">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(Auth::csrf(), ENT_QUOTES, 'UTF-8'); ?>">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required autofocus>

@@ -99,9 +99,13 @@ class Database {
             name       TEXT    NOT NULL,
             token_hash TEXT    NOT NULL UNIQUE,
             scopes     TEXT    NOT NULL DEFAULT '[]',
+            scope_version INTEGER NOT NULL DEFAULT 2,
             created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
             last_used  INTEGER,
-            revoked_at INTEGER
+            revoked_at INTEGER,
+            expires_at INTEGER,
+            audience   TEXT,
+            oauth_client_id TEXT
         );
 
         CREATE TABLE IF NOT EXISTS api_audit (
@@ -112,6 +116,42 @@ class Database {
             ip         TEXT    NOT NULL DEFAULT '',
             summary    TEXT    NOT NULL DEFAULT '',
             created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS oauth_clients (
+            client_id       TEXT PRIMARY KEY,
+            client_name     TEXT NOT NULL,
+            redirect_uris   TEXT NOT NULL DEFAULT '[]',
+            scopes          TEXT NOT NULL DEFAULT '[]',
+            registration_ip TEXT NOT NULL DEFAULT '',
+            created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            last_used       INTEGER,
+            revoked_at      INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
+            code_hash      TEXT PRIMARY KEY,
+            client_id      TEXT NOT NULL,
+            redirect_uri   TEXT NOT NULL,
+            scopes         TEXT NOT NULL DEFAULT '[]',
+            code_challenge TEXT NOT NULL,
+            resource       TEXT NOT NULL,
+            admin_user     TEXT NOT NULL DEFAULT '',
+            created_at     INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            expires_at     INTEGER NOT NULL,
+            used_at        INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
+            token_hash      TEXT PRIMARY KEY,
+            access_token_id INTEGER,
+            client_id       TEXT NOT NULL,
+            scopes          TEXT NOT NULL DEFAULT '[]',
+            resource        TEXT NOT NULL,
+            created_at      INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            expires_at      INTEGER NOT NULL,
+            revoked_at      INTEGER,
+            replaced_by     TEXT
         );
 
         CREATE TABLE IF NOT EXISTS login_attempts (
@@ -277,6 +317,40 @@ class Database {
         $names = array_column($cols, 'name');
         if (!in_array('seo_json', $names, true)) {
             $this->pdo->exec("ALTER TABLE blog_posts ADD COLUMN seo_json TEXT NOT NULL DEFAULT '{}'");
+        }
+        $tokenCols = $this->pdo->query('PRAGMA table_info(api_tokens)')->fetchAll();
+        $tokenNames = array_column($tokenCols, 'name');
+        if (!in_array('scope_version', $tokenNames, true)) {
+            // Preserve pre-0.5 token behavior once while splitting destructive
+            // permissions away from content/media write for new Site editors.
+            $this->pdo->beginTransaction();
+            try {
+                $this->pdo->exec('ALTER TABLE api_tokens ADD COLUMN scope_version INTEGER NOT NULL DEFAULT 2');
+                foreach ($this->pdo->query('SELECT id, scopes FROM api_tokens')->fetchAll() as $token) {
+                    $scopes = json_decode((string)($token['scopes'] ?? '[]'), true) ?: [];
+                    if (in_array('content:write', $scopes, true) && !in_array('content:delete', $scopes, true)) {
+                        $scopes[] = 'content:delete';
+                    }
+                    if (in_array('media:write', $scopes, true) && !in_array('media:delete', $scopes, true)) {
+                        $scopes[] = 'media:delete';
+                    }
+                    $this->pdo->prepare('UPDATE api_tokens SET scopes = ? WHERE id = ?')
+                        ->execute([json_encode(array_values($scopes)), (int)$token['id']]);
+                }
+                $this->pdo->commit();
+            } catch (Throwable $e) {
+                $this->pdo->rollBack();
+                throw $e;
+            }
+        }
+        foreach ([
+            'expires_at' => 'INTEGER',
+            'audience' => 'TEXT',
+            'oauth_client_id' => 'TEXT',
+        ] as $column => $type) {
+            if (!in_array($column, $tokenNames, true)) {
+                $this->pdo->exec("ALTER TABLE api_tokens ADD COLUMN {$column} {$type}");
+            }
         }
         $this->pdo->exec(
             'CREATE TABLE IF NOT EXISTS redirects (

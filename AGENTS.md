@@ -31,12 +31,15 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 | Redirects | `redirects` table | 301/302/307/308. `GET/PUT /api/v1/redirects`, `DELETE /api/v1/redirects/{id}`. Can't target `/admin` or `/api`. |
 | SEO health | `GET /api/v1/seo` → `health` | Sitewide report (dupes, missing favicon/description, schema fields, `[[seo]]` slot status per template). `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row for a cheap "what needs work" scan without fetching every doc. |
 | Hosting / security nags | `HostingCheck::adminAlerts()`, admin-only | A red bar on every admin screen for a still-default `admin`/`admin` password or a failing hosting check (world-writable `database`/`uploads`/`feeds`/`fallback`, `display_errors` on, leftover `install.php`, missing `.htaccess`). No API surface for the full report — that's Settings → Server only. `GET /api/v1/health` is the lighter, agent-facing filesystem check (bad upload paths, nested `lib/lib`/`admin/admin` from a bad manual deploy). Fix perms with `chmod 755` dirs / `640` the db file — never `chmod -R 777`. |
+| Agent rollback | `AgentCheckpoint` + Settings → Access | Agent writes are live. Before the first write, Forma snapshots one last-known-good SQLite DB; later writes keep that point. `GET /checkpoint` reports it, `/checkpoint/restore` puts it back, `/checkpoint/accept` moves it. Restore also rebuilds search, feeds, redirects, cache, and fallback HTML; agent-deleted media is restored. New orphan uploads may remain. |
+| Subscription chatbot contracts | `/api/v1/openapi.json` / `.yaml`, `/api/v1/mcp` | Public OpenAPI 3.0.3 for ChatGPT Actions; authenticated stateless MCP Streamable HTTP for custom connectors. Remote MCP uses automatic OAuth 2.1 discovery + DCR + PKCE + owner consent. Both expose a safe Site editor surface without delete/security/import tools; public identity + SEO are curated through `site:write`. |
 
 ## Auth
 
 - Header: `Authorization: Bearer fx_…`
 - DreamHost-safe alt: `X-Forma-Token: fx_…`
-- Scopes: `content:read|write`, `media:write`, `settings:write`, `backup:read`, `podcast:write`
+- Remote MCP chatbots normally obtain a short-lived audience-bound token through OAuth; manual Bearer tokens are for Cursor, scripts, and Actions that require API-key auth.
+- Scopes: `content:read|write|delete`, `media:write|delete`, `site:write` (curated public identity + SEO), `rollback:write`, `settings:write`, `backup:read`, `podcast:write`. The Site editor preset intentionally omits both delete scopes.
 
 ## SEO fields (pages & posts)
 
@@ -48,7 +51,7 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 
 ## MCP tools
 
-`formax_help`, `formax_site`, pages/posts/snippets CRUD, media list/upload/delete, settings get/update, SEO get/update, redirects list/save/delete, episodes, cache flush, export/import site, health.
+Local Cursor MCP has the full API surface. Remote `/api/v1/mcp` intentionally exposes the safer Site editor subset: help/site, curated site identity + SEO, page/post/snippet read+update, media list/upload, rollback status, `formax_put_it_back`, and `formax_this_looks_good`.
 
 (Tool names still start with `formax_` so existing Cursor configs keep working.)
 
@@ -74,6 +77,8 @@ AltaForma: bump `version.php`, merge to `main`, `./tools/release.sh`. Full check
 - Don’t delete `home`, `_404`, `_403`, `_500`.
 - Don’t remove `[[seo]]` from a template unless you mean to stop emitting `<head>` SEO on that template.
 - Don’t commit tokens.
+- Don’t paste a token into chat text. Store it in the connector/Action authentication field.
+- Don’t call `checkpoint/accept` / `formax_this_looks_good` just because requests succeeded. Only move the rollback point after the human explicitly checks the public site and says it looks good.
 - Don’t assume unpublished posts are public — they 404 by design.
 - Don’t edit files under `fallback/` directly — they’re regenerated from SQLite on every save, or all at once via "Rebuild HTML cache" / `StaticFallback::publishAll()`.
 - Don’t index or publish `snippets` — they’re building blocks, not content.

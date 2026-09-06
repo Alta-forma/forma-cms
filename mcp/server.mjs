@@ -55,7 +55,7 @@ const tools = [
   {
     name: "formax_help",
     description:
-      "How Forma works + full Agent API map. Call this first when unfamiliar with the install.",
+      "Call first. How Forma works, safety/SEO rules, full API map, and the one-point rollback workflow.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -378,6 +378,21 @@ const tools = [
     description: "Filesystem sanity check — catches bad uploads / nested folders (lib/lib, admin/admin) after a manual FTP deploy",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "formax_rollback_status",
+    description: "Check whether agent edits are pending and whether Put it back is available.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "formax_put_it_back",
+    description: "Restore the whole site to the last-known-good point. Use when the human asks to undo or says the edits are wrong.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "formax_this_looks_good",
+    description: "Move the rollback point to the current live site. NEVER call unless the human explicitly says the site looks good.",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
 
 const server = new Server(
@@ -481,6 +496,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       break;
     case "formax_health":
       result = await api("GET", "/health");
+      break;
+    case "formax_rollback_status":
+      result = await api("GET", "/checkpoint");
+      break;
+    case "formax_put_it_back":
+      result = await api("POST", "/checkpoint/restore", {});
+      break;
+    case "formax_this_looks_good":
+      result = await api("POST", "/checkpoint/accept", {});
       break;
     case "formax_list_episodes":
       result = await api("GET", "/episodes");

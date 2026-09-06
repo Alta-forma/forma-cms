@@ -26,6 +26,9 @@ Commands:
   put-page <filename> --file=payload.json
   get-post <filename>
   put-post <filename> --file=payload.json
+  rollback-status
+  put-it-back
+  this-looks-good
   flush-cache
   export                 JSON (stdout)
   export-site [file.zip] Full package zip (default: formax-site-DATE.zip)
@@ -120,6 +123,15 @@ switch ($cmd) {
         $f = $argv[2] ?? '';
         $payload = argFile($argv) ?? [];
         echo json_encode(request('PUT', '/posts/' . rawurlencode($f), $payload), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        break;
+    case 'rollback-status':
+        echo json_encode(request('GET', '/checkpoint'), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        break;
+    case 'put-it-back':
+        echo json_encode(request('POST', '/checkpoint/restore', []), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        break;
+    case 'this-looks-good':
+        echo json_encode(request('POST', '/checkpoint/accept', []), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
         break;
     case 'flush-cache':
         echo json_encode(request('POST', '/cache/flush', []), JSON_PRETTY_PRINT) . "\n";

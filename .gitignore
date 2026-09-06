@@ -1,6 +1,9 @@
 database/*.db
 database/*.db-*
 database/updates/
+database/agent-checkpoint.json
+database/agent-checkpoint.lock
+database/agent-checkpoint-media/
 uploads/*
 !uploads/.gitkeep
 feeds/*

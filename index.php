@@ -52,6 +52,15 @@ try {
         exit;
     }
 
+    // OAuth 2.1 discovery, registration, consent, and token exchange for
+    // subscription chatbot MCP connectors.
+    if (str_starts_with($path, '/.well-known/oauth-')
+        || str_starts_with($path, '/oauth/')
+    ) {
+        require ROOT_DIR . '/api/oauth/index.php';
+        exit;
+    }
+
     StaticFallback::writeStamp();
 
     // URL redirects (before pages / cache)

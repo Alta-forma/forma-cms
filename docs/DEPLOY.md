@@ -75,8 +75,10 @@ Settings → Cache → **Enable HTML cache** writes real `.html` under `fallback
 2. Settings → SEO (site name, default share image, schema)
 3. Settings → Server (confirm rewrite / Authorization). Same nag bar also fires here for world-writable `database/`/`uploads`/`feeds`/`fallback`, `display_errors` on, a leftover `install.php`, or a missing `.htaccess` — run `chmod -R 775 database uploads feeds` again if permissions drifted from a manual upload/FTP deploy
 4. Settings → Backup → download a site package before you get brave
-5. Later CMS versions: Settings → Update (after this install is on 0.2.0+)
-6. Optional: [Buy Forma Podcast — $39](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General
+5. Settings → Access → copy the Remote MCP URL for ChatGPT/Claude/Grok/Perplexity. The connector discovers OAuth, then sends the owner back to Forma to sign in and approve Site editor access. ChatGPT Actions can instead import `/api/v1/openapi.json` and use a manual Bearer token. Both require public HTTPS.
+6. Check Settings → Access after chatbot work: **Put it back** restores the one last-known-good point; **This looks good** moves that point only after you verify the public site.
+7. Later CMS versions: Settings → Update (after this install is on 0.2.0+)
+8. Optional: [Buy Forma Podcast — $39](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General
 
 Forma also writes a deny-PHP `.htaccess` into `uploads/` automatically (any request for `*.php`/`*.phtml`/`*.phar` there 403s), so a bad file that slips past the upload filter still can't execute.
 

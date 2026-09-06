@@ -2,13 +2,13 @@
 /**
  * Forma – Version
  */
-define('FORMA_VERSION', '0.4.3');
-define('FORMA_VERSION_DATE', '2026-09-04');
+define('FORMA_VERSION', '0.5.1');
+define('FORMA_VERSION_DATE', '2026-09-06');
 define('FORMA_PRODUCT', 'Forma');
 define('FORMA_DEV_MODE', false);
 
 /** Logical DB / content schema — bump when migrations are required for older site packages */
-define('FORMA_SCHEMA_VERSION', 1);
+define('FORMA_SCHEMA_VERSION', 3);
 
 /** Site package zip layout version (manifest + paths) */
 define('FORMA_EXPORT_FORMAT_VERSION', 1);
