@@ -118,12 +118,22 @@ function oauth_authorize(string $method): void {
     oauth_consent_page($request, $consentId);
 }
 
+/** Admin stylesheet URL, cache-busted the same way admin/index.php does. */
+function oauth_stylesheet_href(): string {
+    $version = (int)@filemtime(ADMIN_DIR . '/css/core.css');
+    $href = rtrim(forma_admin_base_href(), '/') . '/css/core.css'
+        . ($version > 0 ? '?v=' . $version : '');
+    return htmlspecialchars($href, ENT_QUOTES, 'UTF-8');
+}
+
 function oauth_consent_page(array $request, string $consentId): void {
     $client = htmlspecialchars((string)$request['client_name'], ENT_QUOTES, 'UTF-8');
     $host = htmlspecialchars((string)(parse_url((string)$request['redirect_uri'], PHP_URL_HOST) ?: 'AI connector'), ENT_QUOTES, 'UTF-8');
     $site = htmlspecialchars(forma_site_title(), ENT_QUOTES, 'UTF-8');
     $csrf = htmlspecialchars(Auth::csrf(), ENT_QUOTES, 'UTF-8');
     $id = htmlspecialchars($consentId, ENT_QUOTES, 'UTF-8');
+    $action = htmlspecialchars(forma_site_base_path() . '/oauth/authorize', ENT_QUOTES, 'UTF-8');
+    $css = oauth_stylesheet_href();
     $scopeLabels = [
         'content:read' => 'Read pages, posts, snippets, media, and SEO',
         'content:write' => 'Create and update pages, posts, and snippets',
@@ -134,40 +144,77 @@ function oauth_consent_page(array $request, string $consentId): void {
     $items = '';
     foreach ($request['scopes'] as $scope) {
         $label = $scopeLabels[$scope] ?? $scope;
-        $items .= '<li>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</li>';
+        $items .= '                <li>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . "</li>\n";
     }
-    $css = htmlspecialchars(rtrim(forma_admin_base_href(), '/') . '/css/core.css', ENT_QUOTES, 'UTF-8');
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        . '<meta name="referrer" content="no-referrer"><title>Connect ' . $client . ' — ' . $site . '</title>'
-        . '<link rel="stylesheet" href="' . $css . '"></head><body>'
-        . '<main class="login-container" style="max-width:620px">'
-        . '<h1>Connect ' . $client . '?</h1>'
-        . '<p class="login-sub">' . $host . ' wants Site editor access to <strong>' . $site . '</strong>.</p>'
-        . '<div class="settings-card" style="text-align:left"><h3>This allows it to:</h3><ul>' . $items . '</ul>'
-        . '<p class="hint">Edits publish immediately. Forma protects one last-known-good copy before the first edit. This connection cannot delete content or media, change accounts, import backups, or update Forma core.</p></div>'
-        . '<form method="post" action="' . htmlspecialchars(forma_site_base_path() . '/oauth/authorize', ENT_QUOTES, 'UTF-8') . '">'
-        . '<input type="hidden" name="csrf_token" value="' . $csrf . '">'
-        . '<input type="hidden" name="consent_id" value="' . $id . '">'
-        . '<div style="display:flex;gap:12px;margin-top:20px">'
-        . '<button class="delete-btn" style="flex:1" type="submit" name="decision" value="deny">Cancel</button>'
-        . '<button class="login-btn" style="flex:1" type="submit" name="decision" value="allow">Allow Site editor</button>'
-        . '</div></form></main></body></html>';
+    echo <<<HTML
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Connect {$client} — {$site}</title>
+    <link rel="stylesheet" href="{$css}">
+</head>
+<body class="fx-consent-body">
+<main class="fx-consent">
+    <div class="fx-consent-card">
+        <p class="fx-consent-brand">{$site}</p>
+        <h1 class="fx-consent-title">Connect {$client}?</h1>
+        <p class="fx-consent-sub"><strong>{$host}</strong> is asking for Site editor access.</p>
+        <div class="fx-consent-grant">
+            <h2 class="fx-consent-grant-title">This allows it to</h2>
+            <ul class="fx-consent-scopes">
+{$items}            </ul>
+        </div>
+        <p class="fx-consent-note">Edits publish immediately. Forma protects one last-known-good copy before the first edit. This connection cannot delete content or media, change accounts, import backups, or update Forma core.</p>
+        <form class="fx-consent-actions" method="post" action="{$action}">
+            <input type="hidden" name="csrf_token" value="{$csrf}">
+            <input type="hidden" name="consent_id" value="{$id}">
+            <button class="fx-consent-btn fx-consent-deny" type="submit" name="decision" value="deny">Cancel</button>
+            <button class="fx-consent-btn fx-consent-allow" type="submit" name="decision" value="allow">Allow Site editor</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>
+HTML;
     exit;
 }
 
 function oauth_consent_error(string $message): void {
     $safe = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+    $site = htmlspecialchars(forma_site_title(), ENT_QUOTES, 'UTF-8');
+    $css = oauth_stylesheet_href();
     $settings = htmlspecialchars(
         rtrim(forma_admin_base_href(), '/') . '/index.php?section=settings&sub=access',
         ENT_QUOTES,
         'UTF-8'
     );
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        . '<title>Forma connection blocked</title></head><body>'
-        . '<main><h1>Connection blocked</h1><p>' . $safe . '</p>'
-        . '<p><a href="' . $settings . '">Open Settings → Access</a></p></main></body></html>';
+    echo <<<HTML
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Connection blocked — {$site}</title>
+    <link rel="stylesheet" href="{$css}">
+</head>
+<body class="fx-consent-body">
+<main class="fx-consent">
+    <div class="fx-consent-card">
+        <p class="fx-consent-brand">{$site}</p>
+        <h1 class="fx-consent-title">Connection blocked</h1>
+        <p class="fx-consent-sub">{$safe}</p>
+        <p class="fx-consent-links"><a href="{$settings}">Open Settings → Access</a></p>
+    </div>
+</main>
+</body>
+</html>
+HTML;
     exit;
 }
 

@@ -14,6 +14,7 @@
      1.  Tokens (custom properties)
      2.  Base / reset
      3.  Login page
+     3b. OAuth consent page
      4.  Layout shell (header, nav, footer)
      5.  Admin alert chip (hosting/security nag)
      6.  Forms & fields
@@ -159,6 +160,158 @@ body {
 .login-btn:focus {
     background: var(--primary-end);
     color: #121212;
+}
+
+/* ==========================================================================
+   3b. OAUTH CONSENT PAGE
+   Rendered by: api/oauth/index.php (oauth_consent_page / oauth_consent_error)
+   Standalone page shown to the site owner when an AI connector asks for
+   Site editor access. It loads this stylesheet without the admin shell, so
+   it re-enables the page scrolling section 2 turns off for the app.
+   ========================================================================== */
+body.fx-consent-body {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+}
+.fx-consent {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: 2rem 1rem;
+}
+.fx-consent-card {
+    width: 100%;
+    max-width: 480px;
+    box-sizing: border-box;
+    padding: 2rem;
+    background: linear-gradient(to bottom, var(--bg), var(--bg-end));
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.fx-consent-brand {
+    margin: 0 0 1.25rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+.fx-consent-title {
+    margin: 0 0 0.4rem;
+    text-align: center;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+.fx-consent-sub {
+    margin: 0 0 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+.fx-consent-sub strong {
+    color: var(--text);
+    font-weight: 600;
+}
+.fx-consent-grant {
+    padding: 1.1rem 1.25rem;
+    background: rgba(252, 190, 52, 0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.fx-consent-grant-title {
+    margin: 0 0 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--primary);
+}
+.fx-consent-scopes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.fx-consent-scopes li {
+    position: relative;
+    padding-left: 1.6rem;
+    font-size: 0.93rem;
+    line-height: 1.45;
+}
+.fx-consent-scopes li + li {
+    margin-top: 0.55rem;
+}
+.fx-consent-scopes li::before {
+    content: '\2713';
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-weight: 700;
+    color: var(--ok);
+}
+.fx-consent-note {
+    margin: 1.25rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+.fx-consent-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1.75rem 0 0;
+}
+.fx-consent-btn {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    font-size: 0.97rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.fx-consent-deny {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text-muted);
+}
+.fx-consent-deny:hover,
+.fx-consent-deny:focus-visible {
+    border-color: var(--fail);
+    color: var(--fail);
+}
+.fx-consent-allow {
+    background: var(--primary);
+    border: 2px solid var(--primary);
+    color: #121212;
+}
+.fx-consent-allow:hover,
+.fx-consent-allow:focus-visible {
+    background: var(--primary-end);
+    border-color: var(--primary-end);
+}
+.fx-consent-links {
+    margin: 1.5rem 0 0;
+    text-align: center;
+    font-size: 0.85rem;
+}
+.fx-consent-links a {
+    color: var(--primary);
+}
+@media (max-width: 420px) {
+    .fx-consent-card {
+        padding: 1.5rem;
+    }
+    .fx-consent-actions {
+        flex-direction: column-reverse;
+    }
 }
 
 /* ==========================================================================
