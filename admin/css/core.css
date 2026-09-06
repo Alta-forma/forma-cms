@@ -2149,6 +2149,39 @@ select {
 .settings-card > h3 { margin: 0 0 .25rem; font-size: 1rem; display: flex; align-items: center; gap: .5rem; }
 .settings-card > h3 i { color: var(--primary); font-size: .9rem; width: 18px; text-align: center; }
 .settings-card .card-sub { color: var(--text-muted); font-size: .83rem; margin: 0 0 1.1rem; overflow-wrap: anywhere; }
+.settings-card .card-sub code {
+    background: rgba(0, 0, 0, .3);
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    font-size: .95em;
+}
+/* Card head with icon tile + status badge: settings-access.php uses this so
+   the three ways into a Forma site read as one set of cards. */
+.fx-access-head {
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+    margin-bottom: 1.1rem;
+}
+.fx-access-icon {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: rgba(252, 190, 52, .12);
+    border: 1px solid rgba(252, 190, 52, .28);
+    color: var(--primary);
+}
+.fx-access-copy { flex: 1 1 auto; min-width: 0; }
+.fx-access-copy h3 { margin: 0 0 .2rem; font-size: 1rem; }
+.fx-access-copy .card-sub { margin: 0; line-height: 1.45; }
+.fx-access-head .status-badge { flex: 0 0 auto; margin-top: .25rem; }
+@media (max-width: 720px) {
+    .fx-access-head { flex-wrap: wrap; }
+    .fx-access-head .status-badge { margin-top: 0; }
+}
 .settings-card .about-list {
     margin: 0;
     padding-left: 1.15rem;
