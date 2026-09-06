@@ -32,12 +32,13 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 | SEO health | `GET /api/v1/seo` → `health` | Sitewide report (dupes, missing favicon/description, schema fields, `[[seo]]` slot status per template). `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row for a cheap "what needs work" scan without fetching every doc. |
 | Hosting / security nags | `HostingCheck::adminAlerts()`, admin-only | A red bar on every admin screen for a still-default `admin`/`admin` password or a failing hosting check (world-writable `database`/`uploads`/`feeds`/`fallback`, `display_errors` on, leftover `install.php`, missing `.htaccess`). No API surface for the full report — that's Settings → Server only. `GET /api/v1/health` is the lighter, agent-facing filesystem check (bad upload paths, nested `lib/lib`/`admin/admin` from a bad manual deploy). Fix perms with `chmod 755` dirs / `640` the db file — never `chmod -R 777`. |
 | Agent rollback | `AgentCheckpoint` + Settings → Access | Agent writes are live. Before the first write, Forma snapshots one last-known-good SQLite DB; later writes keep that point. `GET /checkpoint` reports it, `/checkpoint/restore` puts it back, `/checkpoint/accept` moves it. Restore also rebuilds search, feeds, redirects, cache, and fallback HTML; agent-deleted media is restored. New orphan uploads may remain. |
-| Subscription chatbot contracts | `/api/v1/openapi.json` / `.yaml`, `/api/v1/mcp` | Public OpenAPI 3.0.3 for ChatGPT Actions; authenticated stateless MCP Streamable HTTP for custom connectors. Both expose a safe Site editor surface without delete/security/import tools; public identity + SEO are curated through `site:write`. Use the normal Bearer token. |
+| Subscription chatbot contracts | `/api/v1/openapi.json` / `.yaml`, `/api/v1/mcp` | Public OpenAPI 3.0.3 for ChatGPT Actions; authenticated stateless MCP Streamable HTTP for custom connectors. Remote MCP uses automatic OAuth 2.1 discovery + DCR + PKCE + owner consent. Both expose a safe Site editor surface without delete/security/import tools; public identity + SEO are curated through `site:write`. |
 
 ## Auth
 
 - Header: `Authorization: Bearer fx_…`
 - DreamHost-safe alt: `X-Forma-Token: fx_…`
+- Remote MCP chatbots normally obtain a short-lived audience-bound token through OAuth; manual Bearer tokens are for Cursor, scripts, and Actions that require API-key auth.
 - Scopes: `content:read|write|delete`, `media:write|delete`, `site:write` (curated public identity + SEO), `rollback:write`, `settings:write`, `backup:read`, `podcast:write`. The Site editor preset intentionally omits both delete scopes.
 
 ## SEO fields (pages & posts)

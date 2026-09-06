@@ -13,6 +13,7 @@ require_once ROOT_DIR . '/lib/MediaRepo.php';
 require_once ROOT_DIR . '/lib/Search.php';
 require_once ROOT_DIR . '/lib/Feed.php';
 require_once ROOT_DIR . '/lib/Render.php';
+require_once ROOT_DIR . '/lib/AgentOAuth.php';
 require_once ROOT_DIR . '/lib/Agent.php';
 require_once ROOT_DIR . '/lib/AgentCheckpoint.php';
 require_once ROOT_DIR . '/lib/AgentOpenApi.php';

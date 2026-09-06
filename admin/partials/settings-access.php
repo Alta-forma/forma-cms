@@ -2,6 +2,7 @@
 require_once __DIR__ . '/_helpers.php';
 $user = Auth::user();
 $tokens = Agent::listTokens();
+$connections = AgentOAuth::listConnections();
 $once = $_GET['new_token'] ?? '';
 $checkpoint = AgentCheckpoint::status();
 $checkpointMessage = (string)($_GET['checkpoint_message'] ?? '');
@@ -68,18 +69,45 @@ fx_settings_scroll_open();
 
 <div class="settings-card card-glow-pass">
     <h3><i class="fas fa-comments"></i> Connect a subscription chatbot</h3>
-    <p class="card-sub">Creates the recommended Site editor token: content, uploads, public site details, SEO, and one-button rollback — no security settings, imports, or backups.</p>
-    <form hx-post="actions/agent-token-create.php" hx-target="#settings-panel" hx-swap="innerHTML">
-        <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
-        <input type="hidden" name="preset" value="site-editor">
-        <div class="form-group">
-            <label>Token name</label>
-            <input type="text" name="name" value="Chatbot site editor" required>
-        </div>
-        <div class="card-actions">
-            <button type="submit" class="standard-btn"><i class="small fas fa-wand-magic-sparkles"></i> Create Site editor token</button>
-        </div>
-    </form>
+    <p class="card-sub">Paste one URL into Grok, Claude, ChatGPT, or Perplexity. Forma will ask you to sign in and approve safe Site editor access — no token copying.</p>
+    <p class="connector-label">Remote MCP URL</p>
+    <?php echo fx_url_pill($mcpUrl); ?>
+    <ol class="hint">
+        <li>Add a custom or remote MCP connector in your AI tool.</li>
+        <li>Paste the URL above. Leave advanced OAuth fields alone.</li>
+        <li>Sign in to this Forma site when prompted, review access, and click <strong>Allow Site editor</strong>.</li>
+    </ol>
+    <p class="hint">The connection can edit content, upload media, update public SEO, and use rollback. It cannot delete, change accounts, import backups, or update Forma core.</p>
+</div>
+
+<div class="settings-card">
+    <h3><i class="fas fa-link"></i> Connected AI tools</h3>
+    <?php if (!$connections): ?>
+    <p class="card-sub" style="margin-bottom:0">No AI tool has completed OAuth connection yet.</p>
+    <?php else: ?>
+    <table class="token-table">
+        <tr><th>Tool</th><th>Connected</th><th>Last used</th><th></th></tr>
+        <?php foreach ($connections as $connection): ?>
+        <tr class="<?php echo $connection['revoked_at'] ? 'revoked' : ''; ?>">
+            <td>
+                <?php echo h((string)$connection['client_name']); ?>
+                <div class="hint"><?php echo h((string)(parse_url((json_decode((string)$connection['redirect_uris'], true)[0] ?? ''), PHP_URL_HOST) ?: 'OAuth client')); ?></div>
+            </td>
+            <td><?php echo (int)$connection['active_tokens'] > 0 ? '<span class="status-badge ok">Active</span>' : ($connection['revoked_at'] ? 'Revoked' : 'Awaiting use'); ?></td>
+            <td><?php echo $connection['last_used'] ? h(date('M j, H:i', (int)$connection['last_used'])) : '—'; ?></td>
+            <td style="text-align:right">
+                <?php if (!$connection['revoked_at']): ?>
+                <button type="button" class="delete-btn" style="min-width:auto;padding:4px 10px"
+                        hx-post="actions/oauth-client-revoke.php"
+                        hx-vals='{"client_id":"<?php echo h((string)$connection['client_id']); ?>","csrf_token":"<?php echo h(Auth::csrf()); ?>"}'
+                        hx-target="#settings-panel" hx-swap="innerHTML"
+                        hx-confirm="Disconnect this AI tool? Its access and refresh tokens will stop working immediately.">Disconnect</button>
+                <?php else: ?><span class="hint">revoked</span><?php endif; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+    <?php endif; ?>
 </div>
 
 <div class="settings-card <?php echo $checkpoint['pending'] ? 'card-glow-warn' : 'card-glow-pass'; ?>">
@@ -114,7 +142,16 @@ fx_settings_scroll_open();
 
 <div class="settings-card">
     <h3><i class="fas fa-plus-circle"></i> Create custom token</h3>
-    <p class="card-sub">Advanced: choose scopes manually for Cursor or a custom integration. Use the Site editor preset above for subscription chatbots.</p>
+    <p class="card-sub">Advanced fallback for Cursor, scripts, and clients that accept API keys. Subscription chatbots should use OAuth above.</p>
+    <form hx-post="actions/agent-token-create.php" hx-target="#settings-panel" hx-swap="innerHTML">
+        <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
+        <input type="hidden" name="preset" value="site-editor">
+        <input type="hidden" name="name" value="Site editor API key">
+        <div class="card-actions">
+            <button type="submit" class="standard-btn"><i class="small fas fa-key"></i> Create Site editor API key</button>
+        </div>
+    </form>
+    <hr style="border:0;border-top:1px solid var(--border);margin:1.25rem 0">
     <form hx-post="actions/agent-token-create.php" hx-target="#settings-panel" hx-swap="innerHTML">
         <input type="hidden" name="csrf_token" value="<?php echo h(Auth::csrf()); ?>">
         <div class="form-group">
@@ -182,9 +219,10 @@ fx_settings_scroll_open();
     <?php echo fx_url_pill($openapiUrl); ?>
     <p class="connector-label">Remote MCP</p>
     <?php echo fx_url_pill($mcpUrl); ?>
-    <div class="kv-row"><span class="k">Auth header</span><span class="v"><code>Authorization: Bearer fx_…</code></span></div>
+    <div class="kv-row"><span class="k">Chatbot auth</span><span class="v">OAuth 2.1 + PKCE — discovered automatically</span></div>
+    <div class="kv-row"><span class="k">API-key fallback</span><span class="v"><code>Authorization: Bearer fx_…</code></span></div>
     <div class="kv-row"><span class="k">Cursor MCP</span><span class="v"><code>mcp/README.md</code> in the Forma repo</span></div>
-    <p class="hint">Enter the token in the chatbot’s connector or Action authentication settings. Never paste it into a conversation. Connector names and availability vary by subscription.</p>
+    <p class="hint">For MCP connectors, paste the URL and approve access in the browser. API-key tokens remain available for Cursor and ChatGPT Actions. Never paste a token into a conversation.</p>
     <details class="connector-steps">
         <summary><strong>Cursor — local MCP</strong></summary>
         <ol class="hint">
@@ -206,8 +244,7 @@ fx_settings_scroll_open();
         <summary><strong>Claude, ChatGPT connectors, Grok, or Perplexity — MCP</strong></summary>
         <ol class="hint">
             <li>Add a custom or remote MCP connector using the Remote MCP URL above.</li>
-            <li>Choose Token/API key, or add request header <code>Authorization</code>.</li>
-            <li>If entering a full header value, use <code>Bearer fx_…</code> (include the space).</li>
+            <li>Forma’s OAuth settings are discovered automatically. Sign in to Forma and approve Site editor access.</li>
             <li>Ask it to call <code>formax_help</code>, inspect the site, and show you each live change.</li>
         </ol>
     </details>

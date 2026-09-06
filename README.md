@@ -122,10 +122,10 @@ Restore from Admin → Backup → Import, or `POST /api/v1/import/site` (multipa
 
 ## Agent API + subscription chatbots
 
-1. Admin → **Settings → Access** → create a **Site editor token** for ChatGPT, Claude, Grok, or Perplexity. It grants content, media, curated public site/SEO settings, and rollback — not security settings, imports, or backups.
-2. Agents: start with `GET /api/v1/help` or read [`AGENTS.md`](AGENTS.md)
-3. ChatGPT Custom GPT: import `/api/v1/openapi.json` under Configure → Actions; set API-key authentication to Bearer and paste the token there.
-4. Chatbot custom connectors: use `/api/v1/mcp` as a remote Streamable HTTP MCP server and send `Authorization: Bearer fx_…`. Connector support and names vary by subscription.
+1. Chatbot custom connectors: paste `/api/v1/mcp` as the remote Streamable HTTP MCP URL. Forma publishes OAuth discovery, dynamically registers the client, and asks the site owner to sign in and approve Site editor access. No token copying.
+2. OAuth grants content, media upload, curated public site/SEO settings, and rollback — not delete, security settings, imports, backups, accounts, or core updates. Access tokens expire after one hour; refresh tokens rotate.
+3. Agents: start with `GET /api/v1/help` or read [`AGENTS.md`](AGENTS.md).
+4. ChatGPT Custom GPT Actions: import `/api/v1/openapi.json`; create a manual Site editor token under Settings → Access and set API-key authentication to Bearer.
 5. CLI:
 
 ```bash
@@ -138,7 +138,7 @@ php tools/formax.php export-site
 
 6. Local Cursor MCP: see [`mcp/README.md`](mcp/README.md) — full CRUD for pages, posts, snippets, media, settings, SEO, redirects, episodes, rollback, health, and site export/import.
 
-Tokens are stored hashed. HTTPS required for non-local requests when `security.agent_https_only` is true.
+OAuth codes, access tokens, and refresh tokens are stored hashed. Manual API tokens remain available for Cursor and scripts. HTTPS is required for non-local requests when `security.agent_https_only` is true.
 Delete permissions are separate (`content:delete`, `media:delete`). Site editor tokens do not receive them. During the 0.5 migration, existing older write tokens receive the matching delete scope once so established Cursor integrations do not break.
 
 ### One rollback point

@@ -38,7 +38,10 @@ class Agent {
 
     public static function listTokens(): array {
         return Database::get()->query(
-            'SELECT id, name, scopes, created_at, last_used, revoked_at FROM api_tokens ORDER BY created_at DESC'
+            'SELECT id, name, scopes, created_at, last_used, revoked_at
+             FROM api_tokens
+             WHERE oauth_client_id IS NULL
+             ORDER BY created_at DESC'
         );
     }
 
@@ -49,10 +52,10 @@ class Agent {
         );
     }
 
-    public static function authenticate(): array {
+    public static function authenticate(?string $expectedAudience = null): array {
         $raw = self::extractBearerToken();
         if ($raw === '') {
-            self::fail(401, 'Missing Bearer token');
+            self::authFail('Missing Bearer token', $expectedAudience);
         }
         $hash = hash('sha256', $raw);
         $row = Database::get()->queryOne(
@@ -60,7 +63,18 @@ class Agent {
             [$hash]
         );
         if (!$row || !empty($row['revoked_at'])) {
-            self::fail(401, 'Invalid or revoked token');
+            self::authFail('Invalid or revoked token', $expectedAudience);
+        }
+        if (!empty($row['expires_at']) && (int)$row['expires_at'] <= time()) {
+            Database::get()->execute(
+                'UPDATE api_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL',
+                [time(), (int)$row['id']]
+            );
+            self::authFail('Expired token', $expectedAudience);
+        }
+        $audience = trim((string)($row['audience'] ?? ''));
+        if ($audience !== '' && ($expectedAudience === null || !hash_equals($audience, $expectedAudience))) {
+            self::authFail('Token is not valid for this resource', $expectedAudience);
         }
 
         $sec = Database::get()->getSetting('security');
@@ -85,6 +99,18 @@ class Agent {
         Database::get()->execute('UPDATE api_tokens SET last_used = ? WHERE id = ?', [time(), $row['id']]);
         $row['scopes'] = json_decode($row['scopes'] ?: '[]', true) ?: [];
         return $row;
+    }
+
+    private static function authFail(string $message, ?string $resource = null): void {
+        if ($resource !== null && class_exists('AgentOAuth')) {
+            $metadata = AgentOAuth::issuer() . '/.well-known/oauth-protected-resource';
+            $scopes = implode(' ', AgentOAuth::SITE_EDITOR_SCOPES);
+            header(
+                'WWW-Authenticate: Bearer resource_metadata="' . $metadata
+                . '", scope="' . $scopes . '"'
+            );
+        }
+        self::fail(401, $message);
     }
 
     public static function requireScope(array $token, string $scope): void {
@@ -131,7 +157,7 @@ class Agent {
             'uptime' => 'GET /up (no auth) JSON {ok,php,version,ts,fallback}. Static stamp: /fallback/php-ok.json. If stamp is 200 but /up is “No input file specified”, PHP/FastCGI is down.',
             'html_cache' => 'Settings→Cache "HTML cache" (cache.static_fallback) writes every page/post/episode to fallback/*.html on every save; Apache serves those files directly (see fallback.marker in /up). Paths without a built file fall through to a live PHP render. "Rebuild HTML cache" rebuilds everything + the search index in one pass.',
             'rollback' => 'Agent edits publish immediately. Before the first agent write, Forma automatically protects the current site as the single last-known-good rollback point. Further writes do not move it. GET /api/v1/checkpoint reports the state; POST /api/v1/checkpoint/restore puts the site back; POST /api/v1/checkpoint/accept moves the point to the current site. Never accept unless the human explicitly says the live site looks right.',
-            'subscription_chatbots' => 'ChatGPT Actions imports the public /api/v1/openapi.json contract and stores this token as Bearer authentication. Claude, ChatGPT custom connectors, and Grok can connect to /api/v1/mcp using Streamable HTTP and the same Bearer token. Never paste the token into ordinary chat text.',
+            'subscription_chatbots' => 'Claude, ChatGPT custom connectors, Grok, and Perplexity connect to /api/v1/mcp using Streamable HTTP. OAuth 2.1 discovery, dynamic registration, PKCE, and browser consent are automatic: paste the MCP URL, sign in to Forma, and approve Site editor access. ChatGPT Actions may import /api/v1/openapi.json and use a manual Bearer token.',
             'publish' => 'Compatibility alias for html_cache.',
             'search' => 'GET /search?q=… — SQLite FTS5 (or LIKE fallback) over pages + published posts + licensed podcast episodes. htmx fragment when header HX-Request: true, full page otherwise. Always PHP, never published as a static file, always noindex. The [[search]] snippet renders the box.',
             'docs' => 'See AGENTS.md and README.md in the Forma project root.',
@@ -141,6 +167,7 @@ class Agent {
             'version' => defined('FORMA_VERSION') ? FORMA_VERSION : '0',
             'auth' => [
                 'header' => 'Authorization: Bearer fx_…',
+                'oauth' => 'Remote MCP connectors discover OAuth automatically; manual tokens are an advanced fallback.',
                 'alt_headers' => ['X-Forma-Token: fx_…', 'X-Api-Key: fx_…'],
                 'scopes' => self::SCOPES,
             ],

@@ -54,7 +54,7 @@ Restart Cursor MCP. First tool to call: **`formax_help`**.
 
 ## Subscription chatbots (no Node process)
 
-Forma also serves MCP directly from PHP at `https://your-site.com/api/v1/mcp` using stateless Streamable HTTP. Add that URL as a custom/remote connector and store `Authorization: Bearer fx_…` in its authentication settings.
+Forma also serves MCP directly from PHP at `https://your-site.com/api/v1/mcp` using stateless Streamable HTTP. Add that URL as a custom/remote connector. Forma’s OAuth 2.1 metadata, dynamic client registration, PKCE, admin sign-in, and consent flow are discovered automatically—there is no Site editor token to copy into the chatbot.
 
 The remote endpoint exposes the safer Site editor subset: no delete, security, import, backup, or server tools. Public identity and SEO use the curated `site:write` scope. ChatGPT Custom GPT Actions can instead import `https://your-site.com/api/v1/openapi.json`.
 
@@ -63,5 +63,7 @@ Edits are live. Forma automatically protects one last-known-good point before th
 ## Security
 
 - Tokens are hashed at rest; shown once.
+- OAuth access tokens expire after one hour and refresh tokens rotate on every use.
+- OAuth callbacks must match the dynamically registered HTTPS or loopback URI exactly; PKCE `S256` is mandatory.
 - Prefer HTTPS; Agent API rejects plain HTTP for non-local requests when `agent_https_only` is on.
 - No shell access — content/settings/media only.

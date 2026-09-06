@@ -67,6 +67,13 @@ class Auth {
         return $_SESSION['forma_csrf'];
     }
 
+    public static function verifyCsrf(string $token): bool {
+        self::startSession();
+        return !empty($_SESSION['forma_csrf'])
+            && $token !== ''
+            && hash_equals((string)$_SESSION['forma_csrf'], $token);
+    }
+
     public static function user(): ?string {
         self::startSession();
         return $_SESSION['forma_user'] ?? null;

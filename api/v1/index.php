@@ -23,9 +23,24 @@ if ($rel === '/') {
     $rel = '';
 }
 
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Forma-Token, X-Api-Key');
 header('Access-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS');
+$requestOrigin = !empty($_SERVER['HTTP_ORIGIN']) ? parse_url((string)$_SERVER['HTTP_ORIGIN']) : null;
+$siteOrigin = parse_url(forma_public_url('/'));
+$requestPort = is_array($requestOrigin)
+    ? (int)($requestOrigin['port'] ?? (($requestOrigin['scheme'] ?? '') === 'https' ? 443 : 80))
+    : 0;
+$sitePort = is_array($siteOrigin)
+    ? (int)($siteOrigin['port'] ?? (($siteOrigin['scheme'] ?? '') === 'https' ? 443 : 80))
+    : 0;
+$sameOrigin = is_array($requestOrigin) && is_array($siteOrigin)
+    && strtolower((string)($requestOrigin['scheme'] ?? '')) === strtolower((string)($siteOrigin['scheme'] ?? ''))
+    && strtolower((string)($requestOrigin['host'] ?? '')) === strtolower((string)($siteOrigin['host'] ?? ''))
+    && $requestPort === $sitePort;
+if ($sameOrigin) {
+    header('Access-Control-Allow-Origin: ' . (string)$_SERVER['HTTP_ORIGIN']);
+    header('Vary: Origin');
+}
 if ($method === 'OPTIONS') {
     http_response_code(204);
     exit;
@@ -44,20 +59,12 @@ if (in_array($rel, ['/openapi.json', '/openapi.yaml'], true) && $method === 'GET
 // Streamable HTTP requires Origin validation to prevent browser DNS rebinding.
 // Cloud connectors normally make server-to-server requests with no Origin.
 if ($rel === '/mcp' && !empty($_SERVER['HTTP_ORIGIN'])) {
-    $origin = parse_url((string)$_SERVER['HTTP_ORIGIN']);
-    $siteOrigin = parse_url(forma_public_url('/'));
-    $originPort = (int)($origin['port'] ?? (($origin['scheme'] ?? '') === 'https' ? 443 : 80));
-    $sitePort = (int)($siteOrigin['port'] ?? (($siteOrigin['scheme'] ?? '') === 'https' ? 443 : 80));
-    $sameOrigin = is_array($origin) && is_array($siteOrigin)
-        && strtolower((string)($origin['scheme'] ?? '')) === strtolower((string)($siteOrigin['scheme'] ?? ''))
-        && strtolower((string)($origin['host'] ?? '')) === strtolower((string)($siteOrigin['host'] ?? ''))
-        && $originPort === $sitePort;
     if (!$sameOrigin) {
         Agent::fail(403, 'MCP Origin is not allowed');
     }
 }
 
-$token = Agent::authenticate();
+$token = Agent::authenticate($rel === '/mcp' ? AgentOAuth::resourceUri() : null);
 $body = [];
 $raw = file_get_contents('php://input') ?: '';
 if ($raw !== '') {
