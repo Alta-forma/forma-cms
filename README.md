@@ -1,6 +1,6 @@
 # Forma
 
-A portable, SQLite-powered CMS for people who are willing to hack a little. Dark admin (htmx), Markdown-first blogging, correct RSS, built-in SEO, and an Agent API for Cursor.
+A portable, SQLite-powered CMS for people who are willing to hack a little. Dark admin (htmx), Markdown-first blogging, correct RSS, built-in SEO, and an HTTPS Agent API for Cursor and subscription chatbots.
 
 **AltaForma** is the company that builds and hosts sites on Forma. This repo is the CMS.
 
@@ -53,7 +53,7 @@ DreamHost / Apache / Nginx: [docs/DEPLOY.md](docs/DEPLOY.md).
 ├── admin/              # htmx admin (partials + actions)
 ├── api/v1/             # Agent API (Bearer tokens)
 ├── lib/                # Database, repos, Render, Feed, Agent…
-├── mcp/                # Cursor MCP server (full site control)
+├── mcp/                # Local Cursor MCP client (remote MCP is built into /api/v1/mcp)
 ├── AGENTS.md           # How agents should use Forma
 ├── tools/              # remote CLI + import from older installs
 ├── database/forma.db   # created on first request
@@ -89,6 +89,8 @@ Forma also drops a deny-PHP `.htaccess` into `uploads/` on write, so an uploaded
 | `/podcast`, `/podcast/{id}` | Podcast pages (templates in DB) |
 | `/admin` | Admin |
 | `/api/v1/*` | Agent API (`GET /api/v1/help` for the map) |
+| `/api/v1/openapi.json` | Public ChatGPT Actions contract (no credentials) |
+| `/api/v1/mcp` | Authenticated remote MCP over Streamable HTTP |
 | `/search` | Site search (htmx fragment or full page). `[[search]]` snippet renders the box |
 | `/up` | PHP heartbeat JSON (no auth). Pair with `/fallback/php-ok.json` |
 | `/fallback/index.html` | Published homepage Apache can serve directly, or if PHP/FastCGI dies |
@@ -118,11 +120,13 @@ php tools/formax.php export-site ./backup.zip
 
 Restore from Admin → Backup → Import, or `POST /api/v1/import/site` (multipart `package`).
 
-## Agent API + Cursor
+## Agent API + subscription chatbots
 
-1. Admin → **Settings → Agents** → create token (grant the scopes you need: content, media, settings, backup, podcast)
+1. Admin → **Settings → Access** → create a **Site editor token** for ChatGPT, Claude, Grok, or Perplexity. It grants content, media, curated public site/SEO settings, and rollback — not security settings, imports, or backups.
 2. Agents: start with `GET /api/v1/help` or read [`AGENTS.md`](AGENTS.md)
-3. CLI:
+3. ChatGPT Custom GPT: import `/api/v1/openapi.json` under Configure → Actions; set API-key authentication to Bearer and paste the token there.
+4. Chatbot custom connectors: use `/api/v1/mcp` as a remote Streamable HTTP MCP server and send `Authorization: Bearer fx_…`. Connector support and names vary by subscription.
+5. CLI:
 
 ```bash
 export FORMA_X_URL=http://localhost:8787
@@ -132,9 +136,20 @@ php tools/formax.php posts
 php tools/formax.php export-site
 ```
 
-4. MCP: see [`mcp/README.md`](mcp/README.md) — full CRUD for pages, posts, snippets, media, settings, SEO, redirects, episodes, plus a filesystem `health` check and site export/import
+6. Local Cursor MCP: see [`mcp/README.md`](mcp/README.md) — full CRUD for pages, posts, snippets, media, settings, SEO, redirects, episodes, rollback, health, and site export/import.
 
 Tokens are stored hashed. HTTPS required for non-local requests when `security.agent_https_only` is true.
+Delete permissions are separate (`content:delete`, `media:delete`). Site editor tokens do not receive them. During the 0.5 migration, existing older write tokens receive the matching delete scope once so established Cursor integrations do not break.
+
+### One rollback point
+
+Agent edits are live — there is no staging copy and no revision browser. Before the first Agent API or remote-MCP write, Forma automatically snapshots the current SQLite database as the **last known good site**. Every following agent write keeps that same point.
+
+- **Put it back** restores the protected database, agent-deleted media, search index, feeds, redirects, PHP cache, and static HTML.
+- **This looks good** moves the point to the current live site and arms Forma for the next edit session.
+- Both controls are in Settings → Access. Agents with `rollback:write` can call `GET /checkpoint`, `POST /checkpoint/restore`, and `POST /checkpoint/accept`.
+
+Rollback restores site content/configuration but preserves admin users, API tokens, login attempts, and the agent audit trail. New uploads that become unused after a restore may remain as harmless orphan files; Forma does not copy the entire uploads folder for each editing session. Never tell an agent “this looks good” until you have checked the public site; accepting is the one action that intentionally discards the previous rollback point.
 
 ## PHP cache vs HTML cache
 

@@ -287,14 +287,28 @@ class StaticFallback {
         if (!$counts['enabled']) {
             return $counts;
         }
-        foreach (PageRepo::list() as $row) {
+        // Never let Apache serve a half-rebuilt tree. PHP remains live while
+        // files are written; the marker returns only after completeness checks.
+        self::setMarker(false);
+        $pageRows = PageRepo::list();
+        $postRows = BlogRepo::list(true);
+        $expectedPages = 0;
+        $expectedPosts = 0;
+        $expectedEpisodes = 0;
+        foreach ($pageRows as $row) {
+            if (self::pageIsPublishable($row)) {
+                $expectedPages++;
+            }
             $full = PageRepo::get($row['filename']);
             if ($full && self::publishPage($full)) {
                 $counts['pages']++;
             }
         }
-        foreach (BlogRepo::list(true) as $row) {
+        foreach ($postRows as $row) {
             $full = BlogRepo::get($row['filename']);
+            if ($full && BlogRepo::isPubliclyVisible($full)) {
+                $expectedPosts++;
+            }
             if ($full && self::publishPost($full)) {
                 $counts['posts']++;
             }
@@ -302,6 +316,9 @@ class StaticFallback {
         $counts['blog_archive'] = self::publishBlogArchive();
         if (class_exists('License') && License::isPodcastLicensed()) {
             foreach (PodcastRepo::list() as $ep) {
+                if (!empty($ep['published_at']) && (int)$ep['published_at'] <= time()) {
+                    $expectedEpisodes++;
+                }
                 if (self::publishEpisode($ep)) {
                     $counts['podcast_episodes']++;
                 }
@@ -320,10 +337,70 @@ class StaticFallback {
         if (class_exists('Search')) {
             $counts['search'] = Search::reindexAll();
         }
-        self::setMarker(true);
+        $expectedErrors = 0;
+        foreach (['_404', '_403', '_500'] as $errorPage) {
+            if (PageRepo::get($errorPage)) {
+                $expectedErrors++;
+            }
+        }
+        $counts['complete'] = $counts['pages'] === $expectedPages
+            && $counts['posts'] === $expectedPosts
+            && $counts['blog_archive'] === true
+            && $counts['podcast_episodes'] === $expectedEpisodes
+            && (!License::isPodcastLicensed() || $counts['podcast_archive'] === true)
+            && count($counts['errors']) === $expectedErrors;
+        self::setMarker($counts['complete']);
+        if (!$counts['complete'] && class_exists('Htaccess')) {
+            Htaccess::ensureErrorDocuments(false);
+        }
         self::writeStamp();
         @file_put_contents(self::dir() . '/.published-at', (string)time());
         return $counts;
+    }
+
+    private static function pageIsPublishable(array $row): bool {
+        $filename = (string)($row['filename'] ?? '');
+        $path = $filename === 'home' ? '/' : trim((string)($row['slug'] ?? ''));
+        if ($path === '') {
+            return false;
+        }
+        return !str_starts_with($path, '/admin')
+            && !str_starts_with($path, '/api')
+            && $path !== '/up'
+            && !str_starts_with($path, '/search');
+    }
+
+    /** Current DB routes that may have generated fallback HTML. */
+    public static function publishedPaths(): array {
+        $paths = [];
+        foreach (PageRepo::list() as $row) {
+            if (!self::pageIsPublishable($row)) {
+                continue;
+            }
+            $paths[] = ($row['filename'] ?? '') === 'home'
+                ? '/'
+                : trim((string)($row['slug'] ?? ''));
+        }
+        foreach (BlogRepo::list(true) as $row) {
+            $slug = trim((string)($row['slug'] ?? ''), '/');
+            if ($slug !== '') {
+                $paths[] = '/blog/' . $slug;
+            }
+        }
+        foreach (PodcastRepo::list() as $row) {
+            $id = trim((string)($row['episode_id'] ?? ''));
+            if ($id !== '') {
+                $paths[] = '/podcast/' . $id;
+            }
+        }
+        return array_values(array_unique($paths));
+    }
+
+    /** Remove obsolete generated routes identified by rollback comparison. */
+    public static function removePublishedPaths(array $paths): void {
+        foreach (array_unique($paths) as $path) {
+            self::removeFile((string)$path);
+        }
     }
 
     /** Turn HTML cache on: caller must persist cache.static_fallback = true first. */

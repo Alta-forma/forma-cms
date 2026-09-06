@@ -99,6 +99,7 @@ class Database {
             name       TEXT    NOT NULL,
             token_hash TEXT    NOT NULL UNIQUE,
             scopes     TEXT    NOT NULL DEFAULT '[]',
+            scope_version INTEGER NOT NULL DEFAULT 2,
             created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
             last_used  INTEGER,
             revoked_at INTEGER
@@ -277,6 +278,31 @@ class Database {
         $names = array_column($cols, 'name');
         if (!in_array('seo_json', $names, true)) {
             $this->pdo->exec("ALTER TABLE blog_posts ADD COLUMN seo_json TEXT NOT NULL DEFAULT '{}'");
+        }
+        $tokenCols = $this->pdo->query('PRAGMA table_info(api_tokens)')->fetchAll();
+        $tokenNames = array_column($tokenCols, 'name');
+        if (!in_array('scope_version', $tokenNames, true)) {
+            // Preserve pre-0.5 token behavior once while splitting destructive
+            // permissions away from content/media write for new Site editors.
+            $this->pdo->beginTransaction();
+            try {
+                $this->pdo->exec('ALTER TABLE api_tokens ADD COLUMN scope_version INTEGER NOT NULL DEFAULT 2');
+                foreach ($this->pdo->query('SELECT id, scopes FROM api_tokens')->fetchAll() as $token) {
+                    $scopes = json_decode((string)($token['scopes'] ?? '[]'), true) ?: [];
+                    if (in_array('content:write', $scopes, true) && !in_array('content:delete', $scopes, true)) {
+                        $scopes[] = 'content:delete';
+                    }
+                    if (in_array('media:write', $scopes, true) && !in_array('media:delete', $scopes, true)) {
+                        $scopes[] = 'media:delete';
+                    }
+                    $this->pdo->prepare('UPDATE api_tokens SET scopes = ? WHERE id = ?')
+                        ->execute([json_encode(array_values($scopes)), (int)$token['id']]);
+                }
+                $this->pdo->commit();
+            } catch (Throwable $e) {
+                $this->pdo->rollBack();
+                throw $e;
+            }
         }
         $this->pdo->exec(
             'CREATE TABLE IF NOT EXISTS redirects (

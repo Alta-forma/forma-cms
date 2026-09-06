@@ -236,6 +236,7 @@ class SitePackage {
         $zip->close();
 
         $stats = ['database' => false, 'uploads' => 0, 'json_fallback' => false, 'backup' => ''];
+        $publishedBefore = StaticFallback::publishedPaths();
 
         try {
             // Backup current DB
@@ -293,6 +294,19 @@ class SitePackage {
             }
 
             Database::get()->flushCache();
+            Render::forgetSiteContext();
+            Render::forgetSnippetMap();
+            StaticFallback::removePublishedPaths(array_diff($publishedBefore, StaticFallback::publishedPaths()));
+            try {
+                $stats['search'] = Search::reindexAll();
+                Feed::maybeRegenerateBlog();
+                Feed::maybeRegeneratePodcast();
+                Htaccess::syncRedirectsBlock(RedirectRepo::list());
+                $stats['fallback'] = StaticFallback::republishIfEnabled();
+            } catch (Throwable $e) {
+                StaticFallback::disable();
+                $stats['rebuild_warning'] = 'Import completed, but derived output rebuild failed. Static HTML is safely disabled: ' . $e->getMessage();
+            }
         } finally {
             self::rrmdir($extractDir);
         }
@@ -310,8 +324,8 @@ class SitePackage {
         if ($fromSchema >= self::SCHEMA_VERSION) {
             return;
         }
-        // v1 → future: add migrators here in order
-        // for ($v = $fromSchema; $v < self::SCHEMA_VERSION; $v++) { ... }
+        // v1 → v2 is handled by Database::migrateColumns(): split destructive
+        // content/media delete scopes while preserving legacy token behavior.
         RedirectRepo::ensureTable();
     }
 

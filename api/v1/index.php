@@ -31,6 +31,32 @@ if ($method === 'OPTIONS') {
     exit;
 }
 
+// Public contract imported by ChatGPT Actions, generated as JSON or YAML.
+if (in_array($rel, ['/openapi.json', '/openapi.yaml'], true) && $method === 'GET') {
+    header('Content-Type: ' . ($rel === '/openapi.yaml' ? 'application/yaml' : 'application/json') . '; charset=UTF-8');
+    header('Cache-Control: public, max-age=300');
+    echo $rel === '/openapi.yaml'
+        ? AgentOpenApi::yaml()
+        : json_encode(AgentOpenApi::document(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Streamable HTTP requires Origin validation to prevent browser DNS rebinding.
+// Cloud connectors normally make server-to-server requests with no Origin.
+if ($rel === '/mcp' && !empty($_SERVER['HTTP_ORIGIN'])) {
+    $origin = parse_url((string)$_SERVER['HTTP_ORIGIN']);
+    $siteOrigin = parse_url(forma_public_url('/'));
+    $originPort = (int)($origin['port'] ?? (($origin['scheme'] ?? '') === 'https' ? 443 : 80));
+    $sitePort = (int)($siteOrigin['port'] ?? (($siteOrigin['scheme'] ?? '') === 'https' ? 443 : 80));
+    $sameOrigin = is_array($origin) && is_array($siteOrigin)
+        && strtolower((string)($origin['scheme'] ?? '')) === strtolower((string)($siteOrigin['scheme'] ?? ''))
+        && strtolower((string)($origin['host'] ?? '')) === strtolower((string)($siteOrigin['host'] ?? ''))
+        && $originPort === $sitePort;
+    if (!$sameOrigin) {
+        Agent::fail(403, 'MCP Origin is not allowed');
+    }
+}
+
 $token = Agent::authenticate();
 $body = [];
 $raw = file_get_contents('php://input') ?: '';
@@ -42,10 +68,28 @@ if ($raw !== '') {
 }
 
 try {
+    // Stateless MCP Streamable HTTP for Claude/ChatGPT/Grok cloud connectors.
+    if ($rel === '/mcp' && $method === 'POST') {
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store');
+        header('MCP-Protocol-Version: 2025-06-18');
+        $response = AgentMcp::handle($token, $body);
+        if ($response === null) {
+            http_response_code(202);
+            exit;
+        }
+        echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    if ($rel === '/mcp') {
+        header('Allow: POST, OPTIONS');
+        Agent::fail(405, 'Remote MCP uses POST (Streamable HTTP)');
+    }
+
     // GET /api/v1/help — full map for agents
     if ($rel === '/help' && $method === 'GET') {
         Agent::audit($token, 'help', $rel);
-        Agent::json(Agent::helpDocument());
+        Agent::json(Agent::helpDocument($token));
     }
 
     // GET /api/v1/site  or  /api/v1
@@ -68,6 +112,43 @@ try {
                 'feed_json'=> '/feed.json',
             ],
         ]);
+    }
+
+    // Curated public identity settings for Site editor tokens. Canonical site
+    // URL and security-sensitive sections remain settings:write only.
+    if ($rel === '/site-settings' && $method === 'GET') {
+        Agent::requireScope($token, 'content:read');
+        $site = Database::get()->getSetting('site');
+        unset($site['url']);
+        Agent::json(['site' => $site]);
+    }
+    if ($rel === '/site-settings' && ($method === 'PUT' || $method === 'POST')) {
+        Agent::requireAnyScope($token, ['site:write', 'settings:write']);
+        $value = $body['value'] ?? $body;
+        if (!is_array($value)) {
+            Agent::fail(400, 'value must be object');
+        }
+        $allowed = ['title', 'description', 'timezone', 'language', 'default_author'];
+        $safe = array_intersect_key($value, array_flip($allowed));
+        if (!$safe) {
+            Agent::fail(400, 'No supported site fields supplied');
+        }
+        foreach ($safe as $key => $fieldValue) {
+            if (!is_scalar($fieldValue) && $fieldValue !== null) {
+                Agent::fail(400, $key . ' must be a string');
+            }
+            $safe[$key] = trim((string)$fieldValue);
+        }
+        AgentCheckpoint::beforeMutation($token);
+        $merged = array_merge(Database::get()->getSetting('site'), $safe);
+        Database::get()->saveSetting('site', $merged);
+        Database::get()->flushCache();
+        Feed::maybeRegenerateBlog();
+        Feed::maybeRegeneratePodcast();
+        StaticFallback::republishIfEnabled();
+        unset($merged['url']);
+        Agent::audit($token, 'site-settings.save', $rel);
+        Agent::json(['success' => true, 'site' => $merged, 'checkpoint' => AgentCheckpoint::status()]);
     }
 
     // GET /api/v1/health — filesystem sanity (diagnose bad FTP / nested folders)
@@ -99,6 +180,25 @@ try {
                 ? 'Filesystem looks good'
                 : 'Fix nested folders (lib/lib or admin/admin) and re-upload missing paths from local Forma. Do not drag a folder into a same-named folder.',
         ]);
+    }
+
+    // One last-known-good rollback point for live agent edits.
+    if ($rel === '/checkpoint' && $method === 'GET') {
+        Agent::requireScope($token, 'content:read');
+        Agent::audit($token, 'checkpoint.read', $rel);
+        Agent::json(['checkpoint' => AgentCheckpoint::status()]);
+    }
+    if ($rel === '/checkpoint/restore' && $method === 'POST') {
+        Agent::requireScope($token, 'rollback:write');
+        $result = AgentCheckpoint::restore((string)($token['name'] ?? 'Agent'));
+        Agent::audit($token, 'checkpoint.restore', $rel);
+        Agent::json($result);
+    }
+    if ($rel === '/checkpoint/accept' && $method === 'POST') {
+        Agent::requireScope($token, 'rollback:write');
+        $result = AgentCheckpoint::accept((string)($token['name'] ?? 'Agent'));
+        Agent::audit($token, 'checkpoint.accept', $rel);
+        Agent::json(['success' => true, 'checkpoint' => $result]);
     }
 
     // Pages
@@ -134,6 +234,7 @@ try {
         }
         if ($method === 'PUT' || $method === 'POST') {
             Agent::requireScope($token, 'content:write');
+            AgentCheckpoint::beforeMutation($token);
             $extra = [];
             if (isset($body['seo']) && is_array($body['seo'])) {
                 foreach (Seo::PAGE_META_KEYS as $k) {
@@ -160,10 +261,11 @@ try {
             $warnings = $row['_warnings'] ?? [];
             unset($row['_warnings']);
             Agent::audit($token, 'pages.save', $rel, $filename);
-            Agent::json(['success' => true, 'page' => $row, 'warnings' => $warnings]);
+            Agent::json(['success' => true, 'page' => $row, 'warnings' => $warnings, 'checkpoint' => AgentCheckpoint::status()]);
         }
         if ($method === 'DELETE') {
-            Agent::requireScope($token, 'content:write');
+            Agent::requireScope($token, 'content:delete');
+            AgentCheckpoint::beforeMutation($token);
             PageRepo::delete($filename);
             Agent::audit($token, 'pages.delete', $rel, $filename);
             Agent::json(['success' => true]);
@@ -198,16 +300,18 @@ try {
         }
         if ($method === 'PUT' || $method === 'POST') {
             Agent::requireScope($token, 'content:write');
+            AgentCheckpoint::beforeMutation($token);
             $data = $body;
             $data['filename'] = $filename;
             $row = BlogRepo::save($data);
             $warnings = $row['_warnings'] ?? [];
             unset($row['_warnings']);
             Agent::audit($token, 'posts.save', $rel, $filename);
-            Agent::json(['success' => true, 'post' => $row, 'warnings' => $warnings]);
+            Agent::json(['success' => true, 'post' => $row, 'warnings' => $warnings, 'checkpoint' => AgentCheckpoint::status()]);
         }
         if ($method === 'DELETE') {
-            Agent::requireScope($token, 'content:write');
+            Agent::requireScope($token, 'content:delete');
+            AgentCheckpoint::beforeMutation($token);
             BlogRepo::delete($filename);
             Agent::audit($token, 'posts.delete', $rel, $filename);
             Agent::json(['success' => true]);
@@ -232,12 +336,14 @@ try {
         }
         if ($method === 'PUT' || $method === 'POST') {
             Agent::requireScope($token, 'content:write');
+            AgentCheckpoint::beforeMutation($token);
             $row = SnippetRepo::save($filename, $body['shortcode'] ?? $filename, $body['content'] ?? '');
             Agent::audit($token, 'snippets.save', $rel);
-            Agent::json(['success' => true, 'snippet' => $row]);
+            Agent::json(['success' => true, 'snippet' => $row, 'checkpoint' => AgentCheckpoint::status()]);
         }
         if ($method === 'DELETE') {
-            Agent::requireScope($token, 'content:write');
+            Agent::requireScope($token, 'content:delete');
+            AgentCheckpoint::beforeMutation($token);
             SnippetRepo::delete($filename);
             Agent::audit($token, 'snippets.delete', $rel);
             Agent::json(['success' => true]);
@@ -252,38 +358,29 @@ try {
 
     if ($rel === '/media' && $method === 'POST') {
         Agent::requireScope($token, 'media:write');
+        AgentCheckpoint::beforeMutation($token);
         // JSON base64 upload for agent tooling that can't multipart easily
         if (!empty($body['filename']) && !empty($body['content_base64'])) {
-            $bin = base64_decode((string)$body['content_base64'], true);
-            if ($bin === false) {
-                Agent::fail(400, 'Invalid base64');
-            }
-            $tmp = tempnam(sys_get_temp_dir(), 'fxup');
-            file_put_contents($tmp, $bin);
-            $fake = [
-                'name' => basename((string)$body['filename']),
-                'type' => $body['content_type'] ?? 'application/octet-stream',
-                'tmp_name' => $tmp,
-                'error' => UPLOAD_ERR_OK,
-                'size' => strlen($bin),
-            ];
-            // MediaRepo::saveUpload uses move_uploaded_file — won't work on tempnam.
-            // Write directly with allowed-type checks.
-            $saved = self_agent_store_media($fake);
-            @unlink($tmp);
+            $saved = MediaRepo::saveBase64(
+                (string)$body['filename'],
+                (string)$body['content_base64'],
+                (string)($body['content_type'] ?? 'application/octet-stream')
+            );
             Agent::audit($token, 'media.upload', $rel, $saved['filename']);
-            Agent::json(['success' => true, 'file' => $saved]);
+            Agent::json(['success' => true, 'file' => $saved, 'checkpoint' => AgentCheckpoint::status()]);
         }
         if (empty($_FILES['file'])) {
             Agent::fail(400, 'multipart file required (or JSON filename + content_base64)');
         }
         $saved = MediaRepo::saveUpload($_FILES['file']);
         Agent::audit($token, 'media.upload', $rel, $saved['filename']);
-        Agent::json(['success' => true, 'file' => $saved]);
+        Agent::json(['success' => true, 'file' => $saved, 'checkpoint' => AgentCheckpoint::status()]);
     }
 
     if (preg_match('#^/media/([a-zA-Z0-9._-]+)$#', $rel, $m) && $method === 'DELETE') {
-        Agent::requireScope($token, 'media:write');
+        Agent::requireScope($token, 'media:delete');
+        AgentCheckpoint::beforeMutation($token);
+        AgentCheckpoint::preserveDeletedMedia($m[1]);
         MediaRepo::delete($m[1]);
         Agent::audit($token, 'media.delete', $rel, $m[1]);
         Agent::json(['success' => true]);
@@ -313,6 +410,7 @@ try {
         }
         if ($method === 'PUT' || $method === 'POST') {
             Agent::requireScope($token, 'settings:write');
+            AgentCheckpoint::beforeMutation($token);
             $value = $body['value'] ?? $body;
             if (!is_array($value)) {
                 Agent::fail(400, 'value must be object');
@@ -332,6 +430,17 @@ try {
                 Feed::maybeRegeneratePodcast();
             }
             Database::get()->flushCache();
+            if ($section === 'cache') {
+                Htaccess::ensureStaticFallbackRules();
+                Htaccess::ensureFastCgiSafeFrontController();
+                if (!empty($merged['static_fallback'])) {
+                    StaticFallback::enable();
+                } else {
+                    StaticFallback::disable();
+                }
+            } elseif (in_array($section, ['site', 'seo', 'blog', 'podcast'], true)) {
+                StaticFallback::republishIfEnabled();
+            }
             Agent::audit($token, 'settings.save', $rel, $section);
             Agent::json(['success' => true, 'value' => $merged]);
         }
@@ -351,7 +460,8 @@ try {
         ]);
     }
     if ($rel === '/seo' && ($method === 'PUT' || $method === 'POST')) {
-        Agent::requireScope($token, 'settings:write');
+        Agent::requireAnyScope($token, ['site:write', 'settings:write']);
+        AgentCheckpoint::beforeMutation($token);
         $value = $body['value'] ?? $body;
         if (!is_array($value)) {
             Agent::fail(400, 'value must be object');
@@ -372,6 +482,7 @@ try {
         $merged = Seo::normalizeSettings($merged);
         Database::get()->saveSetting('seo', $merged);
         Database::get()->flushCache();
+        StaticFallback::republishIfEnabled();
         Agent::audit($token, 'seo.save', $rel);
         Agent::json([
             'success' => true,
@@ -380,6 +491,7 @@ try {
             'robots_txt' => Seo::robotsTxt($merged),
             'sitemap_xml' => Seo::sitemapXml($merged),
             'llms_txt' => Seo::llmsTxt($merged),
+            'checkpoint' => AgentCheckpoint::status(),
         ]);
     }
 
@@ -390,6 +502,7 @@ try {
     }
     if ($rel === '/redirects' && ($method === 'PUT' || $method === 'POST')) {
         Agent::requireScope($token, 'settings:write');
+        AgentCheckpoint::beforeMutation($token);
         $data = $body['value'] ?? $body;
         if (!is_array($data)) {
             Agent::fail(400, 'value must be object');
@@ -405,6 +518,7 @@ try {
     }
     if (preg_match('#^/redirects/(\d+)$#', $rel, $rm) && $method === 'DELETE') {
         Agent::requireScope($token, 'settings:write');
+        AgentCheckpoint::beforeMutation($token);
         RedirectRepo::delete((int)$rm[1]);
         Database::get()->flushCache();
         Agent::audit($token, 'redirects.delete', $rel, $rm[1]);
@@ -433,6 +547,7 @@ try {
     // Import site package (multipart package=… zip, or JSON {path} not supported — use multipart)
     if (($rel === '/import/site' || $rel === '/import/package') && $method === 'POST') {
         Agent::requireScope($token, 'settings:write');
+        AgentCheckpoint::beforeMutation($token);
         if (empty($_FILES['package']['tmp_name']) || !is_uploaded_file($_FILES['package']['tmp_name'])) {
             Agent::fail(400, 'multipart field "package" (.zip) required');
         }
@@ -465,6 +580,7 @@ try {
         }
         if ($method === 'PUT' || $method === 'POST') {
             Agent::requireScope($token, 'podcast:write');
+            AgentCheckpoint::beforeMutation($token);
             $data = $body;
             $data['episode_id'] = $id;
             $row = PodcastRepo::save($data);
@@ -473,6 +589,7 @@ try {
         }
         if ($method === 'DELETE') {
             Agent::requireScope($token, 'podcast:write');
+            AgentCheckpoint::beforeMutation($token);
             PodcastRepo::delete($id);
             Agent::audit($token, 'episodes.delete', $rel);
             Agent::json(['success' => true]);
@@ -482,38 +599,4 @@ try {
     Agent::fail(404, 'Not found: ' . $rel);
 } catch (Throwable $e) {
     Agent::fail(400, $e->getMessage());
-}
-
-/** Store media from a local temp file (agent base64 path). */
-function self_agent_store_media(array $file): array {
-    $sec = Database::get()->getSetting('security');
-    $max = (int)($sec['max_upload_size'] ?? 52428800);
-    if (($file['size'] ?? 0) > $max) {
-        throw new RuntimeException('File too large');
-    }
-    $name = basename($file['name'] ?? 'file');
-    $ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-    $allowed = $sec['allowed_upload_types'] ?? [];
-    if ($ext === '' || !in_array($ext, $allowed, true)) {
-        throw new RuntimeException('File type not allowed: ' . $ext);
-    }
-    $safe = preg_replace('/[^a-zA-Z0-9._-]/', '-', pathinfo($name, PATHINFO_FILENAME)) ?? 'file';
-    $destName = $safe . '-' . substr(bin2hex(random_bytes(3)), 0, 6) . '.' . $ext;
-    if (!is_dir(UPLOADS_DIR)) {
-        mkdir(UPLOADS_DIR, 0755, true);
-    }
-    $dest = UPLOADS_DIR . '/' . $destName;
-    if (!@rename($file['tmp_name'], $dest) && !@copy($file['tmp_name'], $dest)) {
-        throw new RuntimeException('Could not store upload');
-    }
-    @unlink($file['tmp_name']);
-    // tempnam() creates the source at mode 0600; rename() preserves that mode, which
-    // leaves Apache unable to serve the file directly (403) when PHP runs as a different
-    // user than the static-file-serving process. Normalize to a world-readable file.
-    @chmod($dest, 0644);
-    return [
-        'filename' => $destName,
-        'url'      => forma_uploads_web_url($destName),
-        'size'     => filesize($dest),
-    ];
 }

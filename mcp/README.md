@@ -9,8 +9,8 @@ cd mcp
 npm install
 ```
 
-Create a token in the remote site: **Admin → Settings → Agents**  
-(Recommended scopes: `content:read`, `content:write`, `media:write`, `settings:write`, `backup:read`, and `podcast:write` if needed.)
+Create a token in the remote site: **Admin → Settings → Access**
+(Full-control scopes: `content:read`, `content:write`, `content:delete`, `media:write`, `media:delete`, `site:write`, `rollback:write`, `settings:write`, `backup:read`, and `podcast:write` if needed. Existing pre-0.5 tokens keep their old delete ability during migration.)
 
 Add to `~/.cursor/mcp.json`:
 
@@ -38,8 +38,8 @@ Restart Cursor MCP. First tool to call: **`formax_help`**.
 | Tool | Scope |
 |------|--------|
 | `formax_help` / `formax_site` | content:read |
-| pages / posts / snippets CRUD | content:read / write |
-| media list / upload (base64) / delete | content:read / media:write |
+| pages / posts / snippets CRUD | content:read / content:write / content:delete |
+| media list / upload (base64) / delete | content:read / media:write / media:delete |
 | settings get / update | content:read / settings:write |
 | `formax_get_seo` / `formax_update_seo` | content:read / settings:write |
 | `formax_list_redirects` / `formax_save_redirect` / `formax_delete_redirect` | content:read / settings:write |
@@ -49,6 +49,16 @@ Restart Cursor MCP. First tool to call: **`formax_help`**.
 | `formax_export_site` | backup:read — writes local `.zip` (DB + uploads + manifest) |
 | `formax_import_site` | settings:write — uploads a local `.zip` (restore/migrate) |
 | `formax_health` | content:read — filesystem sanity check |
+| `formax_rollback_status` | content:read — inspect the one last-known-good point |
+| `formax_put_it_back` / `formax_this_looks_good` | rollback:write |
+
+## Subscription chatbots (no Node process)
+
+Forma also serves MCP directly from PHP at `https://your-site.com/api/v1/mcp` using stateless Streamable HTTP. Add that URL as a custom/remote connector and store `Authorization: Bearer fx_…` in its authentication settings.
+
+The remote endpoint exposes the safer Site editor subset: no delete, security, import, backup, or server tools. Public identity and SEO use the curated `site:write` scope. ChatGPT Custom GPT Actions can instead import `https://your-site.com/api/v1/openapi.json`.
+
+Edits are live. Forma automatically protects one last-known-good point before the first write. `formax_put_it_back` restores it; `formax_this_looks_good` moves it and must only be used after the human explicitly approves the public site.
 
 ## Security
 

@@ -6,7 +6,11 @@ class Agent {
     public const SCOPES = [
         'content:read',
         'content:write',
+        'content:delete',
         'media:write',
+        'media:delete',
+        'site:write',
+        'rollback:write',
         'settings:write',
         'backup:read',
         'podcast:write',
@@ -16,7 +20,7 @@ class Agent {
         $name = trim($name) ?: 'Agent';
         $scopes = array_values(array_intersect($scopes, self::SCOPES));
         if (!$scopes) {
-            $scopes = ['content:read', 'content:write'];
+            $scopes = ['content:read'];
         }
         $raw = 'fx_' . bin2hex(random_bytes(24));
         $hash = hash('sha256', $raw);
@@ -89,6 +93,15 @@ class Agent {
         }
     }
 
+    public static function requireAnyScope(array $token, array $scopes): void {
+        foreach ($scopes as $scope) {
+            if (in_array($scope, $token['scopes'] ?? [], true)) {
+                return;
+            }
+        }
+        self::fail(403, 'Missing one of scopes: ' . implode(', ', $scopes));
+    }
+
     public static function audit(array $token, string $action, string $path = '', string $summary = ''): void {
         Database::get()->execute(
             'INSERT INTO api_audit (token_id, action, path, ip, summary) VALUES (?, ?, ?, ?, ?)',
@@ -102,7 +115,7 @@ class Agent {
         );
     }
 
-    public static function helpDocument(): array {
+    public static function helpDocument(?array $token = null): array {
         $how = [
             'storage' => 'Single SQLite file (database/forma.db). Portable.',
             'pages' => 'HTML/Twig or Markdown in pages table. Full HTML docs are served as-is; META block holds slug + SEO fields. Put [[seo]] in <head> (its own line) to pin where Forma emits title/OG/JSON-LD. Deleting [[seo]] after pinning turns head tags off for that template (warning: seo_slot_removed). Pages that never had the token still auto-inject after <head>.',
@@ -117,11 +130,13 @@ class Agent {
             'admin' => 'htmx admin at /admin/. Agents should prefer this API over scraping admin HTML.',
             'uptime' => 'GET /up (no auth) JSON {ok,php,version,ts,fallback}. Static stamp: /fallback/php-ok.json. If stamp is 200 but /up is “No input file specified”, PHP/FastCGI is down.',
             'html_cache' => 'Settings→Cache "HTML cache" (cache.static_fallback) writes every page/post/episode to fallback/*.html on every save; Apache serves those files directly (see fallback.marker in /up). Paths without a built file fall through to a live PHP render. "Rebuild HTML cache" rebuilds everything + the search index in one pass.',
+            'rollback' => 'Agent edits publish immediately. Before the first agent write, Forma automatically protects the current site as the single last-known-good rollback point. Further writes do not move it. GET /api/v1/checkpoint reports the state; POST /api/v1/checkpoint/restore puts the site back; POST /api/v1/checkpoint/accept moves the point to the current site. Never accept unless the human explicitly says the live site looks right.',
+            'subscription_chatbots' => 'ChatGPT Actions imports the public /api/v1/openapi.json contract and stores this token as Bearer authentication. Claude, ChatGPT custom connectors, and Grok can connect to /api/v1/mcp using Streamable HTTP and the same Bearer token. Never paste the token into ordinary chat text.',
             'publish' => 'Compatibility alias for html_cache.',
             'search' => 'GET /search?q=… — SQLite FTS5 (or LIKE fallback) over pages + published posts + licensed podcast episodes. htmx fragment when header HX-Request: true, full page otherwise. Always PHP, never published as a static file, always noindex. The [[search]] snippet renders the box.',
             'docs' => 'See AGENTS.md and README.md in the Forma project root.',
         ];
-        return [
+        $document = [
             'product' => defined('FORMA_PRODUCT') ? FORMA_PRODUCT : 'Forma',
             'version' => defined('FORMA_VERSION') ? FORMA_VERSION : '0',
             'auth' => [
@@ -134,31 +149,37 @@ class Agent {
 
             'endpoints' => [
                 ['GET', '/api/v1/help', 'This document', null],
+                ['GET', '/api/v1/openapi.json or .yaml', 'Public ChatGPT Actions contract (contains no credentials)', null],
+                ['POST', '/api/v1/mcp', 'Remote MCP Streamable HTTP endpoint', 'token scopes filter tools/list'],
                 ['GET', '/api/v1/site', 'Site + SEO summary', 'content:read'],
+                ['GET/PUT', '/api/v1/site-settings', 'Read/update safe public identity fields (never security or canonical site URL)', 'content:read / site:write'],
                 ['GET', '/api/v1/pages', 'List pages', 'content:read'],
                 ['GET', '/api/v1/pages/{filename}', 'Get page (+ meta/seo)', 'content:read'],
                 ['PUT', '/api/v1/pages/{filename}', 'Create/update page {content,content_type,slug,seo{…}}', 'content:write'],
-                ['DELETE', '/api/v1/pages/{filename}', 'Delete page', 'content:write'],
+                ['DELETE', '/api/v1/pages/{filename}', 'Delete page', 'content:delete'],
                 ['GET', '/api/v1/posts', 'List posts', 'content:read'],
                 ['GET', '/api/v1/posts/{filename}', 'Get post', 'content:read'],
                 ['PUT', '/api/v1/posts/{filename}', 'Create/update post (+ seo fields)', 'content:write'],
-                ['DELETE', '/api/v1/posts/{filename}', 'Delete post', 'content:write'],
+                ['DELETE', '/api/v1/posts/{filename}', 'Delete post', 'content:delete'],
                 ['GET', '/api/v1/snippets', 'List snippets', 'content:read'],
                 ['GET', '/api/v1/snippets/{filename}', 'Get snippet', 'content:read'],
                 ['PUT', '/api/v1/snippets/{filename}', 'Save snippet {shortcode,content}', 'content:write'],
-                ['DELETE', '/api/v1/snippets/{filename}', 'Delete snippet', 'content:write'],
+                ['DELETE', '/api/v1/snippets/{filename}', 'Delete snippet', 'content:delete'],
                 ['GET', '/api/v1/media', 'List uploads', 'content:read'],
                 ['POST', '/api/v1/media', 'Upload multipart file=… OR JSON {filename,content_base64}', 'media:write'],
-                ['DELETE', '/api/v1/media/{filename}', 'Delete upload', 'media:write'],
+                ['DELETE', '/api/v1/media/{filename}', 'Delete upload', 'media:delete'],
                 ['GET', '/api/v1/settings', 'All settings', 'content:read'],
                 ['GET', '/api/v1/settings/{section}', 'Get settings section (site,blog,seo,cache,…)', 'content:read'],
                 ['PUT', '/api/v1/settings/{section}', 'Merge-update settings section', 'settings:write'],
                 ['GET', '/api/v1/seo', 'SEO settings + health report + robots/sitemap/llms preview', 'content:read'],
-                ['PUT', '/api/v1/seo', 'Update SEO settings', 'settings:write'],
+                ['PUT', '/api/v1/seo', 'Update SEO settings', 'site:write / settings:write'],
                 ['GET', '/api/v1/redirects', 'List 301/302 redirects', 'content:read'],
                 ['PUT', '/api/v1/redirects', 'Create/update a redirect {id?,from_path,to_url,status,enabled,note}', 'settings:write'],
                 ['DELETE', '/api/v1/redirects/{id}', 'Delete a redirect', 'settings:write'],
                 ['GET', '/api/v1/health', 'Filesystem sanity check (bad upload / nested folders)', 'content:read'],
+                ['GET', '/api/v1/checkpoint', 'Last-known-good rollback status', 'content:read'],
+                ['POST', '/api/v1/checkpoint/restore', 'Put the site back to the last-known-good point', 'rollback:write'],
+                ['POST', '/api/v1/checkpoint/accept', 'Mark the current site good; only after explicit human approval', 'rollback:write'],
                 ['POST', '/api/v1/cache/flush', 'Flush PHP cache', 'settings:write'],
                 ['GET', '/api/v1/export', 'Versioned JSON export (no binaries)', 'backup:read'],
                 ['GET', '/api/v1/export/site', 'Full site package zip (DB + uploads + manifest)', 'backup:read'],
@@ -176,6 +197,19 @@ class Agent {
             ],
             'public_urls' => ['/up', '/search', '/robots.txt', '/sitemap.xml', '/llms.txt', '/feed.xml', '/feed.json', '/fallback/php-ok.json'],
         ];
+        if ($token !== null) {
+            $granted = array_values($token['scopes'] ?? []);
+            $document['auth']['granted_scopes'] = $granted;
+            $document['endpoints'] = array_values(array_filter(
+                $document['endpoints'],
+                static function (array $endpoint) use ($granted): bool {
+                    $required = (string)($endpoint[3] ?? '');
+                    preg_match_all('/[a-z]+:(?:read|write|delete)/', $required, $matches);
+                    return !$matches[0] || (bool)array_intersect($matches[0], $granted);
+                }
+            ));
+        }
+        return $document;
     }
 
     public static function json($data, int $code = 200): void {

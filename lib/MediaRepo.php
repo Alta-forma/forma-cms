@@ -62,6 +62,44 @@ class MediaRepo {
         ];
     }
 
+    /** Store a base64 upload from an HTTPS agent tool (no uploaded-file SAPI flag). */
+    public static function saveBase64(string $filename, string $contentBase64, string $contentType = 'application/octet-stream'): array {
+        $bin = base64_decode($contentBase64, true);
+        if ($bin === false) {
+            throw new RuntimeException('Invalid base64');
+        }
+        $sec = Database::get()->getSetting('security');
+        $max = (int)($sec['max_upload_size'] ?? 52428800);
+        if (strlen($bin) > $max) {
+            throw new RuntimeException('File too large');
+        }
+        $name = basename($filename ?: 'file');
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $allowed = $sec['allowed_upload_types'] ?? [];
+        if ($ext === '' || !in_array($ext, $allowed, true)) {
+            throw new RuntimeException('File type not allowed: ' . $ext);
+        }
+        $safe = preg_replace('/[^a-zA-Z0-9._-]/', '-', pathinfo($name, PATHINFO_FILENAME)) ?? 'file';
+        $destName = $safe . '-' . substr(bin2hex(random_bytes(3)), 0, 6) . '.' . $ext;
+        if (!is_dir(UPLOADS_DIR) && !mkdir(UPLOADS_DIR, 0755, true) && !is_dir(UPLOADS_DIR)) {
+            throw new RuntimeException('Could not create uploads folder');
+        }
+        if (class_exists('Htaccess')) {
+            Htaccess::ensureUploadsHtaccess();
+        }
+        $dest = UPLOADS_DIR . '/' . $destName;
+        if (file_put_contents($dest, $bin, LOCK_EX) === false) {
+            throw new RuntimeException('Could not store upload');
+        }
+        @chmod($dest, 0644);
+        return [
+            'filename' => $destName,
+            'url' => forma_uploads_web_url($destName),
+            'size' => filesize($dest),
+            'content_type' => $contentType,
+        ];
+    }
+
     public static function delete(string $filename): void {
         $filename = basename($filename);
         $path = UPLOADS_DIR . '/' . $filename;

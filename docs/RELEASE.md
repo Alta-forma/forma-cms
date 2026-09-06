@@ -20,7 +20,7 @@ The Update button already refuses to touch those. Manual rsync must too.
 
 ## Ship a release
 
-1. Work is actually done. Tests / a local `php -S` sanity check. Merge to `main`.
+1. Work is actually done. Tests / a local `php -S` sanity check. For agent-protocol releases, run `php tools/test-agent-safety.php` on a development install (it refuses to overwrite an existing rollback point), then verify `/api/v1/openapi.json`, MCP `initialize` + `tools/list`, a live test edit, and `formax_put_it_back`. Merge to `main`.
 2. Bump `version.php` (`FORMA_VERSION` + `FORMA_VERSION_DATE`). The in-admin button compares this number to the GitHub tag.
 3. From the repo root, on `main`, with a clean tree:
 
