@@ -5,7 +5,8 @@ $exists = is_file($htPath);
 $content = $exists ? (string)file_get_contents($htPath) : Htaccess::defaultContent();
 $hasSeoRoutes = Htaccess::hasSeoPassthrough($content);
 $static = Htaccess::staticSeoFiles();
-$staticBlocking = !empty($static['robots']) || !empty($static['sitemap']);
+$staticBlocking = !empty($static['sitemap']) || !empty($static['llms']);
+$robotsMissing = empty($static['robots']);
 $db = Database::get();
 $checks = HostingCheck::run($db);
 $summary = HostingCheck::summarize($checks);
@@ -77,32 +78,43 @@ fx_settings_scroll_open();
     <div class="kv-row"><span class="k">Document root</span><span class="v"><code><?php echo h(ROOT_DIR); ?></code></span></div>
 </div>
 
-<div class="settings-card <?php echo $staticBlocking && !$hasSeoRoutes ? 'card-warn' : 'card-glow-pass'; ?>">
+<div class="settings-card <?php echo ($robotsMissing || ($staticBlocking && !$hasSeoRoutes)) ? 'card-warn' : 'card-glow-pass'; ?>">
     <h3><i class="fas fa-robot"></i> Static SEO files</h3>
     <p class="card-sub">
-        If <code>robots.txt</code> or <code>sitemap.xml</code> exist as real files in the site root, Apache serves them and Forma never runs.
-        Prefer deleting them and letting Settings → SEO generate both on the fly.
+        Keep a placeholder <code>robots.txt</code> in the site root so the host cannot inject its own file.
+        Apache still rewrites the request to PHP. Leftover <code>sitemap.xml</code> / <code>llms.txt</code> can be deleted.
     </p>
     <div class="kv-row">
         <span class="k">robots.txt on disk</span>
-        <span class="v"><?php echo !empty($static['robots']) ? '<span class="status-badge warn">yes — may shadow Forma</span>' : '<span class="status-badge ok">no</span>'; ?></span>
+        <span class="v"><?php echo $robotsMissing
+            ? '<span class="status-badge warn">missing — host may inject a default</span>'
+            : '<span class="status-badge ok">placeholder (expected)</span>'; ?></span>
     </div>
     <div class="kv-row">
         <span class="k">sitemap.xml on disk</span>
-        <span class="v"><?php echo !empty($static['sitemap']) ? '<span class="status-badge warn">yes — may shadow Forma</span>' : '<span class="status-badge ok">no</span>'; ?></span>
+        <span class="v"><?php echo !empty($static['sitemap']) ? '<span class="status-badge warn">yes — leftover</span>' : '<span class="status-badge ok">no</span>'; ?></span>
     </div>
     <div class="kv-row">
         <span class="k">.htaccess SEO routes</span>
         <span class="v"><?php echo $hasSeoRoutes ? '<span class="status-badge ok">robots + sitemap → PHP</span>' : '<span class="status-badge warn">missing</span>'; ?></span>
     </div>
     <div class="card-actions">
+        <?php if ($robotsMissing): ?>
+        <button type="button" class="standard-btn"
+                hx-post="actions/server-fix.php"
+                hx-vals='{"action":"ensure_robots_placeholder","csrf_token":"<?php echo h(Auth::csrf()); ?>"}'
+                hx-target="#settings-panel"
+                hx-swap="innerHTML">
+            <i class="small fas fa-file-alt"></i> Write robots.txt placeholder
+        </button>
+        <?php endif; ?>
         <?php if ($staticBlocking): ?>
         <button type="button" class="standard-btn"
                 hx-post="actions/server-fix.php"
                 hx-vals='{"action":"remove_static_seo","csrf_token":"<?php echo h(Auth::csrf()); ?>"}'
                 hx-target="#settings-panel"
                 hx-swap="innerHTML">
-            <i class="small fas fa-trash-alt"></i> Delete static robots/sitemap
+            <i class="small fas fa-trash-alt"></i> Delete leftover sitemap/llms
         </button>
         <?php endif; ?>
         <?php if (!$hasSeoRoutes): ?>
@@ -114,8 +126,8 @@ fx_settings_scroll_open();
             <i class="small fas fa-route"></i> Add SEO routes to .htaccess
         </button>
         <?php endif; ?>
-        <?php if (!$staticBlocking && $hasSeoRoutes): ?>
-            <span class="hint" style="margin:0">All clear — Forma is serving <code>/robots.txt</code> and <code>/sitemap.xml</code>.</span>
+        <?php if (!$robotsMissing && !$staticBlocking && $hasSeoRoutes): ?>
+            <span class="hint" style="margin:0">All clear — placeholder on disk, Forma serving the live files.</span>
         <?php endif; ?>
     </div>
 </div>

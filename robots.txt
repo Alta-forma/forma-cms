@@ -1,0 +1,5 @@
+# Forma serves the live /robots.txt from Settings → SEO.
+# This file exists so hosts (notably DreamHost) cannot inject a default
+# when the path is missing. Apache rewrites the request to PHP.
+User-agent: *
+Allow: /

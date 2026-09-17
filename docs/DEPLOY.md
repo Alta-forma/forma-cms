@@ -41,7 +41,7 @@ Need `mod_rewrite`. After first boot, Settings → Server should produce a root 
 - Always sends `/up`, `/admin`, `/api`, `/search`, `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and feeds to PHP
 - Denies web access to `database/`, `lib/`, `mcp/`, `tools/`
 
-If a leftover static `robots.txt` is sitting in the web root, delete it so Forma can generate it.
+Keep a placeholder `robots.txt` in the web root. Some hosts (DreamHost) inject their own file when the path is missing, so crawlers never see Forma's generated robots. Apache still rewrites the request to PHP. Leftover `sitemap.xml` / `llms.txt` in the web root can still shadow Forma — delete those, not `robots.txt`.
 
 ## Nginx
 

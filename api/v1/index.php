@@ -172,20 +172,22 @@ try {
             'admin/css/core.css'    => is_file(ROOT_DIR . '/admin/css/core.css'),
             'admin/js/admin.js'     => is_file(ROOT_DIR . '/admin/js/admin.js'),
             'admin/actions/server-fix.php' => is_file(ROOT_DIR . '/admin/actions/server-fix.php'),
-            'robots.txt (static)'   => is_file(ROOT_DIR . '/robots.txt'),
+            'robots.txt (placeholder)' => is_file(ROOT_DIR . '/robots.txt'),
             '.htaccess'             => is_file(ROOT_DIR . '/.htaccess'),
         ];
         $ok = !empty($checks['lib/Twig/init.php'])
             && !empty($checks['admin/css/core.css'])
             && empty($checks['lib/lib/ (nested bad)'])
             && empty($checks['admin/admin/ (nested bad)']);
+        $hint = $ok ? 'Filesystem looks good' : 'Fix nested folders (lib/lib or admin/admin) and re-upload missing paths from local Forma. Do not drag a folder into a same-named folder.';
+        if ($ok && empty($checks['robots.txt (placeholder)'])) {
+            $hint = 'Write a robots.txt placeholder — some hosts inject a default when the file is missing.';
+        }
         Agent::json([
             'ok' => $ok,
             'root' => ROOT_DIR,
             'checks' => $checks,
-            'hint' => $ok
-                ? 'Filesystem looks good'
-                : 'Fix nested folders (lib/lib or admin/admin) and re-upload missing paths from local Forma. Do not drag a folder into a same-named folder.',
+            'hint' => $hint,
         ]);
     }
 

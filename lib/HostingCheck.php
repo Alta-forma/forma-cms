@@ -219,41 +219,56 @@ class HostingCheck {
 
         $staticSeo = Htaccess::staticSeoFiles();
         $hasSeoRoutes = Htaccess::hasSeoPassthrough();
-        $staticNames = array_keys(array_filter($staticSeo));
-        if ($staticNames !== [] && !$hasSeoRoutes) {
+        $leftoverNames = array_keys(array_filter([
+            'sitemap' => !empty($staticSeo['sitemap']),
+            'llms'    => !empty($staticSeo['llms']),
+        ]));
+        $hasRobots = !empty($staticSeo['robots']);
+
+        if ($leftoverNames !== [] && !$hasSeoRoutes) {
             $checks[] = [
                 'id'         => 'static_seo_files',
                 'level'      => 'fail',
-                'title'      => 'Static robots.txt / sitemap.xml shadowing Forma',
+                'title'      => 'Static sitemap.xml / llms.txt shadowing Forma',
                 'detail'     => 'On disk: ' . implode(', ', array_map(static function ($k) {
-                        return match ($k) {
-                            'robots' => 'robots.txt',
-                            'llms' => 'llms.txt',
-                            default => 'sitemap.xml',
-                        };
-                    }, $staticNames))
+                        return $k === 'llms' ? 'llms.txt' : 'sitemap.xml';
+                    }, $leftoverNames))
                     . ' — Apache serves these files instead of Forma.',
                 'fix_steps'  => [
-                    'Open Settings → Server and click “Delete static robots/sitemap”, or use the button below.',
-                    'Or delete robots.txt (and sitemap.xml if present) from the site root via FTP / File Manager.',
+                    'Open Settings → Server and click “Delete leftover sitemap/llms”, or use the button below.',
+                    'Do not delete robots.txt — hosts inject a default when that file is missing.',
                     'Also add SEO routes to .htaccess so a re-upload can’t shadow Forma again.',
                 ],
-                'fix_action' => ['id' => 'remove_static_seo', 'label' => 'Delete static SEO files + add routes'],
+                'fix_action' => ['id' => 'remove_static_seo', 'label' => 'Delete leftover sitemap/llms + add routes'],
             ];
-        } elseif ($staticNames !== [] && $hasSeoRoutes) {
+        } elseif ($leftoverNames !== [] && $hasSeoRoutes) {
             $checks[] = [
                 'id'         => 'static_seo_files',
                 'level'      => 'warn',
-                'title'      => 'Static robots.txt / sitemap.xml still on disk',
-                'detail'     => '.htaccess routes them to Forma, but leftover files can confuse FTP users. Safe to delete.',
+                'title'      => 'Static sitemap.xml / llms.txt still on disk',
+                'detail'     => '.htaccess routes them to Forma, but leftover files can confuse FTP users. Safe to delete. Keep robots.txt.',
                 'fix_steps'  => [
-                    'Optional: Settings → Server → Delete static robots/sitemap.',
+                    'Optional: Settings → Server → Delete leftover sitemap/llms.',
                 ],
-                'fix_action' => ['id' => 'remove_static_seo', 'label' => 'Delete static SEO files'],
+                'fix_action' => ['id' => 'remove_static_seo', 'label' => 'Delete leftover sitemap/llms'],
+            ];
+        }
+
+        if (!$hasRobots) {
+            $checks[] = [
+                'id'         => 'robots_placeholder',
+                'level'      => 'warn',
+                'title'      => 'Missing robots.txt placeholder',
+                'detail'     => 'Some hosts (DreamHost) inject their own robots.txt when the docroot has none, so crawlers never see Settings → SEO.',
+                'fix_steps'  => [
+                    'Write the placeholder with the button below. Apache still rewrites /robots.txt to PHP.',
+                    'Do not delete robots.txt from the site root.',
+                ],
+                'fix_action' => ['id' => 'ensure_robots_placeholder', 'label' => 'Write robots.txt placeholder'],
             ];
         } elseif (!$hasSeoRoutes) {
             $checks[] = [
-                'id'         => 'static_seo_files',
+                'id'         => 'robots_placeholder',
                 'level'      => 'warn',
                 'title'      => 'SEO rewrite routes missing',
                 'detail'     => '.htaccess does not force /robots.txt and /sitemap.xml through Forma.',
@@ -264,10 +279,10 @@ class HostingCheck {
             ];
         } else {
             $checks[] = [
-                'id'         => 'static_seo_files',
+                'id'         => 'robots_placeholder',
                 'level'      => 'pass',
                 'title'      => 'Dynamic robots.txt / sitemap.xml / llms.txt',
-                'detail'     => 'Forma serves all three via PHP (Settings → SEO).',
+                'detail'     => 'Placeholder robots.txt is on disk (blocks host defaults). Forma serves the live file via PHP.',
                 'fix_steps'  => [],
                 'fix_action' => null,
             ];

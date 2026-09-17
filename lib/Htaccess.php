@@ -44,7 +44,8 @@ RewriteRule ^(.+)$ fallback/$1.html [L]
 RewriteCond %{HTTP:Authorization} .
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# Always serve SEO files via Forma (ignore leftover static robots.txt / sitemap.xml / llms.txt)
+# Always serve SEO files via Forma. robots.txt must exist on disk (placeholder)
+# so hosts cannot inject a default; this rewrite still sends the request to PHP.
 RewriteRule ^robots\.txt$ /index.php [L]
 RewriteRule ^sitemap\.xml$ /index.php [L]
 RewriteRule ^llms\.txt$ /index.php [L]
@@ -84,13 +85,37 @@ HTA;
 
     public static function ensureDefault(): bool {
         $path = ROOT_DIR . '/.htaccess';
+        $ok = true;
         if (file_exists($path)) {
             self::ensureSeoPassthrough();
             self::ensureStaticFallbackRules();
             self::ensureFastCgiSafeFrontController();
+        } else {
+            $ok = file_put_contents($path, self::defaultContent()) !== false;
+        }
+        return $ok && self::ensureRobotsPlaceholder();
+    }
+
+    /** Generic on-disk stub. Apache still rewrites /robots.txt to PHP. */
+    public static function robotsPlaceholderContent(): string {
+        return "# Forma serves the live /robots.txt from Settings → SEO.\n"
+            . "# This file exists so hosts (notably DreamHost) cannot inject a default\n"
+            . "# when the path is missing. Apache rewrites the request to PHP.\n"
+            . "User-agent: *\n"
+            . "Allow: /\n";
+    }
+
+    /**
+     * DreamHost (and some other shared hosts) serve their own robots.txt when
+     * the docroot has none — before .htaccess rewrite can run. A placeholder
+     * on disk makes the request reach Forma. Do not delete it.
+     */
+    public static function ensureRobotsPlaceholder(): bool {
+        $path = ROOT_DIR . '/robots.txt';
+        if (is_file($path) && filesize($path) > 0) {
             return true;
         }
-        return file_put_contents($path, self::defaultContent()) !== false;
+        return file_put_contents($path, self::robotsPlaceholderContent()) !== false;
     }
 
     public static function hasStaticFallbackRules(?string $content = null): bool {
@@ -207,7 +232,8 @@ HTA;
         $content = (string)file_get_contents($path);
         $changed = false;
         if (!preg_match('/RewriteRule\s+\^robots\\\\\.txt\$/i', $content)) {
-            $block = "# Always serve SEO files via Forma (ignore leftover static robots.txt / sitemap.xml / llms.txt)\n"
+            $block = "# Always serve SEO files via Forma. robots.txt must exist on disk (placeholder)\n"
+                . "# so hosts cannot inject a default; this rewrite still sends the request to PHP.\n"
                 . "RewriteRule ^robots\\.txt$ /index.php [L]\n"
                 . "RewriteRule ^sitemap\\.xml$ /index.php [L]\n"
                 . "RewriteRule ^llms\\.txt$ /index.php [L]\n\n";
@@ -247,7 +273,7 @@ HTA;
         return (bool)preg_match('/RewriteRule\s+\^robots\\\\\.txt\$/i', $content);
     }
 
-    /** @return array{robots:bool,sitemap:bool,llms:bool} Whether static files exist on disk (and would shadow Forma without rewrite rules). */
+    /** @return array{robots:bool,sitemap:bool,llms:bool} robots.txt is expected; sitemap/llms leftovers can shadow Forma without rewrite rules. */
     public static function staticSeoFiles(): array {
         return [
             'robots'  => is_file(ROOT_DIR . '/robots.txt'),
@@ -257,13 +283,14 @@ HTA;
     }
 
     /**
-     * Delete leftover static SEO files so Apache can't serve them over PHP.
+     * Delete leftover static sitemap.xml / llms.txt so Apache can't serve them
+     * over PHP. Never delete robots.txt — hosts inject a default when it's gone.
      * @return array{ok:bool,removed:string[],errors:string[]}
      */
     public static function removeStaticSeoFiles(): array {
         $removed = [];
         $errors = [];
-        foreach (['robots.txt', 'sitemap.xml', 'llms.txt'] as $name) {
+        foreach (['sitemap.xml', 'llms.txt'] as $name) {
             $path = ROOT_DIR . '/' . $name;
             if (!is_file($path)) {
                 continue;
@@ -273,6 +300,9 @@ HTA;
             } else {
                 $errors[] = "Could not delete {$name} (permissions?)";
             }
+        }
+        if (!self::ensureRobotsPlaceholder()) {
+            $errors[] = 'Could not write robots.txt placeholder (permissions?)';
         }
         return [
             'ok' => $errors === [],

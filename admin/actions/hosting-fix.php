@@ -28,6 +28,7 @@ try {
             Htaccess::ensureSeoPassthrough();
             Htaccess::ensureStaticFallbackRules();
             Htaccess::ensureFastCgiSafeFrontController();
+            Htaccess::ensureRobotsPlaceholder();
             $message = '.htaccess already exists; ensured SEO + fallback routes. Edit under Settings → Server if needed.';
         } else {
             if (!Htaccess::ensureDefault()) {
@@ -38,10 +39,11 @@ try {
     } elseif ($action === 'remove_static_seo') {
         $result = Htaccess::removeStaticSeoFiles();
         Htaccess::ensureSeoPassthrough();
+        Htaccess::ensureRobotsPlaceholder();
         if ($result['removed'] === [] && $result['errors'] === []) {
-            $message = 'No static robots.txt / sitemap.xml found; SEO routes checked.';
+            $message = 'No leftover sitemap.xml / llms.txt; robots.txt placeholder and SEO routes checked.';
         } elseif ($result['ok']) {
-            $message = 'Removed: ' . implode(', ', $result['removed']) . '. SEO routes ensured.';
+            $message = 'Removed: ' . implode(', ', $result['removed']) . '. robots.txt placeholder kept. SEO routes ensured.';
         } else {
             $message = implode(' · ', array_merge(
                 $result['removed'] ? ['Removed: ' . implode(', ', $result['removed'])] : [],
@@ -59,6 +61,12 @@ try {
         } else {
             $message = 'SEO routes ensured in .htaccess.';
         }
+    } elseif ($action === 'ensure_robots_placeholder') {
+        if (!Htaccess::ensureRobotsPlaceholder()) {
+            throw new RuntimeException('Could not write robots.txt');
+        }
+        Htaccess::ensureSeoPassthrough();
+        $message = 'Wrote robots.txt placeholder. Forma still generates the live file.';
     } elseif ($action === 'ensure_static_fallback') {
         if (!is_file(ROOT_DIR . '/.htaccess')) {
             if (!Htaccess::write(Htaccess::defaultContent())) {

@@ -40,6 +40,7 @@ try {
         if (StaticFallback::enabled() && !StaticFallback::markerPresent()) {
             StaticFallback::enable();
         }
+        Htaccess::ensureRobotsPlaceholder();
         $st = StaticFallback::status();
         echo json_encode([
             'ok'      => true,

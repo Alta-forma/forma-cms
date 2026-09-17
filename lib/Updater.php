@@ -23,6 +23,7 @@ class Updater {
             'README.md',
             'LICENSE',
             '.gitignore',
+            'robots.txt',
             'forma-logo.svg',
             'forma-icon.png',
             'forma-social.png',
@@ -294,6 +295,9 @@ class Updater {
             $log[] = 'Copying release files onto this install…';
             self::copyAllowlist($root, ROOT_DIR);
             $log[] = 'App files replaced';
+            if (class_exists('Htaccess') && Htaccess::ensureRobotsPlaceholder()) {
+                $log[] = 'robots.txt placeholder present';
+            }
 
             if (function_exists('opcache_reset')) {
                 opcache_reset();

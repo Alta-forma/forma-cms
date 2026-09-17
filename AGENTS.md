@@ -74,7 +74,7 @@ AltaForma: bump `version.php`, merge to `main`, `./tools/release.sh`. Full check
 - Don’t rsync `main` or overwrite `database/` / `uploads/` / live `.htaccess` to “update Forma”. Use Settings → Forma core after a GitHub Release.
 - Don’t rsync hotfixes to every vhost. **forma-cms.me only.** Other installs (Eden, Friends, alta-forma.com, …) click Settings → Forma core.
 - Don’t scrape `/admin` HTML when the API works.
-- Don’t delete `home`, `_404`, `_403`, `_500`.
+- Don’t delete `robots.txt` from a live web root. Hosts (DreamHost) inject a default when it’s missing; Forma still generates the live file via PHP.
 - Don’t remove `[[seo]]` from a template unless you mean to stop emitting `<head>` SEO on that template.
 - Don’t commit tokens.
 - Don’t paste a token into chat text. Store it in the connector/Action authentication field.

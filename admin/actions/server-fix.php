@@ -11,9 +11,9 @@ try {
     if ($action === 'remove_static_seo') {
         $result = Htaccess::removeStaticSeoFiles();
         if ($result['removed'] === [] && $result['errors'] === []) {
-            $message = 'No static robots.txt / sitemap.xml found.';
+            $message = 'No leftover sitemap.xml / llms.txt. robots.txt placeholder kept.';
         } elseif ($result['ok']) {
-            $message = 'Removed: ' . implode(', ', $result['removed']);
+            $message = 'Removed: ' . implode(', ', $result['removed']) . '. robots.txt placeholder kept.';
         } else {
             $parts = [];
             if ($result['removed']) {
@@ -24,6 +24,12 @@ try {
         }
         // Also ensure rewrite routes so a re-upload can't stick forever
         Htaccess::ensureSeoPassthrough();
+    } elseif ($action === 'ensure_robots_placeholder') {
+        if (!Htaccess::ensureRobotsPlaceholder()) {
+            throw new RuntimeException('Could not write robots.txt (permissions?)');
+        }
+        Htaccess::ensureSeoPassthrough();
+        $message = 'Wrote robots.txt placeholder. Forma still generates the live file.';
     } elseif ($action === 'ensure_seo_routes') {
         if (!is_file(ROOT_DIR . '/.htaccess')) {
             if (!Htaccess::write(Htaccess::defaultContent())) {
