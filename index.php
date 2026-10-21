@@ -253,6 +253,11 @@ try {
     if (isset($errorCodes[$page['filename'] ?? ''])) {
         Render::sendError($errorCodes[$page['filename']]);
     }
+    // Older saves may have given a template row a slug (/blog-single). It is
+    // still a template: only its owning route (/blog/…, /search) renders it.
+    if (in_array($page['filename'] ?? '', Seo::TEMPLATE_FILENAMES, true)) {
+        Render::sendError(404);
+    }
 
     $html = Render::renderPageRow($page);
     $putCache($path, $html);

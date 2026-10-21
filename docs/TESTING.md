@@ -26,7 +26,7 @@ First request seeds the DB (`admin` / `admin`). Minimum route checklist:
 | Check | Expect |
 |-------|--------|
 | `GET /` `/blog` `/podcast` `/podcast/` | 200 |
-| `GET /blog-single` `/_404` `/search-results` | 404 (templates are not pages) |
+| `GET /blog-single` `/_404` `/search-results` | 404 (templates are not pages) — also after `UPDATE pages SET slug='/blog-single' WHERE filename='blog-single'`, which is how older installs look |
 | `GET /does-not-exist` | 404 **status**, rendered `_404` page |
 | `GET /up` | JSON `ok:true`, `fallback.enabled`, `search_engine` |
 | `GET /search?q=forma` with `HX-Request: true` | `<ul class="fx-search-results">` fragment with a `<mark>` excerpt |

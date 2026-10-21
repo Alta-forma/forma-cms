@@ -2,6 +2,11 @@
 
 Installs update from [GitHub Releases](https://github.com/Alta-forma/forma-cms/releases) via **Settings → Forma core**. Every entry here is safe to apply to an existing site unless it says otherwise. Add a section at the top with each `version.php` bump (see `docs/RELEASE.md`).
 
+## 0.6.2 — 2026-10-20
+
+### Fixed
+- Template pages that an older save had given a slug (`/blog-single`, `/search-page`, …) still rendered as 200 through the slug lookup; 0.6.0 only closed the filename path. Now any `Seo::TEMPLATE_FILENAMES` row is a 404 outside its owning route, however it was matched. Found on forma-cms.me after the 0.6.1 rebuild.
+
 ## 0.6.1 — 2026-10-20
 
 ### Fixed
