@@ -30,8 +30,8 @@ The Update button already refuses to touch those. Manual rsync must too.
 
    That tags `vX.Y.Z` (must match `version.php`) and runs `gh release create`. If the script errors, **stop**. Do not push a tag by hand unless you know why the script failed.
 4. Confirm https://github.com/Alta-forma/forma-cms/releases/latest shows that tag, and that the zipball's `version.php` matches (`Updater::apply()` refuses a mismatch). `--generate-notes` only produces a compare link — replace it with real notes: `gh release edit vX.Y.Z --notes-file -` pasting the CHANGELOG section.
-5. On **each** live install: Settings → **Forma core** → Check for updates → **Update Forma core**. Read the confirm dialog. Wait for the toast. forma-cms.me is also fine to update from SSH with `php -r 'define("ROOT_DIR", getcwd()); require "lib/bootstrap.php"; print_r(Updater::apply());'` from its web root — same code path as the button.
-6. Update forma-cms.me content if the release changes anything a visitor sees (install commands, feature list, docs page, a release post).
+5. On **each** live install: Settings → **Forma core** → Check for updates → **Update Forma core**. Read the confirm dialog. Wait for the toast. forma-cms.me is also fine to update from SSH with `php -r 'define("ROOT_DIR", getcwd()); require "lib/bootstrap.php"; print_r(Updater::apply());'` from its web root — same code path as the button. Run any follow-up (`StaticFallback::publishAll()`, checks) as a **separate** `php -r` — the process that ran `apply()` still has the old classes loaded.
+6. Update forma-cms.me content if the release changes anything a visitor sees (install commands, feature list, docs page, a release post, `softwareVersion` in the home page's JSON-LD). Agent API writes with HTML bodies get a 418 from DreamHost's WAF there — use `PageRepo::save()` over SSH (see `DEPLOY.md`).
 
 First-time sites that are still on 0.1.x do not have this pane. Bootstrap them **once** with the 0.2.0+ app files (same allowlist as the updater), then use the button forever after.
 
