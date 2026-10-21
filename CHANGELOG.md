@@ -2,6 +2,11 @@
 
 Installs update from [GitHub Releases](https://github.com/Alta-forma/forma-cms/releases) via **Settings → Forma core**. Every entry here is safe to apply to an existing site unless it says otherwise. Add a section at the top with each `version.php` bump (see `docs/RELEASE.md`).
 
+## 0.6.3 — 2026-10-20
+
+### Fixed
+- **Rebuild HTML cache** also removes stale `fallback/404.html` / `403.html` / `500.html` written by early releases at the error pages' slugs. Apache served those as 200 for `/404` etc. The real ErrorDocuments (`_404.html` …) are untouched.
+
 ## 0.6.2 — 2026-10-20
 
 ### Fixed
