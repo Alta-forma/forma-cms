@@ -30,11 +30,7 @@ class AgentOAuth {
         $security = Database::get()->getSetting('security');
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
-        $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-        $local = in_array($ip, ['127.0.0.1', '::1'], true)
-            || str_starts_with($ip, '192.168.')
-            || str_starts_with($ip, '10.');
-        if (($security['agent_https_only'] ?? true) && !$https && !$local) {
+        if (($security['agent_https_only'] ?? true) && !$https && !Agent::isLocalRequest()) {
             throw new OAuthException('invalid_request', 'OAuth requires HTTPS', 403);
         }
     }
@@ -494,7 +490,7 @@ class AgentOAuth {
         return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
     }
 
-    private static function prune(): void {
+    public static function prune(): void {
         $db = Database::get();
         $now = time();
         $db->execute('DELETE FROM oauth_authorization_codes WHERE expires_at < ?', [$now - 86400]);

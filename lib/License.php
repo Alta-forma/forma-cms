@@ -2,16 +2,22 @@
 /**
  * Forma – Podcast unlock.
  * Forma itself is free. Podcast is a $39 one-time license.
- * Paid keys are verified at alta-forma.com (the HMAC secret is not in this repo).
+ * Paid keys are verified at forma-cms.me (the HMAC secret is not in this repo).
  * Local unlock: FX-DEV-LOCAL
  */
 class License {
     public const BUY_URL = 'https://buy.stripe.com/7sY4gA87290N6a17Qk7N608';
     public const VALIDATE_URL = 'https://forma-cms.me/api/license/validate.php';
 
+    /**
+     * HMAC secret for local key verification. Looked up in, by priority:
+     *   1. FORMA_LICENSE_SECRET_FILE env var (host-only path the operator sets)
+     *   2. lib/LicenseHMACSecret.hex (gitignored)
+     * Installs without either POST to VALIDATE_URL instead.
+     */
     public static function hmacSecret(): string {
         $paths = [
-            '/home/sick_af/altaforma-secrets/license-hmac.secret',
+            (string)(getenv('FORMA_LICENSE_SECRET_FILE') ?: ''),
             (defined('ROOT_DIR') ? ROOT_DIR : '') . '/lib/LicenseHMACSecret.hex',
         ];
         foreach ($paths as $p) {
@@ -67,10 +73,10 @@ class License {
             $row = Database::get()->queryOne('SELECT * FROM license WHERE id = 1');
             if (!$row || empty($row['license_key'])) return false;
             if (($row['status'] ?? '') !== 'active') return false;
-            $key = strtoupper(trim($row['license_key']));
-            if (str_starts_with($key, 'FX-DEV-')) return true;
-            return true; // already activated against alta-forma.com
-        } catch (Exception $e) {
+            // An 'active' row was either a dev key or already verified against
+            // VALIDATE_URL / the local HMAC at activate() time — no network call here.
+            return true;
+        } catch (Throwable $e) {
             return false;
         }
     }

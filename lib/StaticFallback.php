@@ -118,6 +118,12 @@ class StaticFallback {
         if ($slug === '' && $filename !== 'home') {
             return false;
         }
+        // Error pages (/404 …) are written as fallback/_404.html for Apache
+        // ErrorDocument by publishErrorPages(); a 200 copy at fallback/404.html
+        // would make /404 answer OK from the cache layer.
+        if (in_array($filename, Seo::TEMPLATE_FILENAMES, true)) {
+            return false;
+        }
         self::ensureDir();
         try {
             $html = Render::renderPageRow($row);
@@ -361,7 +367,7 @@ class StaticFallback {
     private static function pageIsPublishable(array $row): bool {
         $filename = (string)($row['filename'] ?? '');
         $path = $filename === 'home' ? '/' : trim((string)($row['slug'] ?? ''));
-        if ($path === '') {
+        if ($path === '' || in_array($filename, Seo::TEMPLATE_FILENAMES, true)) {
             return false;
         }
         return !str_starts_with($path, '/admin')
@@ -407,6 +413,111 @@ class StaticFallback {
     public static function enable(): array {
         self::setMarker(true);
         return self::publishAll();
+    }
+
+    /** Minimum gap between automatic full rebuilds triggered by /up. */
+    private const SELF_HEAL_INTERVAL = 600;
+
+    /**
+     * Settings say HTML cache is on but the Apache-visible marker is missing
+     * (fresh DB default, deleted fallback/, or the last publishAll() was
+     * incomplete). Rebuild — but never more than once per SELF_HEAL_INTERVAL,
+     * otherwise a single page that fails to render would make every
+     * unauthenticated heartbeat re-render the whole site.
+     */
+    public static function selfHeal(): bool {
+        if (!self::enabled() || self::markerPresent()) {
+            return false;
+        }
+        $last = self::lastPublishedAt();
+        if ($last !== null && (time() - $last) < self::SELF_HEAL_INTERVAL) {
+            return false;
+        }
+        self::enable();
+        return true;
+    }
+
+    /**
+     * Scheduled content: a post/episode with a future published_at becomes
+     * public when the clock passes it, but nothing runs at that moment. Called
+     * from /up (and the blog archive route) to catch items whose publish time
+     * fell between the last publish run and now, then refresh the derived
+     * output they appear in: their own HTML, the archives, feeds, search, and
+     * the PHP page cache (sitemap/llms/archive).
+     */
+    public static function publishScheduledIfDue(): int {
+        $since = self::lastPublishedAt();
+        $now = time();
+        $stampFile = self::dir() . '/.scheduled-at';
+        $sinceSched = is_file($stampFile) ? (int)trim((string)@file_get_contents($stampFile)) : 0;
+        $since = max((int)$since, $sinceSched);
+        if ($since <= 0) {
+            // No reference point yet — record one and let the next call compare.
+            self::ensureDir();
+            @file_put_contents($stampFile, (string)$now);
+            return 0;
+        }
+        $db = Database::get();
+        $due = 0;
+        try {
+            $posts = $db->query(
+                'SELECT * FROM blog_posts WHERE published_at IS NOT NULL AND published_at > ? AND published_at <= ?',
+                [$since, $now]
+            );
+            foreach ($posts as $post) {
+                $due++;
+                if (self::enabled()) {
+                    self::publishPost($post);
+                }
+                if (class_exists('Search')) {
+                    Search::indexPost($post);
+                }
+            }
+            $episodes = [];
+            if (class_exists('License') && License::isPodcastLicensed()) {
+                $episodes = $db->query(
+                    'SELECT * FROM podcast_episodes WHERE published_at IS NOT NULL AND published_at > ? AND published_at <= ?',
+                    [$since, $now]
+                );
+                foreach ($episodes as $ep) {
+                    $due++;
+                    if (self::enabled()) {
+                        self::publishEpisode($ep);
+                    }
+                    if (class_exists('Search')) {
+                        Search::indexEpisode($ep);
+                    }
+                }
+            }
+            if ($due > 0) {
+                $db->flushCache();
+                if (class_exists('Render')) {
+                    Render::forgetSiteContext();
+                }
+                if ($posts) {
+                    if (class_exists('Feed')) {
+                        Feed::maybeRegenerateBlog();
+                    }
+                    if (self::enabled()) {
+                        self::publishBlogArchive();
+                        self::refreshHomeIfStale(true);
+                    }
+                }
+                if ($episodes) {
+                    if (class_exists('Feed')) {
+                        Feed::maybeRegeneratePodcast();
+                    }
+                    if (self::enabled()) {
+                        self::publishPodcastArchive();
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('Forma scheduled publish: ' . $e->getMessage());
+        }
+        self::ensureDir();
+        @file_put_contents($stampFile, (string)$now);
+        return $due;
     }
 
     /** Turn HTML cache off: stop serving files (marker gone), drop the ErrorDocument block. Leaves files on disk. */

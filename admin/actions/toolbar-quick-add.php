@@ -18,7 +18,10 @@ try {
         if ($filename === '') {
             throw new InvalidArgumentException('Filename required');
         }
-        $content = "<!--META\nslug: {$slug}\ntitle: {$title}\n-->\n<h1>" . htmlspecialchars($title) . "</h1>\n<p>New page.</p>\n";
+        $content = PageRepo::withMeta(
+            "<h1>" . htmlspecialchars($title) . "</h1>\n<p>New page.</p>\n",
+            ['slug' => $slug, 'title' => $title]
+        );
         $row = PageRepo::save($filename, $content, 'html', $slug);
         $meta = PageRepo::extractMeta($row['content'] ?? $content);
         $path = $meta['slug'] ?? $slug;

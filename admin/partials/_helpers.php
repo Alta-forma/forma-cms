@@ -15,7 +15,8 @@ function fx_toast_oob(string $message = 'Saved'): string {
 
 /** Floating security / hosting chip. Pass $oob on htmx action responses so it updates without a reload. */
 function fx_admin_alerts_html(bool $oob = false): string {
-    $alerts = HostingCheck::adminAlerts();
+    // OOB re-renders follow a state change (password / hosting fix) — bypass the session cache.
+    $alerts = HostingCheck::adminAlerts($oob);
     $attr = $oob ? ' hx-swap-oob="true"' : '';
     if (!$alerts) {
         return '<div id="fx-admin-alerts" class="fx-alert-chip is-empty"' . $attr . ' hidden></div>';

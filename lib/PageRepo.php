@@ -50,7 +50,9 @@ class PageRepo {
             if ($v === null) {
                 continue;
             }
-            $v = trim((string)$v);
+            // One key per line inside an HTML comment: newlines would split the
+            // value into bogus keys and "-->" would terminate the block early.
+            $v = trim(str_replace('-->', '', preg_replace('/\s*[\r\n]+\s*/', ' ', (string)$v) ?? ''));
             if ($v === '') {
                 unset($meta[$k]);
             } else {

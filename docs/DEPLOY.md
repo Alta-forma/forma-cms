@@ -20,10 +20,11 @@ Open http://localhost:8787/admin — first boot is `admin` / `admin`. Change tha
 
 1. Create the domain / subdomain and point the document root at the Forma tree (the folder that contains `index.php`).
 2. Upload or clone the repo into that folder.
-3. Make these writable by PHP:
+3. Make these writable by PHP (on DreamHost PHP runs as your user, so `755` is enough; `775` if PHP runs as a group member). Never `777` — Settings → Server flags world-writable dirs as a failing check:
 
    ```bash
-   chmod -R 775 database uploads feeds
+   chmod -R 755 database uploads feeds fallback
+   chmod 640 database/forma.db   # once it exists
    ```
 
 4. Hit the site once so Forma can write `.htaccess` (Admin → Settings → Server → Write .htaccess). The source of truth is `lib/Htaccess.php` — do not hand-edit `.htaccess` and then expect it to survive a rewrite.
@@ -73,7 +74,7 @@ Settings → Cache → **Enable HTML cache** writes real `.html` under `fallback
 
 1. Change the admin password — a non-dismissible red bar stays on every admin screen until you do (Settings → Access)
 2. Settings → SEO (site name, default share image, schema)
-3. Settings → Server (confirm rewrite / Authorization). Same nag bar also fires here for world-writable `database/`/`uploads`/`feeds`/`fallback`, `display_errors` on, a leftover `install.php`, or a missing `.htaccess` — run `chmod -R 775 database uploads feeds` again if permissions drifted from a manual upload/FTP deploy
+3. Settings → Server (confirm rewrite / Authorization). Same nag bar also fires here for world-writable `database/`/`uploads`/`feeds`/`fallback`, `display_errors` on, a leftover `install.php`, or a missing `.htaccess` — run `chmod -R 755 database uploads feeds fallback` again if permissions drifted from a manual upload/FTP deploy
 4. Settings → Backup → download a site package before you get brave
 5. Settings → Access → copy the Remote MCP URL for ChatGPT/Claude/Grok/Perplexity. The connector discovers OAuth, then sends the owner back to Forma to sign in and approve Site editor access. ChatGPT Actions can instead import `/api/v1/openapi.json` and use a manual Bearer token. Both require public HTTPS.
 6. Check Settings → Access after chatbot work: **Put it back** restores the one last-known-good point; **This looks good** moves that point only after you verify the public site.

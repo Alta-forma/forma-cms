@@ -396,7 +396,7 @@ const tools = [
 ];
 
 const server = new Server(
-  { name: "formax", version: "0.2.0" },
+  { name: "formax", version: "0.6.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -422,7 +422,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "formax_update_page":
       result = await api("PUT", `/pages/${encodeURIComponent(a.filename)}`, {
         content: a.content,
-        content_type: a.content_type || "html",
+        // Leave undefined when not given so the server keeps the page's current type.
+        content_type: a.content_type || undefined,
         slug: a.slug,
         title: a.title,
         seo: a.seo,

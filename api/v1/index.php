@@ -260,10 +260,13 @@ try {
             if (!empty($body['title'])) {
                 $extra['title'] = (string)$body['title'];
             }
+            $existing = PageRepo::get($filename);
             $row = PageRepo::save(
                 $filename,
-                $body['content'] ?? (PageRepo::get($filename)['content'] ?? ''),
-                $body['content_type'] ?? 'html',
+                $body['content'] ?? ($existing['content'] ?? ''),
+                // Omitting content_type on an update keeps the page's current type
+                // instead of silently flipping a Markdown page to HTML.
+                $body['content_type'] ?? ($existing['content_type'] ?? 'html'),
                 $body['slug'] ?? null,
                 $extra
             );
@@ -413,6 +416,12 @@ try {
 
     if (preg_match('#^/settings/([a-zA-Z0-9_-]+)$#', $rel, $m)) {
         $section = $m[1];
+        // The security section (upload allow-list, HTTPS enforcement, session
+        // lifetime) is admin-UI only. /settings already hides it; the per-section
+        // route must not be a side door that lets a token loosen its own guardrails.
+        if ($section === 'security') {
+            Agent::fail(403, 'The security settings section is not available through the Agent API');
+        }
         if ($method === 'GET') {
             Agent::requireScope($token, 'content:read');
             Agent::json(['section' => $section, 'value' => Database::get()->getSetting($section)]);
@@ -606,6 +615,15 @@ try {
     }
 
     Agent::fail(404, 'Not found: ' . $rel);
-} catch (Throwable $e) {
+} catch (PDOException $e) {
+    // PDOException extends RuntimeException but carries SQL — never echo it.
+    error_log('Forma API db error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    Agent::fail(500, 'Database error — see the server error log');
+} catch (InvalidArgumentException | RuntimeException $e) {
+    // Validation-style errors thrown by repos are safe, user-facing messages.
     Agent::fail(400, $e->getMessage());
+} catch (Throwable $e) {
+    // Anything else (PDO, type errors, …) may carry SQL or filesystem paths.
+    error_log('Forma API error: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    Agent::fail(500, 'Internal error — see the server error log');
 }

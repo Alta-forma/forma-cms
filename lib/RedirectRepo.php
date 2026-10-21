@@ -51,12 +51,13 @@ class RedirectRepo {
         if ($row) {
             return $row;
         }
-        // Try with/without trailing slash variant
+        // normalizeFrom() strips trailing slashes, but rows that arrived via
+        // import/migration may still carry one — try that exact variant.
         $alt = $path === '/' ? '/' : $path . '/';
         if ($alt !== $path) {
             $row = Database::get()->queryOne(
                 'SELECT * FROM redirects WHERE enabled = 1 AND from_path = ? LIMIT 1',
-                [rtrim($alt, '/') ?: '/']
+                [$alt]
             );
             if ($row) {
                 return $row;
@@ -74,13 +75,29 @@ class RedirectRepo {
         if (!in_array($status, [301, 302, 307, 308], true)) {
             $status = 301;
         }
-        $enabled = !empty($data['enabled']) ? 1 : 0;
+        // Admin form always sends the key (checkbox → bool). API/MCP callers that
+        // omit it mean "on" — nobody creates a redirect they want disabled by default.
+        $enabled = array_key_exists('enabled', $data) ? (!empty($data['enabled']) ? 1 : 0) : 1;
         $note = trim((string)($data['note'] ?? ''));
         if ($from === '' || $to === '') {
             throw new InvalidArgumentException('From path and destination are required');
         }
         if ($from === '/admin' || str_starts_with($from, '/admin/') || str_starts_with($from, '/api/')) {
             throw new InvalidArgumentException('Cannot redirect /admin or /api paths');
+        }
+        // A redirect that lands on its own source path loops forever.
+        $toPath = $to;
+        if (preg_match('#^https?://#i', $to)) {
+            $siteUrl = rtrim((string)(Database::get()->getSetting('site')['url'] ?? ''), '/');
+            $toHost = strtolower((string)parse_url($to, PHP_URL_HOST));
+            $ownHosts = array_filter([
+                strtolower((string)parse_url($siteUrl, PHP_URL_HOST)),
+                strtolower((string)parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST)),
+            ]);
+            $toPath = ($toHost !== '' && in_array($toHost, $ownHosts, true)) ? (string)(parse_url($to, PHP_URL_PATH) ?: '/') : '';
+        }
+        if ($toPath !== '' && self::normalizeFrom($toPath) === $from) {
+            throw new InvalidArgumentException('Destination is the same as the source path — that would loop');
         }
         $db = Database::get();
         $now = time();

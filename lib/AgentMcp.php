@@ -48,9 +48,21 @@ class AgentMcp {
                     ]],
                     'isError' => false,
                 ]);
-            } catch (Throwable $e) {
+            } catch (PDOException $e) {
+                error_log('Forma MCP db error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                return self::result($id, [
+                    'content' => [['type' => 'text', 'text' => 'Database error — see the server error log']],
+                    'isError' => true,
+                ]);
+            } catch (InvalidArgumentException | RuntimeException $e) {
                 return self::result($id, [
                     'content' => [['type' => 'text', 'text' => $e->getMessage()]],
+                    'isError' => true,
+                ]);
+            } catch (Throwable $e) {
+                error_log('Forma MCP error: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+                return self::result($id, [
+                    'content' => [['type' => 'text', 'text' => 'Internal error — see the server error log']],
                     'isError' => true,
                 ]);
             }
@@ -267,10 +279,11 @@ class AgentMcp {
         if (!empty($a['title'])) {
             $extra['title'] = (string)$a['title'];
         }
+        $existing = PageRepo::get((string)$a['filename']);
         $row = PageRepo::save(
             (string)$a['filename'],
             (string)$a['content'],
-            (string)($a['content_type'] ?? 'html'),
+            (string)($a['content_type'] ?? ($existing['content_type'] ?? 'html')),
             isset($a['slug']) ? (string)$a['slug'] : null,
             $extra
         );
@@ -353,7 +366,9 @@ class AgentMcp {
             ],
             'annotations' => [
                 'readOnlyHint' => $readOnly,
-                'destructiveHint' => $name === 'formax_put_it_back',
+                // Both rollback tools discard something irreversibly: put-it-back
+                // drops the live edits, this-looks-good drops the saved point.
+                'destructiveHint' => in_array($name, ['formax_put_it_back', 'formax_this_looks_good'], true),
                 'idempotentHint' => $readOnly,
             ],
             '_scope' => $scope,

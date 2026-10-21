@@ -372,6 +372,12 @@ class Updater {
             @set_time_limit(180);
             $log[] = 'Restoring ' . basename($file);
             self::restoreBackup($file);
+            if (function_exists('opcache_reset')) {
+                // Same as apply(): without this, hosts with a long revalidate_freq
+                // keep serving the newer compiled files for a while after rollback.
+                opcache_reset();
+                $log[] = 'OPcache reset';
+            }
             if (class_exists('Database')) {
                 Database::get()->flushCache();
             }
@@ -674,6 +680,12 @@ class Updater {
                     CURLOPT_REDIR_PROTOCOLS=> defined('CURLPROTO_HTTPS') ? CURLPROTO_HTTPS : 2,
                     CURLOPT_SSL_VERIFYPEER => true,
                     CURLOPT_SSL_VERIFYHOST => 2,
+                    // Abort mid-stream instead of filling the disk and checking afterwards.
+                    CURLOPT_MAXFILESIZE    => self::MAX_ZIP_BYTES,
+                    CURLOPT_NOPROGRESS     => false,
+                    CURLOPT_PROGRESSFUNCTION => static function ($ch, $dlTotal, $dlNow): int {
+                        return $dlNow > self::MAX_ZIP_BYTES ? 1 : 0; // non-zero aborts
+                    },
                 ]);
                 $ok = curl_exec($ch);
                 $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);

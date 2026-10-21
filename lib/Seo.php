@@ -955,21 +955,36 @@ class Seo {
             $doc['_custom_schema'] = self::extractCustomSchema($html);
         }
         $block = self::headHtml($doc);
-        $patterns = [
+        // Head-only tags. Attribute order varies in hand-written templates
+        // (content= before name=), so match on "a <meta>/<link> tag that
+        // carries this attribute anywhere" rather than a fixed order.
+        $headPatterns = [
             '/<title\b[^>]*>.*?<\/title>/is',
-            '/<meta\s+name=["\']description["\'][^>]*>/i',
-            '/<meta\s+name=["\']robots["\'][^>]*>/i',
-            '/<link\s+rel=["\']canonical["\'][^>]*>/i',
-            '/<link\s+rel=["\']icon["\'][^>]*>/i',
-            '/<link\s+rel=["\']apple-touch-icon["\'][^>]*>/i',
-            '/<meta\s+property=["\']og:[^"\']+["\'][^>]*>/i',
-            '/<meta\s+name=["\']twitter:[^"\']+["\'][^>]*>/i',
-            '/<meta\s+name=["\']google-site-verification["\'][^>]*>/i',
-            '/<meta\s+name=["\']msvalidate\.01["\'][^>]*>/i',
+            '/<meta\b[^>]*\bname=["\'](?:description|robots|google-site-verification|msvalidate\.01|twitter:[^"\']+)["\'][^>]*>/i',
+            '/<meta\b[^>]*\bproperty=["\']og:[^"\']+["\'][^>]*>/i',
+            '/<link\b[^>]*\brel=["\'](?:canonical|icon|apple-touch-icon)["\'][^>]*>/i',
             '/<script[^>]*data-fx-analytics[^>]*>.*?<\/script>/is',
+        ];
+        // Forma owns the one JSON-LD block; raw ld+json anywhere (incl. body
+        // data-fx-schema escape hatches, already merged above) is removed.
+        $anywherePatterns = [
             '/<script\s+type=["\']application\/ld\+json["\'][^>]*>.*?<\/script>/is',
         ];
-        foreach ($patterns as $p) {
+        // Only scrub <head>. Inline SVG <title> and body <meta> microdata must survive.
+        if (preg_match('/<\/head\s*>/i', $html, $hm, PREG_OFFSET_CAPTURE)) {
+            $headEnd = $hm[0][1];
+            $head = substr($html, 0, $headEnd);
+            $rest = substr($html, $headEnd);
+            foreach ($headPatterns as $p) {
+                $head = (string)preg_replace($p, '', $head);
+            }
+            $html = $head . $rest;
+        } else {
+            foreach ($headPatterns as $p) {
+                $html = (string)preg_replace($p, '', $html);
+            }
+        }
+        foreach ($anywherePatterns as $p) {
             $html = (string)preg_replace($p, '', $html);
         }
         $slotCount = 0;
@@ -1309,6 +1324,7 @@ class Seo {
         }
 
         if (!empty($seo['sitemap_include_posts'])) {
+            $postCount = 0;
             foreach (BlogRepo::list(true) as $post) {
                 $seoJson = [];
                 $full = BlogRepo::get($post['filename']);
@@ -1333,13 +1349,17 @@ class Seo {
                     }
                 }
                 $urls[] = $entry;
+                $postCount++;
             }
-            $urls[] = [
-                'loc' => self::absoluteUrl('/blog'),
-                'lastmod' => date('c', $now),
-                'changefreq' => 'daily',
-                'priority' => '0.8',
-            ];
+            // An empty /blog archive isn't worth a crawl budget entry.
+            if ($postCount > 0) {
+                $urls[] = [
+                    'loc' => self::absoluteUrl('/blog'),
+                    'lastmod' => date('c', $now),
+                    'changefreq' => 'daily',
+                    'priority' => '0.8',
+                ];
+            }
         }
 
         if (!empty($seo['sitemap_include_podcast']) && License::isPodcastLicensed()) {

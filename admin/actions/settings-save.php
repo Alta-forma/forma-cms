@@ -5,7 +5,8 @@ Auth::requireAdmin(false);
 require_once ADMIN_DIR . '/partials/_helpers.php';
 
 $section = $_POST['section'] ?? '';
-$allowed = ['site', 'blog', 'podcast', 'cache', 'security', 'seo'];
+// 'security' has no form handler below; its fields are edited in Settings → Access / Account.
+$allowed = ['site', 'blog', 'podcast', 'cache', 'seo'];
 if (!in_array($section, $allowed, true)) {
     echo fx_toast_oob('Unknown section');
     exit;

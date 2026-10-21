@@ -23,7 +23,7 @@
  * data-chips="1"; exposes window.FormaChips = { mount, insertBlock, reload }.
  */
 (function () {
-  var STOCK = { search: 1, 'search-ui': 1, 'error-ui': 1 };
+  var STOCK = { search: 1, 'search-ui': 1, 'error-ui': 1, 'faq-ui': 1 };
   var snippetItems = [];
   var snippetMap = {};
   var nestIssues = {};

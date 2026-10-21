@@ -23,7 +23,9 @@ class SitePackage {
     }
 
     public static function supportedSchemaVersions(): array {
-        return [1];
+        // Every schema generation up to the running app's; newer ones are
+        // rejected in importZip(). Older packages migrate via Database::migrateColumns().
+        return range(1, (int)self::SCHEMA_VERSION);
     }
 
     /** Build portable JSON (no binary). Safe for API; excludes users/tokens. */
@@ -239,27 +241,24 @@ class SitePackage {
         $publishedBefore = StaticFallback::publishedPaths();
 
         try {
-            // Backup current DB
+            // Backup current DB (consistent snapshot, not a raw copy of a WAL-mode file)
             if (is_file(DB_FILE)) {
                 $bak = DB_FILE . '.bak-' . date('YmdHis');
-                if (@copy(DB_FILE, $bak)) {
+                try {
+                    Database::get()->pdo()->exec('VACUUM INTO ' . Database::get()->pdo()->quote($bak));
                     $stats['backup'] = basename($bak);
+                } catch (Throwable $e) {
+                    if (@copy(DB_FILE, $bak)) {
+                        $stats['backup'] = basename($bak);
+                    }
                 }
+                self::pruneBackups(3);
             }
 
             $pkgDb = $extractDir . '/database/forma.db';
             if ($replaceDatabase && is_file($pkgDb)) {
-                // Close PDO so file can be replaced on Windows/some hosts
-                Database::get()->pdo()->exec('PRAGMA wal_checkpoint(FULL)');
-                if (!@copy($pkgDb, DB_FILE)) {
-                    throw new RuntimeException('Could not replace database/forma.db — check permissions');
-                }
-                @unlink(DB_FILE . '-wal');
-                @unlink(DB_FILE . '-shm');
+                self::replaceContentFromSqlite($pkgDb);
                 $stats['database'] = true;
-                // Re-init schema migrations on next get() — reset singleton
-                self::resetDatabaseSingleton();
-                Database::get(); // runs migrations
                 self::migrateSchemaIfNeeded($schema);
             } elseif (!$replaceDatabase) {
                 // JSON merge path
@@ -329,12 +328,84 @@ class SitePackage {
         RedirectRepo::ensureTable();
     }
 
-    private static function resetDatabaseSingleton(): void {
-        $ref = new ReflectionClass(Database::class);
-        if ($ref->hasProperty('instance')) {
-            $prop = $ref->getProperty('instance');
-            $prop->setAccessible(true);
-            $prop->setValue(null, null);
+    /**
+     * Replace the live database's content with the package's, table by table,
+     * inside one write transaction. Same strategy as AgentCheckpoint: the live
+     * file/WAL inode never changes, so other PHP-FPM workers obey SQLite
+     * locking instead of holding handles to a swapped-out file.
+     *
+     * Every real table present in both databases is copied via their shared
+     * columns (so an older-schema package imports; new columns keep defaults).
+     * Derived caches (page_cache, search_*) are cleared in the same transaction
+     * and rebuilt by the caller.
+     */
+    private static function replaceContentFromSqlite(string $pkgDb): void {
+        $pdo = Database::get()->pdo();
+        $alias = 'fx_import';
+        $attached = false;
+        try {
+            $pdo->exec('PRAGMA busy_timeout = 10000');
+            $pdo->exec('ATTACH DATABASE ' . $pdo->quote($pkgDb) . ' AS ' . $alias);
+            $attached = true;
+
+            $skip = ['page_cache', 'search_index', 'search_index_plain'];
+            $pkgTables = $pdo->query(
+                "SELECT name FROM {$alias}.sqlite_master
+                 WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'search_index%'
+                   AND sql NOT LIKE 'CREATE VIRTUAL%'"
+            )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $mainTables = $pdo->query(
+                "SELECT name FROM main.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+            )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            $pdo->exec('BEGIN IMMEDIATE');
+            foreach ($pkgTables as $table) {
+                if (in_array($table, $skip, true) || !in_array($table, $mainTables, true)) {
+                    continue;
+                }
+                $quoted = '"' . str_replace('"', '""', $table) . '"';
+                $mainCols = array_column($pdo->query("PRAGMA main.table_info({$quoted})")->fetchAll(PDO::FETCH_ASSOC), 'name');
+                $pkgCols = array_column($pdo->query("PRAGMA {$alias}.table_info({$quoted})")->fetchAll(PDO::FETCH_ASSOC), 'name');
+                $cols = array_values(array_intersect($mainCols, $pkgCols));
+                if (!$cols) {
+                    continue;
+                }
+                $colList = implode(', ', array_map(static fn ($c) => '"' . str_replace('"', '""', $c) . '"', $cols));
+                $pdo->exec('DELETE FROM main.' . $quoted);
+                $pdo->exec("INSERT INTO main.{$quoted} ({$colList}) SELECT {$colList} FROM {$alias}.{$quoted}");
+            }
+            foreach ($skip as $cache) {
+                if (in_array($cache, $mainTables, true)) {
+                    $pdo->exec('DELETE FROM main."' . $cache . '"');
+                }
+            }
+            $pdo->exec('COMMIT');
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->exec('ROLLBACK');
+            }
+            throw new RuntimeException('Could not import the package database: ' . $e->getMessage(), 0, $e);
+        } finally {
+            if ($attached) {
+                try {
+                    $pdo->exec('DETACH DATABASE ' . $alias);
+                } catch (Throwable $ignored) {
+                }
+            }
+        }
+        // Package may be an older schema: make sure seeded system rows exist.
+        Database::get()->initSchema();
+    }
+
+    /** Keep only the newest $keep pre-import backups next to the live DB. */
+    private static function pruneBackups(int $keep): void {
+        $files = glob(DB_FILE . '.bak-*') ?: [];
+        if (count($files) <= $keep) {
+            return;
+        }
+        sort($files); // timestamped names sort chronologically
+        foreach (array_slice($files, 0, count($files) - $keep) as $old) {
+            @unlink($old);
         }
     }
 

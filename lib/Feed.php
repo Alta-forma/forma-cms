@@ -74,7 +74,8 @@ class Feed {
 
         $rss  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $rss .= '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"'
-              . ' xmlns:content="http://purl.org/rss/1.0/modules/content/">' . "\n";
+              . ' xmlns:content="http://purl.org/rss/1.0/modules/content/"'
+              . ' xmlns:dc="http://purl.org/dc/elements/1.1/">' . "\n";
         $rss .= "<channel>\n";
         $rss .= '<title>' . htmlspecialchars($siteTitle) . "</title>\n";
         $rss .= '<link>' . htmlspecialchars($siteUrl ?: '/') . "</link>\n";
@@ -90,9 +91,11 @@ class Feed {
         foreach ($posts as $post) {
             $postUrl = ($siteUrl ?: '') . '/blog/' . $post['slug'];
             $html    = $parsedown->text($post['body']);
-            $excerpt = substr(strip_tags($post['body']), 0, $excerptLen);
-            if (strlen($post['body']) > $excerptLen) {
-                $excerpt .= '…';
+            // mb_* so a multibyte character isn't cut in half (invalid UTF-8 breaks XML parsers).
+            $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($post['body'])) ?? '');
+            $excerpt = mb_substr($plain, 0, $excerptLen);
+            if (mb_strlen($plain) > $excerptLen) {
+                $excerpt = rtrim($excerpt) . '…';
             }
             $rss .= "<item>\n";
             $rss .= '  <title>' . htmlspecialchars($post['title']) . "</title>\n";
@@ -103,7 +106,8 @@ class Feed {
             $rss .= '  <description>' . htmlspecialchars($desc) . "</description>\n";
             $rss .= '  <content:encoded><![CDATA[' . $html . "]]></content:encoded>\n";
             if ($post['author']) {
-                $rss .= '  <author>' . htmlspecialchars($post['author']) . "</author>\n";
+                // RSS 2.0 <author> must be an email address; a display name belongs in dc:creator.
+                $rss .= '  <dc:creator>' . htmlspecialchars($post['author']) . "</dc:creator>\n";
             }
             foreach (json_decode($post['categories'] ?: '[]', true) ?: [] as $cat) {
                 $rss .= '  <category>' . htmlspecialchars($cat) . "</category>\n";

@@ -537,7 +537,26 @@ class HostingCheck {
      * Loud, non-dismissible admin nags. Local checks only (no outbound HTTP).
      * @return list<array{id:string,level:string,title:string,detail:string,href:string,cta:string}>
      */
-    public static function adminAlerts(): array {
+    public static function adminAlerts(bool $fresh = false): array {
+        // bcrypt-verifying every user + stat'ing the tree on every admin shell
+        // load adds up; cache per session for a few minutes. Actions that change
+        // the answer (account-save, hosting-fix) pass $fresh = true.
+        $ttl = 300;
+        $cached = $_SESSION['fx_admin_alerts'] ?? null;
+        if (!$fresh && is_array($cached)
+            && isset($cached['at'], $cached['alerts'])
+            && (time() - (int)$cached['at']) < $ttl
+        ) {
+            return (array)$cached['alerts'];
+        }
+        $alerts = self::computeAdminAlerts();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['fx_admin_alerts'] = ['at' => time(), 'alerts' => $alerts];
+        }
+        return $alerts;
+    }
+
+    private static function computeAdminAlerts(): array {
         $alerts = [];
         if (class_exists('Auth') && Auth::usesDefaultPassword()) {
             $alerts[] = [

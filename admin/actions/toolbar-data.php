@@ -55,7 +55,7 @@ try {
             break;
 
         case 'snippets':
-            $stock = ['search' => true, 'search-ui' => true, 'error-ui' => true];
+            $stock = array_fill_keys(SnippetRepo::STOCK, true);
             $out = [];
             foreach (Database::get()->query('SELECT filename, shortcode, content FROM snippets ORDER BY filename') as $s) {
                 $code = (string)($s['shortcode'] ?? '');

@@ -35,11 +35,13 @@ try {
         http_response_code(200);
         StaticFallback::writeStamp();
         StaticFallback::refreshHomeIfStale();
-        // Self-heal: settings say HTML cache is on but the Apache-visible marker/files never
-        // got written (e.g. DB default flipped true before anyone rebuilt the HTML cache).
-        if (StaticFallback::enabled() && !StaticFallback::markerPresent()) {
-            StaticFallback::enable();
-        }
+        // Scheduled posts/episodes whose publish time passed since the last run.
+        StaticFallback::publishScheduledIfDue();
+        // Self-heal (throttled): settings say HTML cache is on but the Apache-visible
+        // marker/files never got written (e.g. DB default flipped true before anyone
+        // rebuilt the HTML cache).
+        StaticFallback::selfHeal();
+        Database::get()->housekeeping();
         Htaccess::ensureRobotsPlaceholder();
         $st = StaticFallback::status();
         echo json_encode([
@@ -183,6 +185,7 @@ try {
     if ($path === '/blog' || str_starts_with($path, '/blog/')) {
         $slug = ($path === '/blog') ? '' : trim(substr($path, 6), '/');
         if ($slug === '') {
+            StaticFallback::publishScheduledIfDue();
             $html = Render::renderBlogArchive();
             $putCache($path, $html);
             echo $html;
@@ -199,7 +202,7 @@ try {
     }
 
     // Podcast (public pages; watermark if unlicensed)
-    if (str_starts_with($path, '/podcast')) {
+    if ($path === '/podcast' || str_starts_with($path, '/podcast/')) {
         $episodeId = ($path === '/podcast') ? '' : ltrim(substr($path, 9), '/');
         if ($episodeId === '') {
             $html = Render::renderPodcastArchive();
@@ -236,10 +239,19 @@ try {
     $page = PageRepo::getBySlug($path);
     if (!$page) {
         $filename = ltrim($path, '/') ?: 'home';
-        $page = PageRepo::get($filename);
+        // Internal Twig/search templates live in `pages` without a public slug.
+        // They are rendered by their owning route only — never by filename.
+        if (!in_array($filename, Seo::TEMPLATE_FILENAMES, true)) {
+            $page = PageRepo::get($filename);
+        }
     }
     if (!$page) {
         Render::sendError(404);
+    }
+    // The seeded error pages (/404, /403, /500) must answer with their real status.
+    $errorCodes = ['_404' => 404, '_403' => 403, '_500' => 500];
+    if (isset($errorCodes[$page['filename'] ?? ''])) {
+        Render::sendError($errorCodes[$page['filename']]);
     }
 
     $html = Render::renderPageRow($page);

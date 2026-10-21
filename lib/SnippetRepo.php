@@ -1,5 +1,8 @@
 <?php
 class SnippetRepo {
+    /** Seeded by Database::seedSystemContent(); referenced by stock templates. */
+    public const STOCK = ['search', 'search-ui', 'error-ui', 'faq-ui'];
+
     public static function list(): array {
         return Database::get()->query(
             'SELECT filename, shortcode, updated_at FROM snippets ORDER BY filename'
@@ -40,6 +43,9 @@ class SnippetRepo {
 
     public static function delete(string $filename): void {
         $filename = PageRepo::sanitizeFilename($filename);
+        if (in_array($filename, self::STOCK, true)) {
+            throw new RuntimeException('Stock snippets cannot be deleted — edit the content instead');
+        }
         Database::get()->execute('DELETE FROM snippets WHERE filename = ?', [$filename]);
         Database::get()->flushCache();
         if (class_exists('Render')) {

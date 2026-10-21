@@ -89,7 +89,7 @@ if (!empty($_GET['partial']) || (($_SERVER['HTTP_HX_REQUEST'] ?? '') === 'true' 
                 </button>
                 <?php endforeach; ?>
             </div>
-            <a href="logout.php" id="app-close-btn" title="Log out" style="text-decoration:none;color:inherit;display:flex;align-items:center;justify-content:center">
+            <a href="logout.php?t=<?php echo h(Auth::csrf()); ?>" id="app-close-btn" title="Log out" style="text-decoration:none;color:inherit;display:flex;align-items:center;justify-content:center">
                 <i class="fas fa-xmark"></i>
             </a>
         </nav>

@@ -253,11 +253,14 @@ class Agent {
         self::json(['error' => $message], $code);
     }
 
-    private static function isLocalRequest(): bool {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-        return in_array($ip, ['127.0.0.1', '::1'], true)
-            || str_starts_with($ip, '192.168.')
-            || str_starts_with($ip, '10.');
+    /**
+     * Loopback only. Private ranges (10/8, 192.168/16) are not "local" — a
+     * reverse proxy or NAT in front of the vhost would make every visitor look
+     * local and silently disable the HTTPS requirement.
+     */
+    public static function isLocalRequest(): bool {
+        $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+        return $ip === '::1' || str_starts_with($ip, '127.');
     }
 
     /** Read Bearer token across Apache CGI / DreamHost quirks. */

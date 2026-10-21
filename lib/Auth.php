@@ -11,7 +11,15 @@ class Auth {
         ini_set('session.use_strict_mode', '1');
         ini_set('session.cookie_samesite', 'Lax');
         ini_set('session.cookie_path', '/');
-        ini_set('session.gc_maxlifetime', '3600');
+        // Keep PHP's GC window in step with the configurable idle timeout, otherwise
+        // a longer security.session_lifetime is silently cut back to an hour.
+        $gc = 3600;
+        try {
+            $gc = max(3600, (int)(Database::get()->getSetting('security')['session_lifetime'] ?? 3600));
+        } catch (Throwable $e) {
+            // DB may not be ready during bootstrap edge cases
+        }
+        ini_set('session.gc_maxlifetime', (string)$gc);
         if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
             ini_set('session.cookie_secure', '1');
         }

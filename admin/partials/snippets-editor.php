@@ -37,7 +37,7 @@ $summary = trim(($row['filename'] ?? 'new') . (!empty($row['shortcode']) ? ' · 
     <div class="buttons">
         <div class="button-group">
             <button type="submit" form="snippet-form" class="standard-btn"><i class="small fas fa-save"></i> Save</button>
-            <?php if (!empty($row['filename'])): ?>
+            <?php if (!empty($row['filename']) && !in_array($row['filename'], SnippetRepo::STOCK, true)): ?>
             <button type="button" class="delete-btn"
                     hx-post="actions/snippets-delete.php"
                     hx-vals='{"filename":"<?php echo h($row['filename']); ?>","csrf_token":"<?php echo h(Auth::csrf()); ?>"}'

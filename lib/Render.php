@@ -400,7 +400,7 @@ HTML;
 
     public static function defaultSearchUiSnippet(): string {
         return <<<'HTML'
-<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js" defer></script>
 <style id="forma-search-ui">
 .forma-search{background:
   radial-gradient(900px 420px at 12% -10%,rgba(252,190,52,.16),transparent 58%),

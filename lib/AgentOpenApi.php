@@ -1,6 +1,7 @@
 <?php
 /**
- * OpenAPI 3.1 contract for subscription-chatbot Actions.
+ * OpenAPI 3.0.3 contract for subscription-chatbot Actions (ChatGPT Actions
+ * still validate against 3.0.x, so the emitted document stays on 3.0.3).
  *
  * This deliberately exposes the safe site-editor surface, not every
  * administrative Agent API endpoint. There are no delete/settings/import

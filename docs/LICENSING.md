@@ -14,7 +14,7 @@ Home of Forma: https://forma-cms.me
 
 `lib/License.php`. Activate needs the checkout email and the key.
 
-- If this install can see an HMAC secret on disk (`lib/LicenseHMACSecret.hex`, **not in git**, or a host-only path the operator configures), it verifies locally.
+- If this install can see an HMAC secret on disk (`lib/LicenseHMACSecret.hex`, **not in git**, or a host-only path set in the `FORMA_LICENSE_SECRET_FILE` environment variable — e.g. `SetEnv FORMA_LICENSE_SECRET_FILE /home/you/private/LicenseHMACSecret.hex` in Apache config), it verifies locally.
 - Otherwise it POSTs `{email,key}` to `https://forma-cms.me/api/license/validate.php`.
 
 A successful activate is stored in SQLite (`license` row id 1). After that, `isPodcastLicensed()` is true without calling home on every page load.

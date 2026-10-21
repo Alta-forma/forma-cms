@@ -17,8 +17,8 @@ try {
     if (array_key_exists('featured_image', $seoMeta)) {
         $seoMeta['og_image'] = $seoMeta['featured_image'];
     }
+    // PageRepo::save() already publishes the fallback HTML and reindexes search.
     $row = PageRepo::save($filename, $content, $contentType, $slug, $seoMeta);
-    StaticFallback::refreshSavedPage($row);
     $_GET['file'] = $row['filename'] ?? $filename;
     require ADMIN_DIR . '/partials/_helpers.php';
     require ADMIN_DIR . '/partials/pages-list.php';

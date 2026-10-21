@@ -286,7 +286,20 @@ class Database {
         ]);
         $this->pdo->exec('PRAGMA journal_mode=WAL');
         $this->pdo->exec('PRAGMA foreign_keys=ON');
-        $this->initSchema();
+        // The full CREATE/ALTER/seed pass is ~35 statements. Only run it when the
+        // DB header stamp differs (fresh DB, app upgrade, or a restored package).
+        $stamp = (int)$this->pdo->query('PRAGMA user_version')->fetchColumn();
+        if ($stamp !== self::schemaStamp()) {
+            $this->initSchema();
+        }
+    }
+
+    /** Bump when seedSystemContent()/DEFAULT_SETTINGS gain rows without a FORMA_SCHEMA_VERSION change. */
+    private const SEED_REVISION = 1;
+
+    private static function schemaStamp(): int {
+        $schema = defined('FORMA_SCHEMA_VERSION') ? (int)FORMA_SCHEMA_VERSION : 1;
+        return $schema * 1000 + self::SEED_REVISION;
     }
 
     public static function get(): self {
@@ -300,7 +313,8 @@ class Database {
         return $this->pdo;
     }
 
-    private function initSchema(): void {
+    /** Idempotent: create tables, add missing columns, seed defaults + system rows. */
+    public function initSchema(): void {
         $this->pdo->exec(self::SCHEMA);
         $this->migrateColumns();
         foreach (self::DEFAULT_SETTINGS as $section => $defaults) {
@@ -310,6 +324,7 @@ class Database {
         }
         $this->seedDefaultAdmin();
         $this->seedSystemContent();
+        $this->pdo->exec('PRAGMA user_version = ' . self::schemaStamp());
     }
 
     private function migrateColumns(): void {
@@ -621,5 +636,38 @@ HTML;
              ON CONFLICT(section) DO UPDATE SET value = excluded.value',
             [$section, json_encode($value)]
         );
+    }
+
+    /**
+     * Trim tables that otherwise grow forever. Cheap, so it runs from the /up
+     * heartbeat; the `maintenance` settings row throttles it to once per day.
+     * Nothing here touches content — only audit rows, stale login attempts, and
+     * short-lived OAuth access tokens that already expired or were revoked.
+     */
+    public function housekeeping(int $minInterval = 86400): bool {
+        $now = time();
+        $state = $this->getSetting('maintenance');
+        if (($now - (int)($state['housekeeping_at'] ?? 0)) < $minInterval) {
+            return false;
+        }
+        // Write the stamp first so concurrent heartbeats don't all run this.
+        $state['housekeeping_at'] = $now;
+        $this->saveSetting('maintenance', $state);
+        try {
+            $this->execute('DELETE FROM api_audit WHERE created_at < ?', [$now - 90 * 86400]);
+            $this->execute('DELETE FROM login_attempts WHERE attempted_at < ?', [$now - 86400]);
+            $this->execute(
+                'DELETE FROM api_tokens
+                  WHERE oauth_client_id IS NOT NULL
+                    AND ((expires_at IS NOT NULL AND expires_at < ?) OR (revoked_at IS NOT NULL AND revoked_at < ?))',
+                [$now - 7 * 86400, $now - 7 * 86400]
+            );
+            if (class_exists('AgentOAuth')) {
+                AgentOAuth::prune();
+            }
+        } catch (Throwable $e) {
+            error_log('Forma housekeeping: ' . $e->getMessage());
+        }
+        return true;
     }
 }

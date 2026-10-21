@@ -99,16 +99,12 @@ class Search {
         $pdo->prepare('DELETE FROM ' . self::table() . ' WHERE type = ? AND ref_id = ?')->execute([$type, $refId]);
     }
 
-    /** Page filenames that are internal templates/system pages, never searchable. */
-    private const NON_SEARCHABLE_PAGES = [
-        '_404', '_403', '_500',
-        'blog-archive', 'blog-single', 'podcast-archive', 'podcast-single',
-        'search-results', 'search-page',
-    ];
-
     public static function indexPage(array $page): void {
         $filename = (string)($page['filename'] ?? '');
-        if (in_array($filename, self::NON_SEARCHABLE_PAGES, true)) {
+        // Internal templates/system pages (one list, shared with sitemap/llms)
+        // and `_`-prefixed pages are never public content.
+        if (str_starts_with($filename, '_') || in_array($filename, Seo::TEMPLATE_FILENAMES, true)) {
+            self::removeDocument('page', $filename);
             return;
         }
         $meta = PageRepo::extractMeta($page['content'] ?? '');
@@ -216,7 +212,7 @@ class Search {
             try {
                 $stmt = $pdo->prepare(
                     "SELECT type, title, url, date_label,
-                            snippet(search_index, 2, '<mark>', '</mark>', '…', 12) AS excerpt
+                            snippet(search_index, 3, '<mark>', '</mark>', '…', 12) AS excerpt
                      FROM search_index
                      WHERE search_index MATCH :match
                      ORDER BY bm25(search_index)

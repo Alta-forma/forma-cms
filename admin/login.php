@@ -45,11 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$isDefaultPassword = false;
-$row = $db->queryOne('SELECT password_hash FROM users WHERE username = ?', ['admin']);
-if ($row && password_verify('admin', $row['password_hash'])) {
-    $isDefaultPassword = true;
-}
+// Same rule as the in-admin nag bar: any user still on the seeded password counts.
+$isDefaultPassword = Auth::usesDefaultPassword();
 $siteTitle = forma_site_title();
 $showProductSub = $siteTitle !== FORMA_PRODUCT;
 ?>
