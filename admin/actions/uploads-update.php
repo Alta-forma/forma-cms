@@ -6,7 +6,7 @@ require_once ADMIN_DIR . '/partials/_helpers.php';
 
 $old = basename((string)($_POST['filename'] ?? ''));
 $new = trim((string)($_POST['new_filename'] ?? $old));
-$content = array_key_exists('content', $_POST) ? (string)$_POST['content'] : null;
+$content = WireBody::posted('content', null);
 
 try {
     if ($old === '') {

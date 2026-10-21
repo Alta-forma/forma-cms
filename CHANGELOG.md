@@ -2,6 +2,11 @@
 
 Installs update from [GitHub Releases](https://github.com/Alta-forma/forma-cms/releases) via **Settings → Forma core**. Every entry here is safe to apply to an existing site unless it says otherwise. Add a section at the top with each `version.php` bump (see `docs/RELEASE.md`).
 
+## 0.6.4 — 2026-10-20
+
+### Added
+- **Firewall-safe writes.** Host WAFs (mod_security, DreamHost "Extra Web Security") drop a request before PHP when the body contains HTML or JavaScript, and answer HTTP 418. Forma cannot whitelist that from PHP. Writers now keep the markup off the raw body: the admin, Cursor MCP, and `tools/formax.php` send `{"fxb":"<base64 of the JSON>"}`; remote chatbot tools take `content_b64` / `body_b64`. Raw JSON still works on hosts that don't filter. Gzip bodies are accepted too.
+
 ## 0.6.3 — 2026-10-20
 
 ### Fixed

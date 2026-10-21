@@ -36,6 +36,25 @@ Commands:
 TXT;
 }
 
+/** Base64 envelope on 0.6.4+. Raw JSON on older installs (they would ignore fxb and no-op the write). */
+function wirePayload(array $json): string {
+    static $use = null;
+    $payload = json_encode($json);
+    if ($use === null) {
+        $use = false;
+        $base = rtrim(getenv('FORMA_X_URL') ?: '', '/');
+        $ch = curl_init($base . '/up');
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10]);
+        $raw = curl_exec($ch);
+        curl_close($ch);
+        $data = json_decode((string)$raw, true);
+        if (is_array($data) && version_compare((string)($data['version'] ?? '0'), '0.6.4', '>=')) {
+            $use = true;
+        }
+    }
+    return $use ? json_encode(['fxb' => base64_encode((string)$payload)]) : (string)$payload;
+}
+
 function request(string $method, string $path, ?array $json = null): array {
     $base = rtrim(getenv('FORMA_X_URL') ?: '', '/');
     $token = getenv('FORMA_X_TOKEN') ?: '';
@@ -58,7 +77,7 @@ function request(string $method, string $path, ?array $json = null): array {
     if ($json !== null) {
         $headers[] = 'Content-Type: application/json';
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($json));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, wirePayload($json));
     }
     $body = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);

@@ -4,7 +4,7 @@ require_once ROOT_DIR . '/lib/bootstrap.php';
 Auth::requireAdmin(false);
 
 try {
-    $row = SnippetRepo::save($_POST['filename'] ?? '', $_POST['shortcode'] ?? '', $_POST['content'] ?? '');
+    $row = SnippetRepo::save($_POST['filename'] ?? '', $_POST['shortcode'] ?? '', WireBody::posted('content'));
     $_GET['file'] = $row['filename'] ?? '';
     require ADMIN_DIR . '/partials/_helpers.php';
     require ADMIN_DIR . '/partials/snippets-list.php';

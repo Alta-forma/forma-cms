@@ -35,7 +35,7 @@ Restart Cursor MCP. First tool to call: **`formax_help`**.
 
 Things that trip agents up:
 
-- `formax_update_page` requires `content`. To change only SEO, call `formax_get_page`, then send the content back unchanged with the new `seo` object. (The REST API's `PUT /pages/{file}` accepts an SEO-only body; the MCP schema is stricter on purpose so a chatbot can't accidentally blank a page.)
+- `formax_update_page` takes the document in `content` (this local client base64-wraps the HTTP body before it leaves the machine, so a host firewall never sees the HTML). The remote MCP at `/api/v1/mcp` instead wants `content_b64` — a chatbot that puts raw HTML in the JSON gets HTTP 418 from the host, not from Forma. To change only SEO, send the existing content back unchanged with the new `seo` object.
 - `formax_save_redirect` — `enabled` defaults to on when omitted. A destination equal to the source path is rejected as a loop.
 - Template pages (`blog-single`, `search-page`, `_404`, …) show up in `formax_list_pages` and can be edited, but they never render by their own filename and are not indexed — don't "fix" their 404.
 - Errors come back as `isError: true` with a plain-English message for anything you can act on (400). A generic "Internal error" is a server-side problem logged on the host — don't retry in a loop.

@@ -35,7 +35,7 @@ try {
     if ($kind === 'snippet') {
         $filename = PageRepo::sanitizeFilename($_POST['filename'] ?? '');
         $shortcode = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['shortcode'] ?? '') ?? '';
-        $body = $_POST['content'] ?? '<p>New snippet</p>';
+        $body = WireBody::posted('content', '<p>New snippet</p>');
         if ($filename === '' || $shortcode === '') {
             throw new InvalidArgumentException('Filename and shortcode required');
         }
@@ -62,7 +62,7 @@ try {
             'filename' => $filename,
             'title'    => $title,
             'slug'     => $_POST['slug'] ?? '',
-            'body'     => $_POST['body'] ?? "## {$title}\n\n",
+            'body'     => WireBody::posted('body', "## {$title}\n\n"),
             'date'     => date('Y-m-d'),
             'author'   => Database::get()->getSetting('site')['default_author'] ?? 'Admin',
         ]);

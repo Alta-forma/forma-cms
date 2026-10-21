@@ -15,6 +15,7 @@ require_once ROOT_DIR . '/lib/Feed.php';
 require_once ROOT_DIR . '/lib/Render.php';
 require_once ROOT_DIR . '/lib/AgentOAuth.php';
 require_once ROOT_DIR . '/lib/Agent.php';
+require_once ROOT_DIR . '/lib/WireBody.php';
 require_once ROOT_DIR . '/lib/AgentCheckpoint.php';
 require_once ROOT_DIR . '/lib/AgentOpenApi.php';
 require_once ROOT_DIR . '/lib/AgentMcp.php';

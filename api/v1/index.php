@@ -68,9 +68,18 @@ $token = Agent::authenticate($rel === '/mcp' ? AgentOAuth::resourceUri() : null)
 $body = [];
 $raw = file_get_contents('php://input') ?: '';
 if ($raw !== '') {
+    try {
+        $raw = WireBody::unwrap($raw);
+    } catch (InvalidArgumentException $e) {
+        Agent::fail(400, $e->getMessage());
+    }
     $decoded = json_decode($raw, true);
     if (is_array($decoded)) {
-        $body = $decoded;
+        try {
+            $body = WireBody::expandFields($decoded);
+        } catch (InvalidArgumentException $e) {
+            Agent::fail(400, $e->getMessage());
+        }
     }
 }
 

@@ -5,7 +5,7 @@ Auth::requireAdmin(false);
 
 try {
     $filename = $_POST['filename'] ?? '';
-    $content = $_POST['content'] ?? '';
+    $content = WireBody::posted('content');
     $contentType = $_POST['content_type'] ?? 'html';
     $slug = $_POST['slug'] ?? null;
     $seoMeta = [];

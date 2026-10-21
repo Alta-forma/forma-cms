@@ -14,6 +14,31 @@ import {
 const BASE = (process.env.FORMA_X_URL || "").replace(/\/$/, "");
 const TOKEN = process.env.FORMA_X_TOKEN || "";
 
+// Whole-body base64 envelope. Host WAFs drop raw HTML/JS before PHP (often HTTP 418).
+// `{fxb}` is only the base64 alphabet on the wire. Servers older than 0.6.4 don't
+// decode it — and would silently ignore the write — so probe /up once and fall back.
+let fxbWire = null;
+async function usesFxbWire() {
+  if (fxbWire !== null) return fxbWire;
+  fxbWire = false;
+  try {
+    const res = await fetch(`${BASE}/up`, { headers: { Accept: "application/json" } });
+    const data = await res.json();
+    const v = String(data.version || "0").split(".").map((n) => parseInt(n, 10) || 0);
+    const min = [0, 6, 4];
+    for (let i = 0; i < 3; i++) {
+      if ((v[i] || 0) !== min[i]) {
+        fxbWire = (v[i] || 0) > min[i];
+        break;
+      }
+      if (i === 2) fxbWire = true;
+    }
+  } catch {
+    fxbWire = false;
+  }
+  return fxbWire;
+}
+
 async function api(method, path, body, { multipart } = {}) {
   if (!BASE || !TOKEN) throw new Error("Set FORMA_X_URL and FORMA_X_TOKEN");
   const headers = {
@@ -26,7 +51,10 @@ async function api(method, path, body, { multipart } = {}) {
     payload = multipart;
   } else if (body !== undefined) {
     headers["Content-Type"] = "application/json";
-    payload = JSON.stringify(body);
+    const json = JSON.stringify(body);
+    payload = (await usesFxbWire())
+      ? JSON.stringify({ fxb: Buffer.from(json, "utf8").toString("base64") })
+      : json;
   }
   const res = await fetch(`${BASE}/api/v1${path}`, { method, headers, body: payload });
   const text = await res.text();
@@ -396,7 +424,7 @@ const tools = [
 ];
 
 const server = new Server(
-  { name: "formax", version: "0.6.3" },
+  { name: "formax", version: "0.6.4" },
   { capabilities: { tools: {} } }
 );
 

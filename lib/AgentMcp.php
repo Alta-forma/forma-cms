@@ -27,7 +27,7 @@ class AgentMcp {
                 'protocolVersion' => self::PROTOCOL_VERSION,
                 'capabilities' => ['tools' => ['listChanged' => false]],
                 'serverInfo' => ['name' => 'forma', 'version' => FORMA_VERSION],
-                'instructions' => 'Call formax_help first. Edits publish immediately. Forma automatically protects one last-known-good site before the first write. Never mark the site good unless the human explicitly says it looks right.',
+                'instructions' => 'Call formax_help first. Edits publish immediately. Forma automatically protects one last-known-good site before the first write. Never mark the site good unless the human explicitly says it looks right. When writing a page, post, or snippet, send the document as standard base64 in content_b64 or body_b64 and omit the raw field — host firewalls drop requests that contain HTML or JavaScript in the JSON (HTTP 418, before Forma can answer).',
             ]);
         }
         if ($method === 'ping') {
@@ -86,22 +86,24 @@ class AgentMcp {
             self::tool('formax_get_page', 'Read a complete page before changing it.', [
                 'filename' => ['type' => 'string'],
             ], 'content:read', true, ['filename']),
-            self::tool('formax_update_page', 'Create or update a page. Publishes immediately; the first write automatically protects the last-known-good site.', [
+            self::tool('formax_update_page', 'Create or update a page. Publishes immediately; the first write automatically protects the last-known-good site. Send the document as standard base64 in content_b64 (no line breaks) and omit content. Raw HTML or JavaScript in content is blocked by many host firewalls before Forma sees the request.', [
                 'filename' => ['type' => 'string'],
+                'content_b64' => ['type' => 'string', 'contentEncoding' => 'base64'],
                 'content' => ['type' => 'string'],
                 'content_type' => ['type' => 'string', 'enum' => ['html', 'md']],
                 'slug' => ['type' => 'string'],
                 'title' => ['type' => 'string'],
                 'seo' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
-            ], 'content:write', false, ['filename', 'content']),
+            ], 'content:write', false, ['filename']),
             self::tool('formax_list_posts', 'List blog posts and SEO health.', [], 'content:read', true),
             self::tool('formax_get_post', 'Read a complete post before changing it.', [
                 'filename' => ['type' => 'string'],
             ], 'content:read', true, ['filename']),
-            self::tool('formax_update_post', 'Create or update a Markdown post. Omit/empty date for draft. Publishes immediately when dated.', [
+            self::tool('formax_update_post', 'Create or update a Markdown post. Omit/empty date for draft. Publishes immediately when dated. Send the markdown as standard base64 in body_b64 and omit body — raw code blocks are blocked by many host firewalls.', [
                 'filename' => ['type' => 'string'],
                 'title' => ['type' => 'string'],
                 'slug' => ['type' => 'string'],
+                'body_b64' => ['type' => 'string', 'contentEncoding' => 'base64'],
                 'body' => ['type' => 'string'],
                 'description' => ['type' => 'string'],
                 'author' => ['type' => 'string'],
@@ -109,16 +111,17 @@ class AgentMcp {
                 'categories' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'tags' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'seo' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
-            ], 'content:write', false, ['filename', 'title', 'body']),
+            ], 'content:write', false, ['filename', 'title']),
             self::tool('formax_list_snippets', 'List reusable snippets. Changing one may affect many pages.', [], 'content:read', true),
             self::tool('formax_get_snippet', 'Read a reusable snippet before changing it.', [
                 'filename' => ['type' => 'string'],
             ], 'content:read', true, ['filename']),
-            self::tool('formax_update_snippet', 'Create or update a reusable snippet. Check pages that use its [[shortcode]].', [
+            self::tool('formax_update_snippet', 'Create or update a reusable snippet. Check pages that use its [[shortcode]]. Send the snippet as standard base64 in content_b64 and omit content — raw HTML or JavaScript is blocked by many host firewalls.', [
                 'filename' => ['type' => 'string'],
                 'shortcode' => ['type' => 'string'],
+                'content_b64' => ['type' => 'string', 'contentEncoding' => 'base64'],
                 'content' => ['type' => 'string'],
-            ], 'content:write', false, ['filename', 'content']),
+            ], 'content:write', false, ['filename']),
             self::tool('formax_list_media', 'List uploads and their public URLs.', [], 'content:read', true),
             self::tool('formax_upload_media', 'Upload one base64 file. Use the returned randomized URL; do not guess the filename.', [
                 'filename' => ['type' => 'string'],
@@ -141,6 +144,7 @@ class AgentMcp {
     }
 
     public static function callTool(array $token, string $name, array $a): array {
+        $a = WireBody::expandFields($a);
         $required = [];
         foreach (self::tools($token) as $tool) {
             if ($tool['name'] === $name) {
@@ -279,6 +283,9 @@ class AgentMcp {
         if (!empty($a['title'])) {
             $extra['title'] = (string)$a['title'];
         }
+        if (!array_key_exists('content', $a)) {
+            throw new InvalidArgumentException('content_b64 (or content) is required');
+        }
         $existing = PageRepo::get((string)$a['filename']);
         $row = PageRepo::save(
             (string)$a['filename'],
@@ -310,6 +317,9 @@ class AgentMcp {
     }
 
     private static function updatePost(array $token, array $a): array {
+        if (!array_key_exists('body', $a)) {
+            throw new InvalidArgumentException('body_b64 (or body) is required');
+        }
         AgentCheckpoint::beforeMutation($token);
         $row = BlogRepo::save($a);
         $warnings = $row['_warnings'] ?? [];
@@ -319,6 +329,9 @@ class AgentMcp {
     }
 
     private static function updateSnippet(array $token, array $a): array {
+        if (!array_key_exists('content', $a)) {
+            throw new InvalidArgumentException('content_b64 (or content) is required');
+        }
         AgentCheckpoint::beforeMutation($token);
         $row = SnippetRepo::save(
             (string)$a['filename'],

@@ -43,7 +43,7 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 - Scopes: `content:read|write|delete`, `media:write|delete`, `site:write` (curated public identity + SEO), `rollback:write`, `settings:write`, `backup:read`, `podcast:write`. The Site editor preset intentionally omits both delete scopes.
 - `GET/PUT /api/v1/settings/{section}` never serves `security` (403) — not even with `settings:write`. That section is Settings → Access only.
 - Errors: `400` carries a plain-English `error` you can act on (bad input, loop, missing field). `500` is generic on purpose — the detail is in the server log, not the response.
-- An **HTTP 418** with an HTML body (not JSON) didn't come from Forma — it's the host's web application firewall (DreamHost "Extra Web Security") rejecting a request body that contains HTML/JS. Don't retry; tell the human. See `docs/DEPLOY.md`.
+- An **HTTP 418** with an HTML body (not JSON) didn't come from Forma — a host firewall rejected the raw body because it contained HTML or JavaScript. Send the document as `content_b64` / `body_b64` (standard base64) and omit the raw field. Don't retry the same raw body. See `docs/DEPLOY.md`.
 - REST `PUT /pages/{file}` with only `{"seo":{…}}` keeps the existing content. The MCP tool `formax_update_page` requires `content` — read with `formax_get_page` first and send it back.
 
 ## SEO fields (pages & posts)

@@ -17,7 +17,7 @@ try {
         'filename'    => $_POST['filename'] ?? '',
         'title'       => $_POST['title'] ?? '',
         'slug'        => $_POST['slug'] ?? '',
-        'body'        => $_POST['body'] ?? '',
+        'body'        => WireBody::posted('body'),
         'description' => $_POST['description'] ?? '',
         'author'      => $_POST['author'] ?? '',
         'categories'  => $_POST['categories'] ?? '',
