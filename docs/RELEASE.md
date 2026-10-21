@@ -20,8 +20,8 @@ The Update button already refuses to touch those. Manual rsync must too.
 
 ## Ship a release
 
-1. Work is actually done. Tests / a local `php -S` sanity check. For agent-protocol releases, run `php tools/test-agent-safety.php` and `php tools/test-oauth.php`, then verify OAuth metadata + PKCE connection, `/api/v1/openapi.json`, MCP `initialize` + `tools/list`, a live test edit, and `formax_put_it_back`. Merge to `main`.
-2. Bump `version.php` (`FORMA_VERSION` + `FORMA_VERSION_DATE`). The in-admin button compares this number to the GitHub tag.
+1. Work is actually done. Lint, a disposable `php -S` install, and the **upgrade simulation** in [`TESTING.md`](TESTING.md) §4 — seed an install from the last tag, apply your tree with the *old* `Updater`, confirm content/tokens/sessions survive and rollback works. For agent-protocol releases also run `php tools/test-agent-safety.php` and `php tools/test-oauth.php`, then verify OAuth metadata + PKCE connection, `/api/v1/openapi.json`, MCP `initialize` + `tools/list`, a live test edit, and `formax_put_it_back`. Merge to `main`.
+2. Bump `version.php` (`FORMA_VERSION` + `FORMA_VERSION_DATE`) and the `version` string in `mcp/server.mjs`. The in-admin button compares this number to the GitHub tag. Add a section to `CHANGELOG.md`. Bump `FORMA_SCHEMA_VERSION` only if table shape changed; bump `Database::SEED_REVISION` if seeds/defaults gained rows.
 3. From the repo root, on `main`, with a clean tree:
 
    ```bash
@@ -29,8 +29,9 @@ The Update button already refuses to touch those. Manual rsync must too.
    ```
 
    That tags `vX.Y.Z` (must match `version.php`) and runs `gh release create`. If the script errors, **stop**. Do not push a tag by hand unless you know why the script failed.
-4. Confirm https://github.com/Alta-forma/forma-cms/releases/latest shows that tag.
-5. On **each** live install: Settings → **Forma core** → Check for updates → **Update Forma core**. Read the confirm dialog. Wait for the toast.
+4. Confirm https://github.com/Alta-forma/forma-cms/releases/latest shows that tag, and that the zipball's `version.php` matches (`Updater::apply()` refuses a mismatch). `--generate-notes` only produces a compare link — replace it with real notes: `gh release edit vX.Y.Z --notes-file -` pasting the CHANGELOG section.
+5. On **each** live install: Settings → **Forma core** → Check for updates → **Update Forma core**. Read the confirm dialog. Wait for the toast. forma-cms.me is also fine to update from SSH with `php -r 'define("ROOT_DIR", getcwd()); require "lib/bootstrap.php"; print_r(Updater::apply());'` from its web root — same code path as the button.
+6. Update forma-cms.me content if the release changes anything a visitor sees (install commands, feature list, docs page, a release post).
 
 First-time sites that are still on 0.1.x do not have this pane. Bootstrap them **once** with the 0.2.0+ app files (same allowlist as the updater), then use the button forever after.
 
@@ -55,3 +56,10 @@ Semver in `version.php`:
 - **patch** (0.2.1) — bugfix, safe for every install
 - **minor** (0.3.0) — features, still safe if they click Update
 - **major** (1.0.0) — breaking; say so in the release notes and bump `FORMA_SCHEMA_VERSION` only when SQLite shape changes
+
+## What survives an update (and what doesn't)
+
+- Code under `admin/ lib/ api/ mcp/ templates/`, root files, and the `tools/` allowlist are replaced. Extra files an operator added inside those dirs are **kept** (copy, not sync) — e.g. forma-cms.me's `api/license/validate.php`.
+- `lib/LicenseHMACSecret.hex`, `.htaccess`, `.env`, `config.local.php` are never written.
+- Seeded content (stock snippets, templates) is only inserted when missing. An install that edited `search-ui` keeps its edit; it does not receive the new default.
+- The first request after update re-runs `Database::initSchema()` once (stamp mismatch) — new tables/columns appear then, not during the copy.

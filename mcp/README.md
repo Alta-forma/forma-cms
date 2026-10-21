@@ -33,6 +33,13 @@ Add to `~/.cursor/mcp.json`:
 
 Restart Cursor MCP. First tool to call: **`formax_help`**.
 
+Things that trip agents up:
+
+- `formax_update_page` requires `content`. To change only SEO, call `formax_get_page`, then send the content back unchanged with the new `seo` object. (The REST API's `PUT /pages/{file}` accepts an SEO-only body; the MCP schema is stricter on purpose so a chatbot can't accidentally blank a page.)
+- `formax_save_redirect` — `enabled` defaults to on when omitted. A destination equal to the source path is rejected as a loop.
+- Template pages (`blog-single`, `search-page`, `_404`, …) show up in `formax_list_pages` and can be edited, but they never render by their own filename and are not indexed — don't "fix" their 404.
+- Errors come back as `isError: true` with a plain-English message for anything you can act on (400). A generic "Internal error" is a server-side problem logged on the host — don't retry in a loop.
+
 ## Tools
 
 | Tool | Scope |

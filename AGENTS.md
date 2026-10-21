@@ -18,17 +18,18 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 | Piece | Where | Notes |
 |-------|--------|--------|
 | Pages | `pages` table | HTML/Twig or Markdown. Optional `<!--META … -->` for slug + SEO. Full HTML templates should contain `[[seo]]` on its own line in `<head>`. |
-| Posts | `blog_posts` | Markdown. Public only if `published_at <= now`. Head tags come from `blog-single`’s `[[seo]]` slot plus this post’s `seo_json`. |
+| Posts | `blog_posts` | Markdown. Public only if `published_at <= now`. A future date **schedules** the post: it goes live (HTML cache, archive, search, feeds) on the next `/up` heartbeat or `/blog` hit after that time — no cron needed, but an uptime ping on `/up` makes it punctual. Head tags come from `blog-single`’s `[[seo]]` slot plus this post’s `seo_json`. |
 | Snippets | `snippets` | Insert with `[[shortcode]]` in page/post HTML. `[[seo]]` is reserved (not a snippet). Nesting max 4; cycles become an HTML comment. |
 | Uploads | `/uploads` | Media files; use media API |
 | Settings | `settings` JSON sections | `site`, `seo`, `blog`, `podcast`, `cache`, … |
 | SEO | Settings → SEO + per doc + `[[seo]]` | Auto meta/favicon/schema. Pages that never had `[[seo]]` still auto-inject. After the slot is pinned, deleting it turns head tags off (`warnings: ["seo_slot_removed"]` on PUT). |
-| Uptime | `GET /up` + `fallback/` | Heartbeat JSON incl. `fallback` status. If `/up` dies but `/fallback/php-ok.json` is 200, PHP/FastCGI is down. |
+| Templates | `pages` rows named in `Seo::TEMPLATE_FILENAMES` | `_404 _403 _500 blog-archive blog-single podcast-archive podcast-single search-page search-results`. Editable like any page via `/pages/{filename}`, but never routable by filename, never indexed, never published as standalone HTML. Don't delete them. |
+| Uptime | `GET /up` + `fallback/` | Heartbeat JSON incl. `fallback` status. If `/up` dies but `/fallback/php-ok.json` is 200, PHP/FastCGI is down. `/up` also runs the scheduled-publish check, HTML-cache self-heal, and once-a-day housekeeping (prunes old audit rows, stale login attempts, expired OAuth tokens). |
 | HTML cache | Settings → Cache (`cache.static_fallback`) | Every save writes real `.html` under `fallback/`; Apache serves those files first (see `fallback/.enabled`). Paths without a built file fall through to PHP — SQLite is always the source of truth, `fallback/` is a derived cache you can delete and rebuild with "Rebuild HTML cache". |
 | Search | `GET /search?q=…` + `[[search]]` snippet | SQLite FTS5 (LIKE fallback) over pages/posts/episodes. Always PHP, never published as a file. htmx fragment via `HX-Request: true`. To write the shortcode as text, use a code fence / `<code>` or `[[!search]]`. Descriptions, titles, and meta never expand shortcodes. |
 | FAQ | Visible HTML — no separate data | `FAQPage` JSON-LD is generated automatically from `<div data-fx-faq>` blocks of `<details class="fx-faq-item"><summary>Q</summary><div class="fx-faq-a"><p>A</p></div></details>`. Include `[[faq-ui]]` once for the accordion styling (native `<details>`, no JS). One copy of the text — the visible markup is the schema source. Toolbar → Snippets → "FAQ block" inserts a starter. |
 | Custom JSON-LD | `<script type="application/ld+json" data-fx-schema>` in content | Escape hatch for schema.org types Forma has no UI for (Event, Recipe, Course…). Validated on save (bad JSON / missing `@type` → warning, dropped, not published) and merged into the one generated `<script>` in `<head>`; the raw tag is stripped from the body. Accepts one object, an array, or `{"@graph":[…]}`. |
-| Redirects | `redirects` table | 301/302/307/308. `GET/PUT /api/v1/redirects`, `DELETE /api/v1/redirects/{id}`. Can't target `/admin` or `/api`. |
+| Redirects | `redirects` table | 301/302/307/308. `GET/PUT /api/v1/redirects` (`from_path`, `to_url`, `status`, optional `enabled` — defaults on), `DELETE /api/v1/redirects/{id}`. Can't target `/admin` or `/api`; a destination equal to its own source (relative or absolute) is rejected as a loop. |
 | SEO health | `GET /api/v1/seo` → `health` | Sitewide report (dupes, missing favicon/description, schema fields, `[[seo]]` slot status per template). `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row for a cheap "what needs work" scan without fetching every doc. |
 | Hosting / security nags | `HostingCheck::adminAlerts()`, admin-only | A red bar on every admin screen for a still-default `admin`/`admin` password or a failing hosting check (world-writable `database`/`uploads`/`feeds`/`fallback`, `display_errors` on, leftover `install.php`, missing `.htaccess`). No API surface for the full report — that's Settings → Server only. `GET /api/v1/health` is the lighter, agent-facing filesystem check (bad upload paths, nested `lib/lib`/`admin/admin` from a bad manual deploy). Fix perms with `chmod 755` dirs / `640` the db file — never `chmod -R 777`. |
 | Agent rollback | `AgentCheckpoint` + Settings → Access | Agent writes are live. Before the first write, Forma snapshots one last-known-good SQLite DB; later writes keep that point. `GET /checkpoint` reports it, `/checkpoint/restore` puts it back, `/checkpoint/accept` moves it. Restore also rebuilds search, feeds, redirects, cache, and fallback HTML; agent-deleted media is restored. New orphan uploads may remain. |
@@ -40,6 +41,10 @@ That returns scopes, every endpoint, SEO field names, and how the product is str
 - DreamHost-safe alt: `X-Forma-Token: fx_…`
 - Remote MCP chatbots normally obtain a short-lived audience-bound token through OAuth; manual Bearer tokens are for Cursor, scripts, and Actions that require API-key auth.
 - Scopes: `content:read|write|delete`, `media:write|delete`, `site:write` (curated public identity + SEO), `rollback:write`, `settings:write`, `backup:read`, `podcast:write`. The Site editor preset intentionally omits both delete scopes.
+- `GET/PUT /api/v1/settings/{section}` never serves `security` (403) — not even with `settings:write`. That section is Settings → Access only.
+- Errors: `400` carries a plain-English `error` you can act on (bad input, loop, missing field). `500` is generic on purpose — the detail is in the server log, not the response.
+- An **HTTP 418** with an HTML body (not JSON) didn't come from Forma — it's the host's web application firewall (DreamHost "Extra Web Security") rejecting a request body that contains HTML/JS. Don't retry; tell the human. See `docs/DEPLOY.md`.
+- REST `PUT /pages/{file}` with only `{"seo":{…}}` keeps the existing content. The MCP tool `formax_update_page` requires `content` — read with `formax_get_page` first and send it back.
 
 ## SEO fields (pages & posts)
 
@@ -68,6 +73,10 @@ Local Cursor MCP has the full API surface. Remote `/api/v1/mcp` intentionally ex
 Installs pull **GitHub Releases** only (`Alta-forma/forma-cms`). Admin → **Settings → Forma core**. Never rsync `main` onto a live vhost. Never copy `database/`, `uploads/`, or a customized `.htaccess` when updating code.
 
 AltaForma: bump `version.php`, merge to `main`, `./tools/release.sh`. Full checklist: [`docs/RELEASE.md`](docs/RELEASE.md).
+
+## Working on the codebase (not a site)
+
+If you're in the repo rather than talking to an install: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the map (request lifecycle, class map, data model, write path, conventions), [`docs/TESTING.md`](docs/TESTING.md) is how to prove a change (lint, disposable install, test scripts, upgrade simulation), [`CHANGELOG.md`](CHANGELOG.md) is what shipped when. Repos own side effects; actions and API handlers call repos. Everything derived (`page_cache`, search index, `feeds/`, `fallback/`) must be rebuildable from SQLite.
 
 ## Don’t
 

@@ -396,7 +396,7 @@ const tools = [
 ];
 
 const server = new Server(
-  { name: "formax", version: "0.6.0" },
+  { name: "formax", version: "0.6.1" },
   { capabilities: { tools: {} } }
 );
 

@@ -10,7 +10,7 @@ Latest release: [Releases](https://github.com/Alta-forma/forma-cms/releases/late
 ```bash
 git clone https://github.com/Alta-forma/forma-cms.git
 cd forma-cms
-chmod -R 775 database uploads feeds
+chmod -R 755 database uploads feeds fallback
 php -S localhost:8787 router.php
 ```
 
@@ -33,6 +33,8 @@ Open http://localhost:8787/admin — first boot is `admin` / `admin`. Change tha
 On later **code** updates, use **Settings → Update** (GitHub Releases only). Manual rsync of `admin/`, `lib/`, `api/`, `mcp/`, `templates/`, and entry PHP files is the bootstrap path for sites that do not have that pane yet. **Do not overwrite** `database/`, `uploads/`, or a live `.htaccess` you have already customized. SQLite is the site; the PHP tree is the app. How AltaForma publishes: [RELEASE.md](RELEASE.md).
 
 DreamHost FastCGI often strips `Authorization`. Forma’s generated `.htaccess` copies it back so Agent API Bearer tokens work. The DreamHost-safe header is `X-Forma-Token`.
+
+**DreamHost "Extra Web Security" (mod_security) and the Agent API.** With that panel option on, any `PUT`/`POST` whose JSON body contains HTML (`<style>`, `<script>`, even a few KB of markup) is rejected by Apache *before* PHP runs — you get **HTTP 418** and the body of `fallback/_500.html`, not a Forma JSON error. Small bodies (SEO-only updates, Markdown posts without raw HTML, settings) go through. Observed on forma-cms.me in Oct 2026. Options: turn Extra Web Security off for that domain in the DreamHost panel, or for AltaForma-managed sites use SSH: `scp` the file, then from the web root `php -r 'define("ROOT_DIR", getcwd()); require "lib/bootstrap.php"; PageRepo::save("home", file_get_contents("/tmp/home.html"), "html");'` — same code path as the API, fallback/search/feeds update the same way.
 
 ## Apache (any host)
 
@@ -70,6 +72,15 @@ Settings → Cache → **Enable HTML cache** writes real `.html` under `fallback
 - `GET /up` — PHP heartbeat JSON (never a static file)
 - `/fallback/php-ok.json` — on-disk stamp. If `/up` dies but this is 200, FastCGI/PHP is down and Apache is still serving cached HTML.
 
+Point an uptime monitor (or a 5-minute cron `curl -s https://site/up >/dev/null`) at `/up`. Beyond monitoring, that request is Forma's only scheduler: it publishes posts/episodes whose scheduled time has arrived, self-heals the HTML cache marker, and runs once-a-day housekeeping (old audit rows, stale login attempts, expired OAuth tokens). Without any traffic to `/up` or `/blog`, a scheduled post only appears when someone next hits one of those paths.
+
+## Environment variables (all optional)
+
+| Variable | Purpose |
+|----------|---------|
+| `FORMA_LICENSE_SECRET_FILE` | Absolute path to the podcast-license HMAC secret outside the web root. Falls back to `lib/LicenseHMACSecret.hex`, then to remote validation. Apache: `SetEnv FORMA_LICENSE_SECRET_FILE /home/you/private/license.hex` in the vhost (a `.htaccess` `SetEnv` is lost if Forma rewrites the file). |
+| `FORMA_X_URL`, `FORMA_X_TOKEN` | Client-side only — used by `tools/formax.php`, `mcp/server.mjs`, and `scripts/`. Never needed on the server. |
+
 ## After install
 
 1. Change the admin password — a non-dismissible red bar stays on every admin screen until you do (Settings → Access)
@@ -86,6 +97,7 @@ Forma also writes a deny-PHP `.htaccess` into `uploads/` automatically (any requ
 ## What this repo does not contain
 
 - Your SQLite database, uploads, or tokens
-- `lib/LicenseHMACSecret.hex` (gitignored). Podcast keys are verified locally only if that file exists, otherwise Forma POSTs to `https://forma-cms.me/api/license/validate.php`
+- `lib/LicenseHMACSecret.hex` (gitignored). Podcast keys are verified locally only if that file (or `FORMA_LICENSE_SECRET_FILE`) exists, otherwise Forma POSTs to `https://forma-cms.me/api/license/validate.php`
+- `api/license/validate.php` — that endpoint lives only on forma-cms.me, outside this repo. The updater copies files in, never deletes, so it survives core updates there.
 
 See [LICENSING.md](LICENSING.md) for the podcast unlock. See [SCREENSHOTS.md](SCREENSHOTS.md) for product shots still to take.

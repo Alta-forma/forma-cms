@@ -302,10 +302,27 @@ class StaticFallback {
         $expectedPosts = 0;
         $expectedEpisodes = 0;
         foreach ($pageRows as $row) {
+            $filename = (string)($row['filename'] ?? '');
+            if (in_array($filename, Seo::TEMPLATE_FILENAMES, true)) {
+                // Releases before 0.6.0 published templates as ordinary pages
+                // (fallback/blog-single.html …). Apache would keep serving
+                // those 200 copies forever, so a rebuild removes them. Error
+                // pages are re-written as fallback/_404.html by publishErrorPages().
+                if (!str_starts_with($filename, '_')) {
+                    // Older saves may have given the template a slug (/blog-single)
+                    // or published it under its filename — clear both candidates.
+                    foreach (array_unique([trim((string)($row['slug'] ?? '')), '/' . $filename]) as $stale) {
+                        if ($stale !== '' && $stale !== '/') {
+                            self::unpublishPage($stale);
+                        }
+                    }
+                }
+                continue;
+            }
             if (self::pageIsPublishable($row)) {
                 $expectedPages++;
             }
-            $full = PageRepo::get($row['filename']);
+            $full = PageRepo::get($filename);
             if ($full && self::publishPage($full)) {
                 $counts['pages']++;
             }

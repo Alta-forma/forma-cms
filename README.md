@@ -12,6 +12,7 @@ A portable, SQLite-powered CMS for people who are willing to hack a little. Dark
 The 2025 flat-file experiment still lives at [onechrisjones/forma](https://github.com/onechrisjones/forma). This repo is the current PHP + SQLite product.
 
 Deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · **Ship updates:** [docs/RELEASE.md](docs/RELEASE.md) · Podcast keys: [docs/LICENSING.md](docs/LICENSING.md)
+Hacking on it: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/TESTING.md](docs/TESTING.md) · [CHANGELOG.md](CHANGELOG.md) · agents: [AGENTS.md](AGENTS.md)
 
 ## Principles
 
@@ -35,7 +36,7 @@ Deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · **Ship updates:** [docs/RELEASE.md](
 ```bash
 git clone https://github.com/Alta-forma/forma-cms.git
 cd forma-cms
-chmod -R 775 database uploads feeds
+chmod -R 755 database uploads feeds fallback
 php -S localhost:8787 router.php
 ```
 
@@ -55,7 +56,9 @@ DreamHost / Apache / Nginx: [docs/DEPLOY.md](docs/DEPLOY.md).
 ├── lib/                # Database, repos, Render, Feed, Agent…
 ├── mcp/                # Local Cursor MCP client (remote MCP is built into /api/v1/mcp)
 ├── AGENTS.md           # How agents should use Forma
-├── tools/              # remote CLI + import from older installs
+├── CHANGELOG.md        # What shipped when
+├── docs/               # Architecture, testing, deploy, release (never copied to a web root)
+├── tools/              # remote CLI, test scripts, release.sh, import from older installs
 ├── database/forma.db   # created on first request
 ├── uploads/
 ├── feeds/
@@ -92,10 +95,12 @@ Forma also drops a deny-PHP `.htaccess` into `uploads/` on write, so an uploaded
 | `/api/v1/openapi.json` | Public ChatGPT Actions contract (no credentials) |
 | `/api/v1/mcp` | Authenticated remote MCP over Streamable HTTP |
 | `/search` | Site search (htmx fragment or full page). `[[search]]` snippet renders the box |
-| `/up` | PHP heartbeat JSON (no auth). Pair with `/fallback/php-ok.json` |
+| `/up` | PHP heartbeat JSON (no auth). Pair with `/fallback/php-ok.json`. Also the scheduler: publishes due posts/episodes, self-heals the HTML cache, runs daily housekeeping |
 | `/fallback/index.html` | Published homepage Apache can serve directly, or if PHP/FastCGI dies |
 
-Templates live as pages: `blog-archive`, `blog-single`, `podcast-archive`, `podcast-single`.
+Templates live as pages: `blog-archive`, `blog-single`, `podcast-archive`, `podcast-single`, `search-page`, `search-results`, and the error pages `_404` / `_403` / `_500`. They're editable like any page but not reachable by filename, not indexed, and not published as standalone HTML (`Seo::TEMPLATE_FILENAMES`).
+
+**Scheduled posts.** Give a post a future date and it stays 404 until then. Forma has no cron; the publish check runs on every `/up` heartbeat and `/blog` request, so point an uptime monitor at `/up` (you want that anyway) and scheduled posts go live within a few minutes of their time — HTML cache, archive, search index, and feeds included.
 
 ## Backup / site packages
 
@@ -158,7 +163,7 @@ Settings → **Cache**:
 - **PHP cache** (SQLite) skips Twig/Markdown on the next hit. PHP still handles the request.
 - **HTML cache** (`cache.static_fallback`) writes every page, post, and podcast episode to real `.html` files under `fallback/`. Apache serves those files directly for anything already built; a path without an HTML file falls through to a live PHP render. Error pages (`fallback/_404.html` etc.) are wired up as Apache `ErrorDocument`s, and redirects are written as real `.htaccess` `RewriteRule`s.
   - SQLite is always the source of truth; `fallback/` is 100% derived. Delete it and click **Rebuild HTML cache** to rebuild from scratch.
-  - Heartbeat: `GET /up` (also self-heals the on-disk marker if settings say "on" but nothing's been published yet). Stamp: `/fallback/php-ok.json`.
+  - Heartbeat: `GET /up` (also self-heals the on-disk marker if settings say "on" but nothing's been published yet, and publishes any scheduled post that came due). Stamp: `/fallback/php-ok.json`.
 
 ```bash
 php tools/watch-php.php https://alta-forma.com https://client-site.example
@@ -186,13 +191,13 @@ Per-page / per-post SEO panels override title, description, OG image, canonical,
 - **FAQ** — wrap Q&A pairs in `<div data-fx-faq><details class="fx-faq-item"><summary>Question</summary><div class="fx-faq-a"><p>Answer</p></div></details>…</div>` (toolbar → Snippets → "FAQ block" inserts a starter) plus the `[[faq-ui]]` snippet once for the accordion styling. `FAQPage` JSON-LD is built from that markup — one copy of the text, nothing to keep in sync.
 - **Custom JSON-LD** — for anything else (Event, Recipe, Course, …), drop `<script type="application/ld+json" data-fx-schema>{"@type":"Event",…}</script>` in the content. Validated on save (bad JSON or a missing `@type` comes back as a warning and is dropped, not published) and merged into the single generated `<script>` in `<head>`.
 
-Redirects (301/302/307/308) live under Settings → SEO too, or `GET/PUT /api/v1/redirects` + `DELETE /api/v1/redirects/{id}` for agents. `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row, so an agent can scan for what needs SEO work without fetching every document.
+Redirects (301/302/307/308) live under Settings → SEO too, or `GET/PUT /api/v1/redirects` + `DELETE /api/v1/redirects/{id}` for agents. A redirect can't target `/admin` or `/api`, and can't point at its own source path (that's a loop, rejected on save). `GET /api/v1/pages` and `/api/v1/posts` also attach `seo_ok` + `seo_issues[]` per row, so an agent can scan for what needs SEO work without fetching every document.
 
 ## Licenses
 
 Forma itself is MIT. Podcast hosting is a $39 one-time unlock — [buy on Stripe](https://buy.stripe.com/7sY4gA87290N6a17Qk7N608), then paste the key under Settings → General. Local/dev: `FX-DEV-LOCAL`. Details: [docs/LICENSING.md](docs/LICENSING.md).
 
-The HMAC secret that mints keys is **not** in this repo (`lib/LicenseHMACSecret.hex` is gitignored).
+The HMAC secret that mints keys is **not** in this repo (`lib/LicenseHMACSecret.hex` is gitignored; a host-only path can be given via the `FORMA_LICENSE_SECRET_FILE` environment variable instead).
 
 ## Import from an older install
 
@@ -208,7 +213,13 @@ Also available in Admin → Settings → Import.
 
 **Settings → Forma core.** That updates the CMS only (GitHub Releases). Pages, posts, and uploads stay put. A core backup is saved first; **Undo last update** is on the same pane.
 
-AltaForma ships to the world with `./tools/release.sh` after bumping `version.php`. Do not rsync `main` onto live sites. Details: [docs/RELEASE.md](docs/RELEASE.md).
+AltaForma ships to the world with `./tools/release.sh` after bumping `version.php`. Do not rsync `main` onto live sites. Details: [docs/RELEASE.md](docs/RELEASE.md). Release history: [CHANGELOG.md](CHANGELOG.md).
+
+## Contributing / hacking
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — request lifecycle, class map, data model, what a save triggers, conventions.
+- [docs/TESTING.md](docs/TESTING.md) — lint, disposable install, `tools/test-*.php`, and the upgrade simulation to run before any release.
+- No Composer, no build step, no autoloader: new classes go in `lib/` and `lib/bootstrap.php`.
 
 ## License
 
